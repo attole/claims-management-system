@@ -12,3 +12,4 @@ FORMAT
 ITEMS
 
 NEXT: Add frontend/.prettierrc (printWidth 120) when the Angular app is scaffolded.
+NEXT: dev token endpoint (option A): DevAuth:Enabled flag, server-side mock users, Infrastructure token service behind Application interface, DevAuthController POST /api/dev/token; flag on in Azure, documented as simulation

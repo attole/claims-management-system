@@ -26,7 +26,10 @@ JOURNAL_KEYS = {
     "SPLIT": (["item", "who", "note"], {"who": {"ai", "manual", "hybrid"}}),
     "ASSESSMENT": (["area", "helped", "note"], {"helped": {"high", "medium", "low"}}),
     "SESSION": (["name", "phase", "note"], {}),
+    "SUMMARY": (["topic", "story", "decisions", "ai-errors", "human-vs-ai", "refs"], {}),
 }
+JOURNAL_VALUE_LIMITS = {"SUMMARY": 600}
+JOURNAL_DEFAULT_LIMIT = 200
 SHOULD_BLOCK = [
     "git switch main -f", "git switch main --force", "git -C . commit -m x", "git -c a=b push", "git stash",
     "git stash pop", "git branch -v -D old", "git branch --delete --force old", "git pull", "git commit -m x",
@@ -226,23 +229,25 @@ def check_journal():
     counters = {}
     for block in blocks:
         lines = block.splitlines()
-        head = re.match(r"^## (PROMPT|CORRECTION|SPLIT|ASSESSMENT|SESSION)-(\d{3}) \| (p[0-5] [a-z]+) \| (\d{4}-\d{2}-\d{2})$",
-                        lines[0])
+        head = re.match(
+            r"^## (PROMPT|CORRECTION|SPLIT|ASSESSMENT|SESSION|SUMMARY)-(\d{3}) \| (p[0-5] [a-z]+) \| (\d{4}-\d{2}-\d{2})$",
+            lines[0])
         if not head:
             fail("journal", f"bad entry header: {lines[0][:60]}")
             continue
         kind, number = head.group(1), int(head.group(2))
-        counters[kind] = counters.get(kind, 0) + 1
-        if number != counters[kind]:
-            fail("journal", f"{kind}-{number:03d} is out of sequence (expected {counters[kind]:03d})")
+        if number <= counters.get(kind, 0):
+            fail("journal", f"{kind}-{number:03d} is out of sequence (must be above {counters.get(kind, 0):03d})")
+        counters[kind] = number
         keys, allowed = JOURNAL_KEYS[kind]
         pairs = [re.match(r"^([a-z-]+): (.+)$", line) for line in lines[1:]]
         if any(p is None for p in pairs) or [p.group(1) for p in pairs] != keys:
             fail("journal", f"{kind}-{number:03d} keys differ from {keys}")
             continue
+        limit = JOURNAL_VALUE_LIMITS.get(kind, JOURNAL_DEFAULT_LIMIT)
         for key, value in ((p.group(1), p.group(2)) for p in pairs):
-            if len(value) > 200:
-                fail("journal", f"{kind}-{number:03d} value of '{key}' is longer than 200 characters")
+            if len(value) > limit:
+                fail("journal", f"{kind}-{number:03d} value of '{key}' is longer than {limit} characters")
             if key in allowed and value not in allowed[key]:
                 fail("journal", f"{kind}-{number:03d} '{key}' must be one of {sorted(allowed[key])}")
 

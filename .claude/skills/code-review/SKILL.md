@@ -112,15 +112,19 @@ Skip a finding if the pattern exists unchanged in surrounding code, the context 
 
 Per CLAUDE.md 'Output discipline': only the findings. Do not list categories that passed and do not write "X - none"; a clean file or category produces zero lines. If everything is clean: one short sentence, e.g. `changes are clean`.
 
-Contract section first (only if both sides changed), then per-file findings grouped by file, one line per finding, repo-relative paths, no bold, no dividers, no per-file sub-headers:
+Contract section first (only if both sides changed), then per-file findings grouped by file. Each finding is its own paragraph with a blank line between findings; inside a finding, `Fix:` (and any other label) starts on a new line. Repo-relative paths, no bold, no dividers, no per-file sub-headers:
 
 ```text
 contract - <feature>
-  connection: <one sentence on how the sides connect in this change>
+connection: <one sentence on how the sides connect in this change>
 
-  <file>:<line> - <what is mismatched or missing>. Fix: <fix>.
+<file>:<line> - <what is mismatched or missing>.
+Fix: <fix>.
 
-<file path>:<line> - <rule label>: <specific problem>. Fix: <one-line fix>.
+<file path>:<line> - <rule label>: <specific problem>.
+Fix: <one-line fix>.
+
+<next finding>
 ```
 
 A clean contract section reads `no contract issues` under the connection line. Contract findings do not replace per-file findings.
@@ -129,12 +133,16 @@ Example:
 
 ```text
 contract - claim submission
-  connection: Angular claim.service posts to ClaimsController.Submit with the SubmitClaimCommand shape
+connection: Angular claim.service posts to ClaimsController.Submit with the SubmitClaimCommand shape
 
-  frontend/src/app/claims/claim.service.ts:31 - route mismatch: posts to /api/claim, controller route is /api/claims. Fix: change the path to /api/claims.
+frontend/src/app/claims/claim.service.ts:31 - route mismatch: posts to /api/claim, controller route is /api/claims.
+Fix: change the path to /api/claims.
 
-backend/ClaimsModule.Application/Claims/SubmitClaimCommandHandler.cs:44 - complexity > 4: Handle has 6 branches. Fix: extract status mapping into a private static method.
-backend/ClaimsModule.API/Controllers/ClaimsController.cs:58 - result abstraction: builds error JSON by hand. Fix: return the mapped Result.
+backend/ClaimsModule.Application/Claims/SubmitClaimCommandHandler.cs:44 - complexity > 4: Handle has 6 branches.
+Fix: extract status mapping into a private static method.
+
+backend/ClaimsModule.API/Controllers/ClaimsController.cs:58 - result abstraction: builds error JSON by hand.
+Fix: return the mapped Result.
 ```
 
 -

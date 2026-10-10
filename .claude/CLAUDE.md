@@ -62,6 +62,15 @@ python -I .claude/tools/check_workflow.py
 
 The workflow check is read-only, prints one line per finding and a summary line, and must report 0 findings. 'Workflow check' says when it runs automatically.
 
+### Configuration
+
+The backend needs a .NET 9 runtime and a local SQL Server (LocalDB). Required settings are validated at startup through the options pattern (`ValidateOnStart`) and a missing one stops the app with the key named.
+
+- Secrets live in user-secrets locally (`Jwt:SigningKey`, 32+ characters) and in app settings or Key Vault when deployed. Never put a secret in a committed file.
+- Feature switches (`Swagger:Enabled`, `Hangfire:Dashboard:Enabled`, `DevAuth:Enabled`) are booleans that default to false and never depend on the environment.
+- New settings follow the same pattern: an options class with an explicit default, bound with `BindConfiguration` in the owning layer's per-feature extension.
+- Full setup steps and the settings table are in the root `README.md`; the short version is in `docs/ARCHITECTURE.md`.
+
 -
 
 ## Workflow & Permissions
@@ -276,7 +285,7 @@ Skills live in `.claude/skills/<name>/SKILL.md`.
 - **design:** "design X", "how should we build X". Produces a design; never writes code.
 - **code-review:** "code review", "review the code", "review the changes", "review the branch", "check my changes" (a code object is required; "review the design" is not a code review). Report-only; fixing a finding is a separate, explicit request.
 - **spec-check:** "spec-check", "check rules", "rule coverage", "check <rule ID>", "spec-check build". Also runs passively after every code-review. Read-only except build.
-- **ai-journal:** "log prompt", "log correction", "log split", "log assessment", "log session", "journal this", "list journal", "compile journal". Records real events only; proactive offers always ask first.
+- **ai-journal:** "log prompt", "log correction", "log split", "log assessment", "log session", "log summary", "summarize journal", "journal this", "list journal", "compile journal". Records real events only and merges related events into topic-level entries and SUMMARY narratives; proactive offers always ask first.
 - **dev-log:** user-invoked only, as `/dev-log on`, `/dev-log check`, or `/dev-log off` (the skill is not model-invoked). If asked for dev logs in plain words, reply with the command instead of adding logs by hand. Never leave an untagged dev log in code.
 
 ### Temp notes
