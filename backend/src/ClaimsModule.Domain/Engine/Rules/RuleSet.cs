@@ -1,5 +1,3 @@
-using ClaimsModule.Domain.Engine.Operations;
-
 namespace ClaimsModule.Domain.Engine.Rules;
 
 internal sealed class RuleSet<TSubject, TInput>
@@ -16,8 +14,8 @@ internal sealed class RuleSet<TSubject, TInput>
         _factories.Add(factory);
     }
 
-    public RuleResult Evaluate(TSubject subject, TInput input, OperationContext context)
+    public RuleResult Evaluate(TSubject subject, TInput input)
     {
-        return RuleResult.Combine(_factories.Select(factory => factory(input).Check(subject, context)));
+        return RuleResult.Combine(_factories.Select(factory => factory(input).Check(subject)));
     }
 }

@@ -31,7 +31,9 @@ public sealed class OperationOutcome<TValue>
         return new OperationOutcome<TValue>(true, value, [], warnings);
     }
 
-    public static OperationOutcome<TValue> Failure(IReadOnlyList<DomainError> errors, IReadOnlyList<DomainError> warnings)
+    public static OperationOutcome<TValue> Failure(
+        IReadOnlyList<DomainError> errors,
+        IReadOnlyList<DomainError> warnings)
     {
         return new OperationOutcome<TValue>(false, default!, errors, warnings);
     }

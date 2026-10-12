@@ -4,12 +4,12 @@ using ClaimsModule.Domain.Engine.Rules;
 namespace ClaimsModule.Domain.Engine.Operations;
 
 public abstract class Operation<TSubject, TInput, TValue>
+    where TInput : OperationInput
 {
     private readonly RuleSet<TSubject, TInput> _rules = new();
 
-    public OperationOutcome<TValue> Execute(TSubject subject, TInput input, TimeProvider time)
+    public OperationOutcome<TValue> Execute(TSubject subject, TInput input)
     {
-        OperationContext context = new(time.GetUtcNow());
         IReadOnlyList<DomainError> preconditionErrors = CheckPreconditions(subject);
 
         if (preconditionErrors.Count > 0)
@@ -18,14 +18,14 @@ public abstract class Operation<TSubject, TInput, TValue>
         }
 
         RuleResult result = RuleResult.Combine(
-            SelectRules(subject).Select(set => set.Evaluate(subject, input, context)));
+            SelectRules(subject).Select(set => set.Evaluate(subject, input)));
 
         if (result.Errors.Count > 0)
         {
             return OperationOutcome<TValue>.Failure(result.Errors, result.Warnings);
         }
 
-        TValue value = Apply(subject, input, context);
+        TValue value = Apply(subject, input);
         AfterApply(subject);
 
         return OperationOutcome<TValue>.Success(value, result.Warnings);
@@ -41,7 +41,7 @@ public abstract class Operation<TSubject, TInput, TValue>
         _rules.Add(factory);
     }
 
-    protected abstract TValue Apply(TSubject subject, TInput input, OperationContext context);
+    protected abstract TValue Apply(TSubject subject, TInput input);
 
     private protected virtual IReadOnlyList<DomainError> CheckPreconditions(TSubject subject)
     {

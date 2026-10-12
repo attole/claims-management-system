@@ -104,7 +104,7 @@ about claims or reserves. It only knows how to run rules against a subject and h
 so extending the domain means adding a declaration, not changing the engine or the code that calls it.
 
 The engine lives in the Domain project in three folders, each with its own namespace: `Engine/Operations` (the
-operation, its context and its outcome), `Engine/Rules` (the rule contract, the rule set and the rule result) and
+operation, its input base and its outcome), `Engine/Rules` (the rule contract, the rule set and the rule result) and
 `Engine/Transitions` (the transition, its builder and the not-permitted error).
 
 #### The operation
@@ -118,8 +118,7 @@ the apply step need, including any snapshot of outside data a rule depends on, s
 The input type is defined in the Domain project, but the Application layer fills it, in the handler or in a dedicated
 input builder.
 
-Business conditions are expressed as rules. A rule is a small class behind a single interface: given the subject and the
-operation context, it returns a rule result holding a list of errors and a list of warnings, either of which may be
+Business conditions are expressed as rules. A rule is a small class behind a single interface: given the subject, it returns a rule result holding a list of errors and a list of warnings, either of which may be
 empty. An operation declares its rules once, when it is constructed. A rule is declared either as a ready instance or as
 a lambda that builds the rule from the input when the operation runs, so each rule receives only the part of the input
 it needs. The lambdas are kept in a rule set that the operation owns.
@@ -130,9 +129,11 @@ the operation, such as the record that was created, or the `Success` value when 
 
 #### Executing an operation
 
-Every operation runs in the same order. The caller passes the subject, the input and a time provider. The engine reads
-the current time once into the operation context and shares that single value with the rules and the apply step, so a
-run never sees two different times and the Domain reads no clock anywhere else.
+Every operation runs in the same order. The caller passes the subject and the input. The time of the run is part of
+the input: every input derives from a small base record that carries it and refuses a missing value. The input builders
+in the Application layer read the clock once and stamp that value, so callers never set it and one run sees one time.
+Rules that depend on time receive it through the rule lambda, like any other input value, and the Domain reads no clock
+anywhere.
 
 The engine then checks the preconditions of the run. A plain operation has none, and a transition uses this step to
 verify the subject's state. If a precondition fails, the run ends with a failed outcome and no rule is evaluated. The
