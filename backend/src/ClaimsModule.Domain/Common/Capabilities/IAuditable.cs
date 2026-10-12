@@ -2,11 +2,11 @@ namespace ClaimsModule.Domain.Common.Capabilities;
 
 public interface IAuditable
 {
-    DateTimeOffset CreatedAt { get; set; }
+    DateTimeOffset CreatedAt { get; }
 
-    DateTimeOffset UpdatedAt { get; set; }
+    DateTimeOffset UpdatedAt { get; }
 
-    Guid UserCreated { get; set; }
+    Guid UserCreated { get; }
 
-    Guid UserModified { get; set; }
+    Guid UserModified { get; }
 }
