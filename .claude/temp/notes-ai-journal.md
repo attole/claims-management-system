@@ -260,3 +260,39 @@ decisions: The period is a date-only record with inclusive ends, compared on the
 ai-errors: Claude proposed a Cancelled warning that would fire on valid claims because the cancellation date was unknown; the user reasoning about derived statuses exposed it. Logged as CORRECTION-010.
 human-vs-ai: The user supplied the model of dates and status and asked for a domain type; Claude searched the web, argued three options for recording a cancellation, and recorded the decision in the note and the architecture doc.
 refs: PROMPT-006, CORRECTION-010
+
+## CORRECTION-013 | p1 domain | 2026-10-12
+what: Claude's first engine had weak or duplicate pieces: a Unit type, DomainOutcome, a Gate hook, Change plus Apply on transitions, a CommonRules class and an Errors folder
+caught-by: user
+fix: user questioned each piece; renamed to Success, OperationOutcome and CheckPreconditions, merged Change and Apply, removed CommonRules, moved errors to Common, split Common and the test support by role
+lesson: ask what each abstraction buys and keep one path per concern; names and folders should follow the role, not the first draft
+
+## CORRECTION-014 | p1 domain | 2026-10-12
+what: Claude put ClaimParty in the Claims root but its role and type in a Parties folder, and the one-type-per-file rule left each closed set as 8 files of 3 lines
+caught-by: user
+fix: closed sets share one file named after the base type, with a general exception in CLAUDE.md; Claims reorganised into Parties, RiskObjects and Loss folders
+lesson: check a new folder against its siblings before creating it; when a rule produces noise, change the rule once instead of adding exceptions per case
+
+## CORRECTION-015 | p1 domain | 2026-10-12
+what: Claude recommended keeping a one-field OperationContext for the time, although most rules ignored it and Claim.Create already took the time as an argument
+caught-by: user
+fix: user proposed putting the time in the input, stamped by the Application input builders; Claude added the OperationInput base with a default-time guard and removed the context and the time providers
+lesson: a recommended option can lose to a simpler one; check a "uniform signature" argument against how many rules actually use the parameter
+
+## SPLIT-003 | p1 domain | 2026-10-12
+item: claim core pack: states, parties, risk objects, loss, eight operations and tests
+who: hybrid
+note: user fixed scope (no policy or reserves, static factory, Kind suffix) and later the layout; Claude wrote the types, operations and tests and kept build and tests green
+
+## ASSESSMENT-004 | p1 domain | 2026-10-12
+area: structural refactors (moving files, namespaces, engine signature change)
+helped: high
+note: mechanical moves and the engine signature change ran fast with the build and tests as the check; the shape of each change came from the user's questions
+
+## SUMMARY-013 | p1 domain | 2026-10-12
+topic: engine refinement and claim core layout
+story: The claim core pack was built on the pack 1 engine. Reviewing it led to three reshapes: closed sets in one file per registry, claim folders per owned concept, and operation time moved from a context into the input. Each change was applied across source, tests and the architecture doc.
+decisions: The user chose the registry-file exception, the per-concept folders and the time in the input, stamped by builders. Claude argued the options and recommended differently on the layout and on the time.
+ai-errors: Claude kept weak engine names, an inconsistent folder split and a context the rules did not use; the user caught all three. Logged as CORRECTION-013 to CORRECTION-015.
+human-vs-ai: The user drove the structure through questions; Claude implemented, ran the build and tests, and updated CLAUDE.md and the docs.
+refs: CORRECTION-013, CORRECTION-014, CORRECTION-015, SPLIT-003, ASSESSMENT-004

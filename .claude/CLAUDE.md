@@ -185,6 +185,7 @@ Use the latest language features and framework APIs available for the target (C#
 
 Return empty values instead of null: `[]`, `string.Empty`, or an empty object / `Option`-style value for "nothing" returns; initialize fields with empty defaults, not `?` types.
 
+- Spell the empty value out even when it equals the CLR default: `= Guid.Empty`, `= false`, `= EstimatedLossAmount.Empty`, `= string.Empty`. Properties assigned in every constructor need no initializer.
 - Domain and Application: required.
 - Everywhere else: preferred as a safeguard. Any null that must exist at a boundary (EF nullable columns, external input) is converted to an empty value at that boundary.
 
@@ -205,19 +206,20 @@ Every API operation returns through a single result abstraction (`Result<T>` or 
 - Always use braces `{}` for `if`, `else`, `for`, `foreach`, `while`, even single-line bodies.
 - Use `string.Equals` / `string.Compare` with `StringComparison` instead of `==` for string comparisons where culture or case sensitivity matters.
 - Use `.Equals()` instead of `==` when comparing non-primitive reference types.
-- Prefer explicit, readable expressions over clever one-liners; name intermediate variables if it aids clarity.
+- Prefer explicit, readable expressions over clever one-liners. Put the result of a LINQ chain or any non-trivial expression into a named variable first, then use that variable in the `?:`, the `if` or the `return` (`bool isLastClaimant = ...;` then `return isLastClaimant ? ... : ...;`). A named result reads better and can be inspected in the debugger. Declare the type explicitly when the right side does not make it evident.
 
 ### Code style
 
 - **Line length:** 120 characters maximum, backend and frontend.
 - **LINQ:** method syntax only. From the second chained call on, or when the line would pass the limit, put each call on its own line starting with `.`, indented one level.
-- **Parameters:** with 4 or more parameters, or when the line would pass the limit, put one parameter per line, indented one level. The same applies to call arguments and constructor injection.
-- **Files:** one type per file, and the file name equals the type name. Use file-scoped namespaces.
+- **Parameters and arguments:** keep them on one line when the line fits in 120 characters. When the line would pass the limit, put one item per line, indented one level. A call with 4 or more arguments that includes an expression (a call, lambda, operator or similar) also goes one per line even when it fits; plain names, literals (including interpolated strings) and member access stay inline. The same applies to constructor injection.
+- **Files:** one type per file, and the file name equals the type name. Use file-scoped namespaces. Exception: types of one registry, such as a closed set of marker records with their marker enum, share one file named after the base type (`ClaimState.cs` holds the enum, the abstract record and every sealed record). This applies while each variant is empty or only overrides a member of the base (`PartyRole.cs`). A type with real logic or its own state gets its own file. A dependent type, one that exists only to serve a single other type (an operation's input record), lives in its owner's file, named after the owner (`AddPartyOperation.cs` holds `AddPartyInput`, declared first, then the operation class); a type used by several owners keeps its own file.
 - **Folders:** Application is organized by feature (for example `Claims/CreateClaim/` holds the command, handler, and validator), so a pack's files sit together.
+- **Domain folders:** by concept. `Claims/` holds only folders: `Root/` for the claim aggregate root itself (`Claim`, its states and values, with its own `Operations/`, `Events/` and `Rules/`) and one folder per child entity (`Parties/`, `RiskObjects/`, `Loss/`). A child folder holds the entity, its closed sets and values, and `Operations/`, `Events/` and `Rules/` subfolders, created when the first file exists. Operations and rules that span entities, such as lifecycle transitions, live in `Root/Operations/` and `Root/Rules/`. Tests mirror the folders.
 - **Interfaces:** named `I<Name>`, one per file. Interfaces that Infrastructure or Persistence implement (`IStorageService`, `IAuditLogService`, `IUnitOfWork`, repositories) are defined in Application. Domain defines none unless a domain concept needs one. Each implementing project registers its services in its own DI extension (`AddInfrastructure`, `AddPersistence`).
 - **Declarations:** `_camelCase` private fields; `Async` suffix on async methods (not on `Handle` or controller actions); `CancellationToken` as the last parameter; `sealed` classes by default; records for commands, queries, and DTOs; primary constructors for dependency injection; `var` only when the type is evident from the right side; no `#region`.
 - **Frontend:** Prettier formatting with `printWidth` 120, `.prettierrc` added when the Angular app is scaffolded.
-- **Enforcement:** `.editorconfig` carries the mechanical rules (namespaces, braces, `var`, naming, line length). LINQ and parameter layout are checked in code review.
+- **Enforcement:** `.editorconfig` carries the mechanical rules (namespaces, braces, `var`, naming, line length). LINQ, parameter layout, named intermediate variables and explicit empty defaults are checked in code review.
 
 ### No explanatory comments
 
@@ -243,6 +245,16 @@ EF Core migrations are generated by tooling and never hand-edited.
 - Seed data through `HasData` or migration scripts, never at application startup. No hard-coded GUIDs in application logic.
 - Names: tables and entities PascalCase singular; commands `VerbNounCommand`; queries `GetNounQuery` / `ListNounsQuery`; DTOs `...Dto` or `...Request` / `...Response`; routes kebab-case plural.
 - Cross-cutting: FluentValidation runs as a MediatR pipeline behavior; AutoMapper profiles live in Application; storage and audit sit behind interfaces (`IStorageService`, `IAuditLogService`); audit writes never go straight to the `DbContext` from handlers.
+
+### Domain modeling
+
+- **No invented rules:** a check that no source states (a bound on an amount, a length) is not added; ask for the source first. A rule class exposes its rule ID as a `Code` constant, and its tests carry `[Trait("Rule", <Rule>.Code)]`.
+- **Time:** the Domain reads no clock. The operation time is `Now` on the input; every input derives from `OperationInput`, which rejects a default time, and the Application input builders stamp it once from the clock, so callers never set it. Entity mutators and `Ids.Next` take `now` as a parameter.
+- **Creation:** the aggregate root has a static factory that builds a minimal valid Draft (`Claim.Create`); parties, risk objects and loss details are added through the same operations as later edits. There are no creation records that copy their fields into the entity.
+- **Entity data:** a child entity keeps its editable data as one immutable details record (`PartyDetails`, `RiskObjectDetails`, `LossDetails`), held in a `Details` property and replaced as a whole (`with` builds a changed copy). The entity does not repeat the record's fields.
+- **Visibility:** the capability interfaces (`IAuditable`, `ISoftDeletable`, `ITenantOwned`) are get-only and entities use private setters; mutators are `internal` and the Persistence save interceptor stamps the audit, delete and tenant fields through the EF property API.
+- **EF friendliness:** every entity has a private parameterless constructor with empty placeholders, and a test builds each one through it. A value that may be absent and maps to a nullable column is a sealed record class with a static `Empty` and an `IsSet` flag (`LossDate`, `EstimatedLossAmount`), because EF cannot make a struct column nullable. Computed members and range comparisons on converted values do not translate to SQL, so list and search queries use projections or read models, never filtered Domain entities.
+- **Tests:** they mirror the folder tree and fill claims through the operations (`TestClaims`), not through private state.
 
 -
 
