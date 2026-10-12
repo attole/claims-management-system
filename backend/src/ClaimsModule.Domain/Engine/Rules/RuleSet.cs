@@ -16,6 +16,8 @@ internal sealed class RuleSet<TSubject, TInput>
 
     public RuleResult Evaluate(TSubject subject, TInput input)
     {
-        return RuleResult.Combine(_factories.Select(factory => factory(input).Check(subject)));
+        IEnumerable<RuleResult> results = _factories.Select(factory => factory(input).Check(subject));
+
+        return RuleResult.Combine(results);
     }
 }

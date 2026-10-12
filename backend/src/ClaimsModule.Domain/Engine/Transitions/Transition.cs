@@ -35,14 +35,19 @@ public abstract class Transition<TSubject, TState, TInput> : Operation<TSubject,
     {
         TState current = CurrentState(subject);
 
-        return _groups.ContainsKey(current)
+        bool isDeclaredSource = _groups.ContainsKey(current);
+
+        return isDeclaredSource
             ? []
             : [TransitionNotPermitted.Create(NotPermittedCode, current.Name, Target.Name)];
     }
 
     private protected override IReadOnlyList<RuleSet<TSubject, TInput>> SelectRules(TSubject subject)
     {
-        return [.. base.SelectRules(subject), _groups[CurrentState(subject)]];
+        IReadOnlyList<RuleSet<TSubject, TInput>> operationRules = base.SelectRules(subject);
+        RuleSet<TSubject, TInput> sourceRules = _groups[CurrentState(subject)];
+
+        return [.. operationRules, sourceRules];
     }
 
     private protected override void AfterApply(TSubject subject)

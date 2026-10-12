@@ -17,8 +17,8 @@ public abstract class Operation<TSubject, TInput, TValue>
             return OperationOutcome<TValue>.Failure(preconditionErrors, []);
         }
 
-        RuleResult result = RuleResult.Combine(
-            SelectRules(subject).Select(set => set.Evaluate(subject, input)));
+        IEnumerable<RuleResult> results = SelectRules(subject).Select(set => set.Evaluate(subject, input));
+        RuleResult result = RuleResult.Combine(results);
 
         if (result.Errors.Count > 0)
         {

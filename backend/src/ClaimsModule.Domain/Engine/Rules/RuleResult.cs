@@ -20,8 +20,9 @@ public sealed record RuleResult(IReadOnlyList<DomainError> Errors, IReadOnlyList
     {
         List<RuleResult> all = results.ToList();
 
-        return new RuleResult(
-            all.SelectMany(result => result.Errors).ToList(),
-            all.SelectMany(result => result.Warnings).ToList());
+        List<DomainError> errors = all.SelectMany(result => result.Errors).ToList();
+        List<DomainError> warnings = all.SelectMany(result => result.Warnings).ToList();
+
+        return new RuleResult(errors, warnings);
     }
 }
