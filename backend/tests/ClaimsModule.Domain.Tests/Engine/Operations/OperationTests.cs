@@ -1,12 +1,10 @@
 using ClaimsModule.Domain.Engine.Operations;
-using ClaimsModule.Domain.Engine.Rules;
 using ClaimsModule.Domain.Tests.Support.Engine;
 
 namespace ClaimsModule.Domain.Tests.Engine.Operations;
 
 public sealed class OperationTests
 {
-    private static readonly DateTimeOffset _start = new(2026, 10, 12, 8, 0, 0, TimeSpan.Zero);
     private static readonly SampleInput _input = new("text");
 
     [Fact]
@@ -15,7 +13,7 @@ public sealed class OperationTests
         SampleOperation operation = new([SampleRules.Pass(), SampleRules.Pass()], []);
         SampleSubject subject = new();
 
-        OperationOutcome<string> outcome = operation.Execute(subject, _input, Clock());
+        OperationOutcome<string> outcome = operation.Execute(subject, _input);
 
         outcome.IsSuccess.Should().BeTrue();
         outcome.Value.Should().Be("text");
@@ -28,7 +26,7 @@ public sealed class OperationTests
         SampleOperation operation = new([SampleRules.Fail("A"), SampleRules.Pass(), SampleRules.Fail("B")], []);
         SampleSubject subject = new();
 
-        OperationOutcome<string> outcome = operation.Execute(subject, _input, Clock());
+        OperationOutcome<string> outcome = operation.Execute(subject, _input);
 
         outcome.IsSuccess.Should().BeFalse();
         outcome.Errors.Select(error => error.Code).Should().Equal("A", "B");
@@ -41,7 +39,7 @@ public sealed class OperationTests
     {
         SampleOperation operation = new([SampleRules.Warn("W")], []);
 
-        OperationOutcome<string> outcome = operation.Execute(new SampleSubject(), _input, Clock());
+        OperationOutcome<string> outcome = operation.Execute(new SampleSubject(), _input);
 
         outcome.IsSuccess.Should().BeTrue();
         outcome.Warnings.Select(warning => warning.Code).Should().Equal("W");
@@ -52,7 +50,7 @@ public sealed class OperationTests
     {
         SampleOperation operation = new([SampleRules.Warn("W"), SampleRules.Fail("E")], []);
 
-        OperationOutcome<string> outcome = operation.Execute(new SampleSubject(), _input, Clock());
+        OperationOutcome<string> outcome = operation.Execute(new SampleSubject(), _input);
 
         outcome.Errors.Select(error => error.Code).Should().Equal("E");
         outcome.Warnings.Select(warning => warning.Code).Should().Equal("W");
@@ -61,36 +59,34 @@ public sealed class OperationTests
     [Fact]
     public void Execute_BuildsARuleFromTheInput()
     {
-        SampleOperation operation = new([], [input => input.Text == "bad" ? SampleRules.Fail("BAD_INPUT") : SampleRules.Pass()]);
+        SampleOperation operation = new(
+            [],
+            [input => input.Text == "bad" ? SampleRules.Fail("BAD_INPUT") : SampleRules.Pass()]);
 
-        OperationOutcome<string> bad = operation.Execute(new SampleSubject(), new SampleInput("bad"), Clock());
-        OperationOutcome<string> good = operation.Execute(new SampleSubject(), _input, Clock());
+        OperationOutcome<string> bad = operation.Execute(new SampleSubject(), new SampleInput("bad"));
+        OperationOutcome<string> good = operation.Execute(new SampleSubject(), _input);
 
         bad.Errors.Select(error => error.Code).Should().Equal("BAD_INPUT");
         good.IsSuccess.Should().BeTrue();
     }
 
     [Fact]
-    public void Execute_ReadsTheTimeOnceAndSharesIt()
+    public void Execute_LetsARuleFactoryUseTheTimeOfTheInput()
     {
         List<DateTimeOffset> seen = [];
-        DelegateRule recorder = new((_, context) =>
-        {
-            seen.Add(context.Now);
+        SampleOperation operation = new(
+            [],
+            [
+                input =>
+                {
+                    seen.Add(input.Now);
 
-            return RuleResult.Pass;
-        });
-        SampleOperation operation = new([recorder, recorder], []);
-        CountingTimeProvider time = new(_start);
+                    return SampleRules.Pass();
+                },
+            ]);
 
-        operation.Execute(new SampleSubject(), _input, time);
+        operation.Execute(new SampleSubject(), _input);
 
-        time.Calls.Should().Be(1);
-        seen.Should().HaveCount(2).And.OnlyContain(now => now == _start);
-    }
-
-    private static CountingTimeProvider Clock()
-    {
-        return new CountingTimeProvider(_start);
+        seen.Should().Equal(SampleInput.Instant);
     }
 }

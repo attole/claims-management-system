@@ -7,16 +7,16 @@ public static class SampleRules
 {
     public static DelegateRule Pass()
     {
-        return new DelegateRule((_, _) => RuleResult.Pass);
+        return new DelegateRule(_ => RuleResult.Pass);
     }
 
     public static DelegateRule Fail(string code)
     {
-        return new DelegateRule((_, _) => RuleResult.Fail(new RuleViolation(code, code)));
+        return new DelegateRule(_ => RuleResult.Fail(new RuleViolation(code, code)));
     }
 
     public static DelegateRule Warn(string code)
     {
-        return new DelegateRule((_, _) => RuleResult.Warn(new RuleViolation(code, code)));
+        return new DelegateRule(_ => RuleResult.Warn(new RuleViolation(code, code)));
     }
 }

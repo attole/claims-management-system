@@ -8,7 +8,6 @@ namespace ClaimsModule.Domain.Tests.Engine.Transitions;
 
 public sealed class TransitionTests
 {
-    private static readonly DateTimeOffset _start = new(2026, 10, 12, 8, 0, 0, TimeSpan.Zero);
 
     [Fact]
     public void Execute_FromADeclaredSource_AppliesAndMovesTheSubject()
@@ -16,7 +15,7 @@ public sealed class TransitionTests
         SampleSubject subject = new() { State = new OpenSampleState() };
 
         OperationOutcome<Success> outcome = new CloseSampleTransition()
-            .Execute(subject, new SampleInput("done"), Clock());
+            .Execute(subject, new SampleInput("done"));
 
         outcome.IsSuccess.Should().BeTrue();
         subject.State.Should().Be(new ClosedSampleState());
@@ -29,7 +28,7 @@ public sealed class TransitionTests
         SampleSubject subject = new() { State = new DraftSampleState() };
 
         OperationOutcome<Success> outcome = new CloseSampleTransition()
-            .Execute(subject, new SampleInput("done"), Clock());
+            .Execute(subject, new SampleInput("done"));
 
         TransitionNotPermitted error = outcome.Errors
             .Should().ContainSingle()
@@ -47,7 +46,7 @@ public sealed class TransitionTests
         SampleSubject subject = new() { State = new OpenSampleState() };
 
         OperationOutcome<Success> outcome = new CloseSampleTransition()
-            .Execute(subject, new SampleInput(" "), Clock());
+            .Execute(subject, new SampleInput(" "));
 
         outcome.Errors.Select(error => error.Code).Should().Equal(CloseSampleTransition.TextRequired);
         subject.State.Should().Be(new OpenSampleState());
@@ -61,8 +60,8 @@ public sealed class TransitionTests
         SampleSubject fromDraft = new() { State = new DraftSampleState() };
         SampleSubject fromClosed = new() { State = new ClosedSampleState() };
 
-        OperationOutcome<Success> allowed = transition.Execute(fromDraft, new SampleInput("x"), Clock());
-        OperationOutcome<Success> denied = transition.Execute(fromClosed, new SampleInput("x"), Clock());
+        OperationOutcome<Success> allowed = transition.Execute(fromDraft, new SampleInput("x"));
+        OperationOutcome<Success> denied = transition.Execute(fromClosed, new SampleInput("x"));
 
         allowed.IsSuccess.Should().BeTrue();
         fromDraft.State.Should().Be(new OpenSampleState());
@@ -86,10 +85,5 @@ public sealed class TransitionTests
         Func<DuplicateSourceSampleTransition> create = () => new DuplicateSourceSampleTransition();
 
         create.Should().Throw<InvalidOperationException>().WithMessage("*Open*");
-    }
-
-    private static CountingTimeProvider Clock()
-    {
-        return new CountingTimeProvider(_start);
     }
 }

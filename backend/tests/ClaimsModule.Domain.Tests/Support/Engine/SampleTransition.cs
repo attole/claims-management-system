@@ -1,5 +1,4 @@
 using ClaimsModule.Domain.Common;
-using ClaimsModule.Domain.Engine.Operations;
 using ClaimsModule.Domain.Engine.Transitions;
 using ClaimsModule.Domain.Tests.Support.Common;
 
@@ -17,7 +16,7 @@ public abstract class SampleTransition(SampleState target) : Transition<SampleSu
         subject.State = state;
     }
 
-    protected override Success Apply(SampleSubject subject, SampleInput input, OperationContext context)
+    protected override Success Apply(SampleSubject subject, SampleInput input)
     {
         subject.Log.Add($"apply {input.Text}");
 

@@ -22,7 +22,7 @@ public sealed class SampleOperation : Operation<SampleSubject, SampleInput, stri
 
     public int ApplyCount { get; private set; }
 
-    protected override string Apply(SampleSubject subject, SampleInput input, OperationContext context)
+    protected override string Apply(SampleSubject subject, SampleInput input)
     {
         ApplyCount++;
         subject.Log.Add($"apply {input.Text}");

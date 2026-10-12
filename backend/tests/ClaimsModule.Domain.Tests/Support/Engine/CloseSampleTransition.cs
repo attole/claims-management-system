@@ -12,7 +12,7 @@ public sealed class CloseSampleTransition : SampleTransition
         : base(new ClosedSampleState())
     {
         From(new OpenSampleState())
-            .Require(input => new DelegateRule((_, _) => string.IsNullOrWhiteSpace(input.Text)
+            .Require(input => new DelegateRule(_ => string.IsNullOrWhiteSpace(input.Text)
                 ? RuleResult.Fail(new RuleViolation(TextRequired, TextRequired))
                 : RuleResult.Pass));
     }

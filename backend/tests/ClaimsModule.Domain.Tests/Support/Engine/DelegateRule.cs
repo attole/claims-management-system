@@ -1,12 +1,11 @@
-using ClaimsModule.Domain.Engine.Operations;
 using ClaimsModule.Domain.Engine.Rules;
 
 namespace ClaimsModule.Domain.Tests.Support.Engine;
 
-public sealed class DelegateRule(Func<SampleSubject, OperationContext, RuleResult> check) : IRule<SampleSubject>
+public sealed class DelegateRule(Func<SampleSubject, RuleResult> check) : IRule<SampleSubject>
 {
-    public RuleResult Check(SampleSubject subject, OperationContext context)
+    public RuleResult Check(SampleSubject subject)
     {
-        return check(subject, context);
+        return check(subject);
     }
 }
