@@ -7,6 +7,7 @@ namespace ClaimsModule.Domain.Engine.Transitions;
 
 public abstract class Transition<TSubject, TState, TInput> : Operation<TSubject, TInput, Success>
     where TState : class, IMarked
+    where TInput : OperationInput
 {
     private readonly Dictionary<TState, RuleSet<TSubject, TInput>> _groups = [];
 

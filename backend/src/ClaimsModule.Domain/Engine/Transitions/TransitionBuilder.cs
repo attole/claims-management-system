@@ -1,10 +1,12 @@
 using ClaimsModule.Domain.Common.Markers;
+using ClaimsModule.Domain.Engine.Operations;
 using ClaimsModule.Domain.Engine.Rules;
 
 namespace ClaimsModule.Domain.Engine.Transitions;
 
 public sealed class TransitionBuilder<TSubject, TState, TInput>
     where TState : class, IMarked
+    where TInput : OperationInput
 {
     private readonly Dictionary<TState, RuleSet<TSubject, TInput>> _groups;
     private RuleSet<TSubject, TInput> _current = new();
