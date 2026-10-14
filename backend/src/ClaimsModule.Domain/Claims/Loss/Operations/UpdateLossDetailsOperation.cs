@@ -1,12 +1,12 @@
 using ClaimsModule.Domain.Claims.Root;
-using ClaimsModule.Domain.Common;
-using ClaimsModule.Domain.Engine.Operations;
+using ClaimsModule.Domain.Core.Operations;
 
 namespace ClaimsModule.Domain.Claims.Loss.Operations;
 
-public sealed record UpdateLossDetailsInput(LossDetails Loss, DateTimeOffset Now) : OperationInput(Now);
+public sealed record UpdateLossDetailsInput(LossDetails Loss, Guid ActorId, DateTimeOffset Now)
+    : ClaimBaseInput(Now, ActorId);
 
-public sealed class UpdateLossDetailsOperation : Operation<Claim, UpdateLossDetailsInput, Success>
+public sealed class UpdateLossDetailsOperation : ClaimBaseOperation<UpdateLossDetailsInput, Success>
 {
     protected override Success Apply(Claim claim, UpdateLossDetailsInput input)
     {

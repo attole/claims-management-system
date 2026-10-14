@@ -15,16 +15,16 @@ public enum ClaimStatus
 
 public abstract record ClaimState(ClaimStatus Marker) : Marked<ClaimStatus>(Marker);
 
-public sealed record DraftState() : ClaimState(ClaimStatus.Draft);
+public sealed record ClaimDraftState() : ClaimState(ClaimStatus.Draft);
 
-public sealed record OpenState() : ClaimState(ClaimStatus.Open);
+public sealed record ClaimOpenState() : ClaimState(ClaimStatus.Open);
 
-public sealed record UnderInvestigationState() : ClaimState(ClaimStatus.UnderInvestigation);
+public sealed record ClaimUnderInvestigationState() : ClaimState(ClaimStatus.UnderInvestigation);
 
-public sealed record PendingPaymentState() : ClaimState(ClaimStatus.PendingPayment);
+public sealed record ClaimPendingPaymentState() : ClaimState(ClaimStatus.PendingPayment);
 
-public sealed record ClosedState() : ClaimState(ClaimStatus.Closed);
+public sealed record ClaimClosedState() : ClaimState(ClaimStatus.Closed);
 
-public sealed record ReopenedState() : ClaimState(ClaimStatus.Reopened);
+public sealed record ClaimReopenedState() : ClaimState(ClaimStatus.Reopened);
 
-public sealed record WithdrawnState() : ClaimState(ClaimStatus.Withdrawn);
+public sealed record ClaimWithdrawnState() : ClaimState(ClaimStatus.Withdrawn);

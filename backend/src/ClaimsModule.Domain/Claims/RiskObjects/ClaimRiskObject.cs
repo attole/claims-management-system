@@ -20,13 +20,13 @@ public sealed class ClaimRiskObject : Entity, IAuditable, ISoftDeletable, ITenan
         UpdatedAt = now;
     }
 
-    public Guid ClaimId { get; private set; }
+    public Guid ClaimId { get; private set; } = Guid.Empty;
 
     public RiskObjectDetails Details { get; private set; }
 
-    public DateTimeOffset CreatedAt { get; private set; }
+    public DateTimeOffset CreatedAt { get; private set; } = DateTimeOffset.MinValue;
 
-    public DateTimeOffset UpdatedAt { get; private set; }
+    public DateTimeOffset UpdatedAt { get; private set; } = DateTimeOffset.MinValue;
 
     public Guid UserCreated { get; private set; } = Guid.Empty;
 
@@ -36,7 +36,7 @@ public sealed class ClaimRiskObject : Entity, IAuditable, ISoftDeletable, ITenan
 
     public DateTimeOffset DeletedAt { get; private set; } = DateTimeOffset.MinValue;
 
-    public Guid OrganisationId { get; private set; }
+    public Guid OrganisationId { get; private set; } = Guid.Empty;
 
     internal void Remove(DateTimeOffset now)
     {

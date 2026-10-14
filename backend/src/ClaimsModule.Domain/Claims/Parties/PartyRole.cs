@@ -13,18 +13,18 @@ public enum PartyRoleKind
 
 public abstract record PartyRole(PartyRoleKind Marker) : Marked<PartyRoleKind>(Marker)
 {
-    public virtual bool CountsAsClaimant => false;
+    public virtual bool IsClaimant => false;
 }
 
-public sealed record ClaimantRole() : PartyRole(PartyRoleKind.Claimant)
+public sealed record PartyClaimantRole() : PartyRole(PartyRoleKind.Claimant)
 {
-    public override bool CountsAsClaimant => true;
+    public override bool IsClaimant => true;
 }
 
-public sealed record InsuredRole() : PartyRole(PartyRoleKind.Insured);
+public sealed record PartyInsuredRole() : PartyRole(PartyRoleKind.Insured);
 
-public sealed record ThirdPartyRole() : PartyRole(PartyRoleKind.ThirdParty);
+public sealed record PartyThirdPartyRole() : PartyRole(PartyRoleKind.ThirdParty);
 
-public sealed record WitnessRole() : PartyRole(PartyRoleKind.Witness);
+public sealed record PartyWitnessRole() : PartyRole(PartyRoleKind.Witness);
 
-public sealed record AttorneyRole() : PartyRole(PartyRoleKind.Attorney);
+public sealed record PartyAttorneyRole() : PartyRole(PartyRoleKind.Attorney);

@@ -21,15 +21,15 @@ public sealed class LossEvent : Entity, IAuditable, ISoftDeletable, ITenantOwned
         Details = details;
     }
 
-    public Guid ClaimId { get; private set; }
+    public Guid ClaimId { get; private set; } = Guid.Empty;
 
     public LossDetails Details { get; private set; }
 
-    public DateTimeOffset ReportDate { get; private set; }
+    public DateTimeOffset ReportDate { get; private set; } = DateTimeOffset.MinValue;
 
-    public DateTimeOffset CreatedAt { get; private set; }
+    public DateTimeOffset CreatedAt { get; private set; } = DateTimeOffset.MinValue;
 
-    public DateTimeOffset UpdatedAt { get; private set; }
+    public DateTimeOffset UpdatedAt { get; private set; } = DateTimeOffset.MinValue;
 
     public Guid UserCreated { get; private set; } = Guid.Empty;
 
@@ -39,7 +39,7 @@ public sealed class LossEvent : Entity, IAuditable, ISoftDeletable, ITenantOwned
 
     public DateTimeOffset DeletedAt { get; private set; } = DateTimeOffset.MinValue;
 
-    public Guid OrganisationId { get; private set; }
+    public Guid OrganisationId { get; private set; } = Guid.Empty;
 
     internal void Update(LossDetails details, DateTimeOffset now)
     {

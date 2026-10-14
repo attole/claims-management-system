@@ -1,11 +1,11 @@
 using ClaimsModule.Domain.Claims.Root;
-using ClaimsModule.Domain.Engine.Operations;
 
 namespace ClaimsModule.Domain.Claims.RiskObjects.Operations;
 
-public sealed record AddRiskObjectInput(RiskObjectDetails Details, DateTimeOffset Now) : OperationInput(Now);
+public sealed record AddRiskObjectInput(RiskObjectDetails Details, Guid ActorId, DateTimeOffset Now)
+    : ClaimBaseInput(Now, ActorId);
 
-public sealed class AddRiskObjectOperation : Operation<Claim, AddRiskObjectInput, ClaimRiskObject>
+public sealed class AddRiskObjectOperation : ClaimBaseOperation<AddRiskObjectInput, ClaimRiskObject>
 {
     protected override ClaimRiskObject Apply(Claim claim, AddRiskObjectInput input)
     {

@@ -1,11 +1,11 @@
-using ClaimsModule.Domain.Common;
-using ClaimsModule.Domain.Engine.Operations;
+using ClaimsModule.Domain.Core.Operations;
 
 namespace ClaimsModule.Domain.Claims.Root.Operations;
 
-public sealed record SetSeverityInput(ClaimSeverity Severity, DateTimeOffset Now) : OperationInput(Now);
+public sealed record SetSeverityInput(ClaimSeverity Severity, Guid ActorId, DateTimeOffset Now)
+    : ClaimBaseInput(Now, ActorId);
 
-public sealed class SetSeverityOperation : Operation<Claim, SetSeverityInput, Success>
+public sealed class SetSeverityOperation : ClaimBaseOperation<SetSeverityInput, Success>
 {
     protected override Success Apply(Claim claim, SetSeverityInput input)
     {

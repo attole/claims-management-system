@@ -1,11 +1,11 @@
-using ClaimsModule.Domain.Common;
-using ClaimsModule.Domain.Engine.Operations;
+using ClaimsModule.Domain.Core.Operations;
 
 namespace ClaimsModule.Domain.Claims.Root.Operations;
 
-public sealed record AssignHandlerInput(Guid HandlerId, DateTimeOffset Now) : OperationInput(Now);
+public sealed record AssignHandlerInput(Guid HandlerId, Guid ActorId, DateTimeOffset Now)
+    : ClaimBaseInput(Now, ActorId);
 
-public sealed class AssignHandlerOperation : Operation<Claim, AssignHandlerInput, Success>
+public sealed class AssignHandlerOperation : ClaimBaseOperation<AssignHandlerInput, Success>
 {
     protected override Success Apply(Claim claim, AssignHandlerInput input)
     {

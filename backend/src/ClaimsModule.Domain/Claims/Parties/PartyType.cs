@@ -10,17 +10,17 @@ public enum PartyTypeKind
 
 public abstract record PartyType(PartyTypeKind Marker) : Marked<PartyTypeKind>(Marker)
 {
-    public abstract bool UsesPersonName { get; }
+    public abstract bool HasPersonName { get; }
 
-    public bool UsesCompanyName => !UsesPersonName;
+    public bool HasCompanyName => !HasPersonName;
 }
 
-public sealed record PersonPartyType() : PartyType(PartyTypeKind.Person)
+public sealed record PartyPersonType() : PartyType(PartyTypeKind.Person)
 {
-    public override bool UsesPersonName => true;
+    public override bool HasPersonName => true;
 }
 
-public sealed record CompanyPartyType() : PartyType(PartyTypeKind.Company)
+public sealed record PartyCompanyType() : PartyType(PartyTypeKind.Company)
 {
-    public override bool UsesPersonName => false;
+    public override bool HasPersonName => false;
 }

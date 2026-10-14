@@ -15,11 +15,11 @@ public abstract class Entity : IEquatable<Entity>
         Id = id;
     }
 
-    public Guid Id { get; protected set; }
+    public Guid Id { get; protected set; } = Guid.Empty;
 
     public IReadOnlyList<IDomainEvent> PopEvents()
     {
-        List<IDomainEvent> events = _events.ToList();
+        var events = _events.ToList();
         _events.Clear();
 
         return events;

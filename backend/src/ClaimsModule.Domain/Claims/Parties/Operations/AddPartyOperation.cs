@@ -1,11 +1,11 @@
 using ClaimsModule.Domain.Claims.Root;
-using ClaimsModule.Domain.Engine.Operations;
 
 namespace ClaimsModule.Domain.Claims.Parties.Operations;
 
-public sealed record AddPartyInput(PartyDetails Details, Guid ActorId, DateTimeOffset Now) : OperationInput(Now);
+public sealed record AddPartyInput(PartyDetails Details, Guid ActorId, DateTimeOffset Now)
+    : ClaimBaseInput(Now, ActorId);
 
-public sealed class AddPartyOperation : Operation<Claim, AddPartyInput, ClaimParty>
+public sealed class AddPartyOperation : ClaimBaseOperation<AddPartyInput, ClaimParty>
 {
     protected override ClaimParty Apply(Claim claim, AddPartyInput input)
     {

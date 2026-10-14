@@ -7,7 +7,7 @@ public sealed class ClaimParty : Entity, IAuditable, ISoftDeletable, ITenantOwne
 {
     private ClaimParty()
     {
-        Details = new PartyDetails(new WitnessRole(), new PersonPartyType());
+        Details = new PartyDetails(new PartyWitnessRole(), new PartyPersonType());
     }
 
     internal ClaimParty(Guid id, Guid claimId, Guid organisationId, PartyDetails details, DateTimeOffset now)
@@ -21,17 +21,17 @@ public sealed class ClaimParty : Entity, IAuditable, ISoftDeletable, ITenantOwne
         UpdatedAt = now;
     }
 
-    public Guid ClaimId { get; private set; }
+    public Guid ClaimId { get; private set; } = Guid.Empty;
 
     public PartyDetails Details { get; private set; }
 
-    public bool IsActive { get; private set; }
+    public bool IsActive { get; private set; } = false;
 
-    public bool IsActiveClaimant => IsActive && Details.Role.CountsAsClaimant;
+    public bool IsActiveClaimant => IsActive && Details.Role.IsClaimant;
 
-    public DateTimeOffset CreatedAt { get; private set; }
+    public DateTimeOffset CreatedAt { get; private set; } = DateTimeOffset.MinValue;
 
-    public DateTimeOffset UpdatedAt { get; private set; }
+    public DateTimeOffset UpdatedAt { get; private set; } = DateTimeOffset.MinValue;
 
     public Guid UserCreated { get; private set; } = Guid.Empty;
 
@@ -41,7 +41,7 @@ public sealed class ClaimParty : Entity, IAuditable, ISoftDeletable, ITenantOwne
 
     public DateTimeOffset DeletedAt { get; private set; } = DateTimeOffset.MinValue;
 
-    public Guid OrganisationId { get; private set; }
+    public Guid OrganisationId { get; private set; } = Guid.Empty;
 
     internal void Deactivate(DateTimeOffset now)
     {

@@ -1,11 +1,10 @@
-using ClaimsModule.Domain.Common;
-using ClaimsModule.Domain.Engine.Operations;
+using ClaimsModule.Domain.Core.Operations;
 
 namespace ClaimsModule.Domain.Claims.Root.Operations;
 
-public sealed record UpdateNotesInput(string Notes, DateTimeOffset Now) : OperationInput(Now);
+public sealed record UpdateNotesInput(string Notes, Guid ActorId, DateTimeOffset Now) : ClaimBaseInput(Now, ActorId);
 
-public sealed class UpdateNotesOperation : Operation<Claim, UpdateNotesInput, Success>
+public sealed class UpdateNotesOperation : ClaimBaseOperation<UpdateNotesInput, Success>
 {
     protected override Success Apply(Claim claim, UpdateNotesInput input)
     {
