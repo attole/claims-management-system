@@ -296,3 +296,34 @@ decisions: The user chose the registry-file exception, the per-concept folders a
 ai-errors: Claude kept weak engine names, an inconsistent folder split and a context the rules did not use; the user caught all three. Logged as CORRECTION-013 to CORRECTION-015.
 human-vs-ai: The user drove the structure through questions; Claude implemented, ran the build and tests, and updated CLAUDE.md and the docs.
 refs: CORRECTION-013, CORRECTION-014, CORRECTION-015, SPLIT-003, ASSESSMENT-004
+
+## CORRECTION-016 | p1 domain | 2026-10-14
+what: a first rename merged check and rule into one word (ICheck to IRule, new IDomainRule); it was too wide and blurred the engine layering
+caught-by: user
+fix: reverted; issue checks moved to Checks/ folders, rules stay in Rules/, so each word has one meaning
+lesson: confirm the scope of a rename at concept boundaries before running it; a mechanism and a business term are not the same word
+
+## CORRECTION-017 | p1 domain | 2026-10-14
+what: transition left overridable (stop decision, rule selection, move hooks, refusal code); an undeclared source could throw or skip issues and event
+caught-by: code-review
+fix: transition sealed into a locked flow, equatable states, claim transition base raises the status event, unused refusal-code hook removed
+lesson: a configured construct should seal everything it does not configure; re-review after every design change
+
+## CORRECTION-018 | p1 domain | 2026-10-14
+what: a waived issue later fixed kept the waiver's actor; waive and clear raised no events; removing an unknown party or risk object threw
+caught-by: code-review
+fix: clear records the actor, events added, existence rules IsPartyActive and IsRiskObjectPresent, tests for each
+lesson: guards belong in rules and significant changes raise events; ask what the second call or an unknown id does
+
+## ASSESSMENT-005 | p1 domain | 2026-10-14
+area: fresh-context code review as a design driver
+helped: high
+note: each round found real defects the writing session missed, but it also raised style items that needed a rule decision first
+
+## SUMMARY-014 | p1 domain | 2026-10-14
+topic: domain engine hardening and the standards pass
+story: the engine was layered into checks, flows, rules, operations and transitions; transitions became locked flows with a claim base for state and events; issues gained events and existence rules; the style standard and test form were rewritten and enforced by the workflow check
+decisions: the user chose check versus rule folders, the transition base, the event on the base, optional Apply, removing the refusal code, var on member reads, the test form and shorter docs
+ai-errors: over-wide rename, an overridable transition, missing events and guards, helper scripts that corrupted files, docs that grew into inventories; caught by the user, review or the build
+human-vs-ai: the user set every structure and name choice; the AI implemented, verified with build and tests, and ran the review loop
+refs: CORRECTION-016, CORRECTION-017, CORRECTION-018, ASSESSMENT-005
