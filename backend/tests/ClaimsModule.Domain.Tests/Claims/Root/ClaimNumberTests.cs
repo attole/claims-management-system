@@ -9,7 +9,9 @@ public sealed class ClaimNumberTests
     [Trait("Rule", "A:BR-C-04")]
     public void From_KeepsAWellFormedNumber()
     {
-        ClaimNumber.From("CLM-2026-0000001").Value.Should().Be("CLM-2026-0000001");
+        var result = ClaimNumber.From("CLM-2026-0000001");
+
+        result.Value.Should().Be("CLM-2026-0000001");
     }
 
     [Theory]
@@ -26,9 +28,9 @@ public sealed class ClaimNumberTests
     [InlineData("CLM-\u0662\u0660\u0662\u0666-0000001")]
     public void From_RejectsAMalformedNumber(string value)
     {
-        Func<ClaimNumber> create = () => ClaimNumber.From(value);
+        Func<ClaimNumber> act = () => ClaimNumber.From(value);
 
-        create.Should().Throw<ArgumentException>();
+        act.Should().Throw<ArgumentException>();
     }
 
     [Fact]

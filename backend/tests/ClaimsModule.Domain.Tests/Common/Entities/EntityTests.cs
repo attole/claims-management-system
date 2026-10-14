@@ -9,33 +9,48 @@ public sealed class EntityTests
     [Fact]
     public void Equals_SameIdAndType_IsTrue()
     {
-        Guid id = Guid.NewGuid();
+        var id = Guid.NewGuid();
+        var first = new SampleEntity(id);
+        var second = new SampleEntity(id);
 
-        new SampleEntity(id).Equals(new SampleEntity(id)).Should().BeTrue();
+        var result = first.Equals(second);
+
+        result.Should().BeTrue();
     }
 
     [Fact]
     public void Equals_SameIdDifferentType_IsFalse()
     {
-        Guid id = Guid.NewGuid();
+        var id = Guid.NewGuid();
+        var first = new SampleEntity(id);
+        var other = new OtherSampleEntity(id);
 
-        new SampleEntity(id).Equals(new OtherSampleEntity(id)).Should().BeFalse();
+        var result = first.Equals(other);
+
+        result.Should().BeFalse();
     }
 
     [Fact]
     public void Equals_DifferentId_IsFalse()
     {
-        new SampleEntity(Guid.NewGuid()).Equals(new SampleEntity(Guid.NewGuid())).Should().BeFalse();
+        var first = new SampleEntity(Guid.NewGuid());
+        var second = new SampleEntity(Guid.NewGuid());
+
+        var result = first.Equals(second);
+
+        result.Should().BeFalse();
     }
 
     [Fact]
     public void PopEvents_ReturnsRaisedEventsAndClearsThem()
     {
-        SampleEntity entity = new(Guid.NewGuid());
-        SampleEvent domainEvent = new(Guid.NewGuid(), _now, Guid.Empty);
+        var entity = new SampleEntity(Guid.NewGuid());
+        var domainEvent = new SampleEvent(Guid.NewGuid(), _now, Guid.Empty);
         entity.Add(domainEvent);
 
-        entity.PopEvents().Should().ContainSingle().Which.Should().Be(domainEvent);
+        var result = entity.PopEvents();
+
+        result.Should().ContainSingle().Which.Should().Be(domainEvent);
         entity.PopEvents().Should().BeEmpty();
     }
 }

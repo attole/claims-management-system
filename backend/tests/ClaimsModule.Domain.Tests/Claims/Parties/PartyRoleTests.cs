@@ -6,23 +6,23 @@ public sealed class PartyRoleTests
 {
     private static readonly PartyRole[] _roles =
     [
-        new ClaimantRole(),
-        new InsuredRole(),
-        new ThirdPartyRole(),
-        new WitnessRole(),
-        new AttorneyRole(),
+        new PartyClaimantRole(),
+        new PartyInsuredRole(),
+        new PartyThirdPartyRole(),
+        new PartyWitnessRole(),
+        new PartyAttorneyRole(),
     ];
 
     [Fact]
     [Trait("Rule", "S:BR-P-02")]
-    public void OnlyTheClaimantRoleCountsAsClaimant()
+    public void Roles_OnlyTheClaimantIsAClaimant()
     {
-        _roles.Where(role => role.CountsAsClaimant).Should().ContainSingle().Which.Should().Be(new ClaimantRole());
+        _roles.Where(role => role.IsClaimant).Should().ContainSingle().Which.Should().Be(new PartyClaimantRole());
     }
 
     [Fact]
     [Trait("Rule", "S:BR-P-02")]
-    public void EveryRoleCarriesItsOwnMarkerAndName()
+    public void Roles_CarryTheirOwnMarkerAndName()
     {
         _roles.Select(role => role.Marker).Should().BeEquivalentTo(Enum.GetValues<PartyRoleKind>());
         _roles.Should().OnlyContain(role => role.Name == role.Marker.ToString());

@@ -1,5 +1,5 @@
-using ClaimsModule.Domain.Common;
 using System.Data.SqlTypes;
+using ClaimsModule.Domain.Common;
 
 namespace ClaimsModule.Domain.Tests.Common;
 
@@ -10,7 +10,7 @@ public sealed class IdsTests
     [Fact]
     public void Next_OrdersAscendingByTimeInSqlServerOrder()
     {
-        List<Guid> ids = Enumerable
+        var ids = Enumerable
             .Range(0, 200)
             .Select(offset => Ids.Next(_start.AddMilliseconds(offset)))
             .ToList();
@@ -24,7 +24,7 @@ public sealed class IdsTests
     [Fact]
     public void Next_ReturnsDistinctIdsForTheSameInstant()
     {
-        List<Guid> ids = Enumerable
+        var ids = Enumerable
             .Range(0, 1000)
             .Select(_ => Ids.Next(_start))
             .ToList();

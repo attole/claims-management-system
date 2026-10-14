@@ -7,7 +7,7 @@ public sealed class EstimatedLossAmountTests
     [Fact]
     public void Amount_KeepsItsValueAndIsSet()
     {
-        EstimatedLossAmount amount = new(12.5m);
+        var amount = new EstimatedLossAmount(12.5m);
 
         amount.Value.Should().Be(12.5m);
         amount.IsSet.Should().BeTrue();
@@ -22,7 +22,7 @@ public sealed class EstimatedLossAmountTests
     [Fact]
     public void AnEstimateOfZero_IsSetAndDiffersFromEmpty()
     {
-        EstimatedLossAmount zero = new(0m);
+        var zero = new EstimatedLossAmount(0m);
 
         zero.IsSet.Should().BeTrue();
         zero.Should().NotBe(EstimatedLossAmount.Empty);

@@ -7,20 +7,20 @@ public sealed class PartyTypeTests
     [Fact]
     public void APerson_UsesThePersonName()
     {
-        PartyType person = new PersonPartyType();
+        PartyType person = new PartyPersonType();
 
-        person.UsesPersonName.Should().BeTrue();
-        person.UsesCompanyName.Should().BeFalse();
+        person.HasPersonName.Should().BeTrue();
+        person.HasCompanyName.Should().BeFalse();
         person.Marker.Should().Be(PartyTypeKind.Person);
     }
 
     [Fact]
     public void ACompany_UsesTheCompanyName()
     {
-        PartyType company = new CompanyPartyType();
+        PartyType company = new PartyCompanyType();
 
-        company.UsesPersonName.Should().BeFalse();
-        company.UsesCompanyName.Should().BeTrue();
+        company.HasPersonName.Should().BeFalse();
+        company.HasCompanyName.Should().BeTrue();
         company.Marker.Should().Be(PartyTypeKind.Company);
     }
 }

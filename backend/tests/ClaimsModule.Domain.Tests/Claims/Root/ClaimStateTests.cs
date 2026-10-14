@@ -6,23 +6,23 @@ public sealed class ClaimStateTests
 {
     private static readonly (ClaimState State, ClaimStatus Status)[] _pairs =
     [
-        (new DraftState(), ClaimStatus.Draft),
-        (new OpenState(), ClaimStatus.Open),
-        (new UnderInvestigationState(), ClaimStatus.UnderInvestigation),
-        (new PendingPaymentState(), ClaimStatus.PendingPayment),
-        (new ClosedState(), ClaimStatus.Closed),
-        (new ReopenedState(), ClaimStatus.Reopened),
-        (new WithdrawnState(), ClaimStatus.Withdrawn),
+        (new ClaimDraftState(), ClaimStatus.Draft),
+        (new ClaimOpenState(), ClaimStatus.Open),
+        (new ClaimUnderInvestigationState(), ClaimStatus.UnderInvestigation),
+        (new ClaimPendingPaymentState(), ClaimStatus.PendingPayment),
+        (new ClaimClosedState(), ClaimStatus.Closed),
+        (new ClaimReopenedState(), ClaimStatus.Reopened),
+        (new ClaimWithdrawnState(), ClaimStatus.Withdrawn),
     ];
 
     [Fact]
-    public void EveryStatusHasOneState()
+    public void ClaimStates_CoverEveryStatus()
     {
         _pairs.Select(pair => pair.Status).Should().BeEquivalentTo(Enum.GetValues<ClaimStatus>());
     }
 
     [Fact]
-    public void EveryStateCarriesItsOwnMarkerAndName()
+    public void ClaimStates_CarryTheirOwnMarkerAndName()
     {
         _pairs.Should().OnlyContain(
             pair => pair.State.Marker == pair.Status && pair.State.Name == pair.Status.ToString());

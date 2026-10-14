@@ -7,6 +7,8 @@ public sealed class AggregateRootTests
     [Fact]
     public void RowVer_StartsEmpty()
     {
-        new SampleRoot(Guid.NewGuid()).RowVer.Should().BeEmpty();
+        var root = new SampleRoot(Guid.NewGuid());
+
+        root.RowVer.Should().BeEmpty();
     }
 }
