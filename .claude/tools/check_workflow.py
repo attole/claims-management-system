@@ -12,10 +12,30 @@ from pathlib import Path
 
 ROOT = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else Path(__file__).resolve().parents[2]
 SKIP_DIRS = {".git", "node_modules", "bin", "obj", "dist", ".angular", ".vs", ".idea"}
+MESSAGE_ALLOWED = re.compile(r"^backend/src/ClaimsModule\.Domain/.+/(Rules|Checks)/[^/]+\.cs$")
 TEXT_SUFFIXES = {".md", ".json", ".py", ".ts", ".cs", ".html", ".scss", ".yml", ".yaml", ".editorconfig"}
 LOCAL_DOCS = ["docs/spec.local.md", "docs/assessment.local.md"]
 REGISTER = "docs/rules.local.md"
 AREAS = {"claim", "party", "status", "reserve", "job", "document", "audit", "validation", "api", "data", "ui"}
+DOMAIN = "backend/src/ClaimsModule.Domain"
+DOMAIN_TESTS = "backend/tests/ClaimsModule.Domain.Tests"
+TEST_WITHOUT_SOURCE = {"EntityConstructionTests.cs"}
+BOOL_PREFIX = re.compile(r"^_?(?:Is|Has|Can|Should|is|has|can|should)[A-Z]")
+BOOL_MEMBER = re.compile(
+    r"^\s*(?:public|internal|protected|private)(?: (?:protected|internal|static|abstract|override|virtual|sealed|readonly|required|new))* bool (\w+)",
+    re.M)
+BOOL_EXEMPT = {"Equals", "Authorize"}
+TEST_METHOD = re.compile(r"\[(?:Fact|Theory)\](?:\s*\[[^\]]*\])*\s*public (?:async )?(?:void|Task) (\w+)\(")
+INTERFACE = re.compile(r"^\s*(?:public|internal)(?: partial)? interface (\w+)", re.M)
+ENTITY_SUBFOLDERS = {"Operations", "Events", "Rules", "Checks"}
+LAYER_FORBIDS = {
+    "Common": ["Claims", "Core"],
+    "Core/Base/Checks": ["Core.Base.Flows", "Core.Rules", "Core.Operations", "Core.Transitions", "Claims"],
+    "Core/Base/Flows": ["Core.Rules", "Core.Operations", "Core.Transitions", "Claims"],
+    "Core/Rules": ["Core.Operations", "Core.Transitions", "Claims"],
+    "Core/Operations": ["Core.Transitions", "Claims"],
+    "Core/Transitions": ["Claims"],
+}
 SKILLS = ["design", "explore", "code-review", "dev-log", "spec-check", "ai-journal"]
 SKELETON = ["Triggers", "Procedure", "Output", "Handoff", "Guardrails"]
 CREATED_ON_REQUEST = {".claude/temp/review-rule-coverage.md"}
@@ -44,7 +64,15 @@ SHOULD_PASS = [
 ]
 
 findings = []
-checks = 0
+ran = 0
+
+
+def line_limit():
+    m = re.search(r"\*\*Line length:\*\* (\d+) characters", read(".claude/CLAUDE.md") or "")
+    if m:
+        return int(m.group(1))
+    fail("code", "CLAUDE.md 'Code style' states no line length")
+    return 10**6
 
 
 def fail(check, detail):
@@ -88,6 +116,35 @@ def check_citations():
             in_labels = any(cite.rstrip(":").startswith(x) or x.startswith(cite.rstrip(":")) for x in labels)
             if not (in_heads or in_labels):
                 fail("citation", f"{rel}: '{cite}' is not a heading or label in CLAUDE.md")
+
+
+def check_architecture_citations():
+    doc = read("docs/ARCHITECTURE.md")
+    if doc is None:
+        return fail("citation", "docs/ARCHITECTURE.md is missing")
+    heads = {re.sub(r"`", "", m.group(1)).strip() for m in re.finditer(r"^#{1,4} (.+)$", doc, re.M)}
+    for rel, path in tracked_files():
+        if path.suffix != ".md":
+            continue
+        text = path.read_text(encoding="utf-8")
+        for m in re.finditer(r"ARCHITECTURE\.md`?\s+(?:under\s+)?'([^']{3,80})'", text):
+            if m.group(1) not in heads:
+                fail("citation", f"{rel}: '{m.group(1)}' is not a heading in docs/ARCHITECTURE.md")
+
+
+def check_headings():
+    files = [".claude/CLAUDE.md", "docs/ARCHITECTURE.md", "docs/AI-WORKFLOW.md"]
+    for rel in files:
+        text = read(rel)
+        if text is None:
+            continue
+        fenced = False
+        lines = text.splitlines()
+        for number, line in enumerate(lines, 1):
+            if line.startswith("```"):
+                fenced = not fenced
+            if not fenced and re.match(r"^#{1,6} ", line) and number < len(lines) and lines[number].strip():
+                fail("headings", f"{rel}:{number} has no blank line after the heading")
 
 
 def pattern_regex(rule):
@@ -210,7 +267,7 @@ def check_paths():
     for rel, path in tracked_files():
         if path.suffix != ".md":
             continue
-        for m in re.finditer(r"`((?:\.claude|docs)/[^`\s]+)`", path.read_text(encoding="utf-8")):
+        for m in re.finditer(r"`((?:\.claude|docs|backend)/[^`\s]+)`", path.read_text(encoding="utf-8")):
             target = m.group(1)
             if any(ch in target for ch in "<*{") or target.endswith(".local.md") or target.endswith("/"):
                 continue
@@ -265,6 +322,129 @@ def check_parking_lot():
             fail("parking-lot", f"untagged or malformed item: {line[:60]}")
 
 
+def cs_files(base):
+    root = ROOT / base
+    if not root.exists():
+        return
+    for path in sorted(root.rglob("*.cs")):
+        parts = path.relative_to(ROOT).parts
+        if any(part in SKIP_DIRS or part == "Migrations" for part in parts):
+            continue
+        yield path.relative_to(root).as_posix(), path.read_text(encoding="utf-8", errors="replace")
+
+
+def namespace_of(text):
+    m = re.search(r"^namespace ([\w.]+);", text, re.M)
+    return m.group(1) if m else ""
+
+
+STRING_LITERAL = re.compile(r'@?"(?:[^"\\]|\\.)*"|\'(?:[^\'\\]|\\.)*\'')
+
+
+def has_comment(line):
+    code = STRING_LITERAL.sub('""', line)
+    return bool(re.search(r"(?<!/)//(?!/)", code) or "/*" in code)
+
+
+def check_line_rules(base, rel, text, max_line):
+    lines = text.splitlines()
+    for number, line in enumerate(lines, 1):
+        if len(line) > max_line:
+            fail("code", f"{base}/{rel}:{number} is longer than {max_line} characters")
+        if re.match(r"^\s+return\b", line) and number > 1:
+            before = lines[number - 2].strip()
+            if before and not before.endswith("{") and not before.startswith("//"):
+                fail("code", f"{base}/{rel}:{number} needs a blank line before return")
+        if has_comment(line):
+            fail("code", f"{base}/{rel}:{number} is a comment (CLAUDE.md 'No explanatory comments')")
+
+
+def check_using_order(base, rel, text):
+    block = []
+    for line in text.splitlines():
+        if not line.startswith("using "):
+            break
+        block.append(line)
+    key = lambda l: (not l.startswith("using System"), l.rstrip(";").lower().replace(".", "\0"))
+    if block != sorted(block, key=key):
+        fail("code", f"{base}/{rel}: usings are not in order (System first, then alphabetical)")
+
+
+def check_names(rel, text):
+    for name in BOOL_MEMBER.findall(text):
+        if name not in BOOL_EXEMPT and not rel.endswith("Options.cs") and not BOOL_PREFIX.match(name):
+            fail("naming", f"backend/src/{rel}: bool member {name} must start with Is, Has, Can or Should")
+    for name in INTERFACE.findall(text):
+        if not re.match(r"^I[A-Z]", name):
+            fail("naming", f"backend/src/{rel}: interface {name} must be named I<Name>")
+
+
+def expected_namespace(project, rel):
+    folder = Path(rel).parent.as_posix()
+    return ".".join([project] + ([] if folder == "." else folder.split("/")))
+
+
+def check_namespaces(base, project, files):
+    for rel, text in files.items():
+        namespace = namespace_of(text)
+        if namespace and namespace != expected_namespace(project, rel):
+            fail("layout", f"{base}/{project}/{rel} has namespace {namespace}, expected {expected_namespace(project, rel)}")
+
+
+def check_test_mirror(project, tests, sources):
+    for rel, text in tests.items():
+        name = Path(rel).name
+        if rel.startswith("Support/") or not name.endswith("Tests.cs") or name in TEST_WITHOUT_SOURCE:
+            continue
+        folder = Path(rel).parent.as_posix()
+        twin = (folder + "/" if folder != "." else "") + name[: -len("Tests.cs")] + ".cs"
+        if twin not in sources:
+            fail("layout", f"backend/tests/{project}.Tests/{rel} has no source file in {project} to mirror ({twin})")
+        for test_name in TEST_METHOD.findall(text):
+            if "_" not in test_name:
+                fail("naming", f"backend/tests/{project}.Tests/{rel}: test {test_name} must be named <Subject>_<Condition>_<Result>")
+
+
+def check_domain(files):
+    for rel, text in files.items():
+        for layer, forbidden in LAYER_FORBIDS.items():
+            if rel.startswith(layer + "/"):
+                for use in re.findall(r"^using ClaimsModule\.Domain\.([\w.]+);", text, re.M):
+                    if any(use == f or use.startswith(f + ".") for f in forbidden):
+                        fail("layering", f"{DOMAIN}/{rel} uses {use}, which a {layer} file must not use")
+        stem = Path(rel).stem
+        parts = rel.split("/")
+        if parts[0] == "Claims" and len(parts) > 3 and parts[2] not in ENTITY_SUBFOLDERS:
+            fail("layout", f"{DOMAIN}/{rel}: a claim entity folder holds only {sorted(ENTITY_SUBFOLDERS)}")
+        if parts[0] == "Claims" and "Operations" in parts[:-1] and not stem.endswith("Operation"):
+            fail("naming", f"{DOMAIN}/{rel}: a file in Operations/ is named <Verb><Thing>Operation")
+        if rel.startswith("Claims/") and re.search(r"/(Rules|Checks)/[^/]+\.cs$", rel):
+            if not re.match(r"^(Is|Has)[A-Z]", stem):
+                fail("naming", f"{DOMAIN}/{rel}: a rule or check class must start with Is or Has")
+            if "const string Code" not in text:
+                fail("naming", f"{DOMAIN}/{rel}: a rule or check class must expose a Code constant")
+
+
+def check_code_layout():
+    max_line = line_limit()
+    for base in ("backend/src", "backend/tests"):
+        for rel, text in cs_files(base):
+            check_line_rules(base, rel, text, max_line)
+            check_using_order(base, rel, text)
+    for rel, text in cs_files("backend/src"):
+        check_names(rel, text)
+    src_root = ROOT / "backend/src"
+    for project_dir in sorted(src_root.glob("ClaimsModule.*")) if src_root.exists() else []:
+        project = project_dir.name
+        sources = dict(cs_files(f"backend/src/{project}"))
+        check_namespaces("backend/src", project, sources)
+        tests = dict(cs_files(f"backend/tests/{project}.Tests"))
+        check_namespaces("backend/tests", f"{project}.Tests", tests)
+        check_test_mirror(project, tests, sources)
+        if project == "ClaimsModule.Domain":
+            check_domain(sources)
+
+
 def check_overlap(window=8):
     words = []
     for rel in LOCAL_DOCS:
@@ -275,7 +455,7 @@ def check_overlap(window=8):
         return
     grams = {tuple(words[i:i + window]) for i in range(len(words) - window + 1)}
     for rel, path in tracked_files():
-        if path.suffix not in TEXT_SUFFIXES:
+        if path.suffix not in TEXT_SUFFIXES or MESSAGE_ALLOWED.match(rel):
             continue
         tokens = re.findall(r"[a-z0-9']+", path.read_text(encoding="utf-8", errors="replace").lower())
         hits = sum(tuple(tokens[i:i + window]) in grams for i in range(len(tokens) - window + 1))
@@ -284,17 +464,17 @@ def check_overlap(window=8):
 
 
 def main():
-    global checks
+    global ran
     rules = parse_register()
-    for check in (check_ascii, check_citations, check_settings, lambda: check_register(rules),
-                  lambda: check_quoted_counts(rules), check_skills, check_paths, check_journal,
-                  check_parking_lot, check_overlap):
-        checks += 1
-        check()
+    for run in (check_ascii, check_citations, check_architecture_citations, check_headings, check_settings,
+                lambda: check_register(rules), lambda: check_quoted_counts(rules), check_skills, check_paths,
+                check_journal, check_parking_lot, check_code_layout, check_overlap):
+        ran += 1
+        run()
     for line in findings:
         print(line)
     skipped = "" if rules is not None else " (register not present: register checks skipped)"
-    print(f"check_workflow: {checks} checks, {len(findings)} findings{skipped}")
+    print(f"check_workflow: {ran} checks, {len(findings)} findings{skipped}")
     return 1 if findings else 0
 
 
