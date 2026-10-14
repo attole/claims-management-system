@@ -19,26 +19,25 @@ public sealed class TransitionTests
     }
 
     [Fact]
-    public void Execute_WithoutAnApplyOverride_StillMovesTheSubject()
-    {
-        var subject = new SampleSubject { State = new DraftSampleState() };
-        var input = new SampleInput("x");
-
-        var outcome = new NoApplySampleTransition().Execute(subject, input);
-
-        outcome.IsSuccess.Should().BeTrue();
-        subject.State.Should().Be(new OpenSampleState());
-    }
-
-    [Fact]
-    public void Execute_RunsApplyThenMoveThenAfterMove()
+    public void Execute_WhenTheRulesPass_AppliesWhileTheSubjectIsStillInItsSource()
     {
         var subject = new SampleSubject { State = new OpenSampleState() };
         var input = new SampleInput("done");
 
         new CloseSampleTransition().Execute(subject, input);
 
-        subject.Log.Should().Equal("apply done from Open", "move to Closed", "after move");
+        subject.Log.Should().Equal("apply done from Open");
+    }
+
+    [Fact]
+    public void Execute_ReturnsTheNewState()
+    {
+        var subject = new SampleSubject { State = new OpenSampleState() };
+        var input = new SampleInput("done");
+
+        var outcome = new CloseSampleTransition().Execute(subject, input);
+
+        outcome.Value.Should().Be(new ClosedSampleState());
     }
 
     [Fact]

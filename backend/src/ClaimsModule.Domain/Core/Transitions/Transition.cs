@@ -1,3 +1,4 @@
+using ClaimsModule.Domain.Common.Capabilities;
 using ClaimsModule.Domain.Common.Markers;
 using ClaimsModule.Domain.Core.Base.Checks;
 using ClaimsModule.Domain.Core.Base.Flows;
@@ -6,7 +7,8 @@ using ClaimsModule.Domain.Core.Rules;
 
 namespace ClaimsModule.Domain.Core.Transitions;
 
-public abstract class Transition<TSubject, TState, TInput> : Operation<TSubject, TInput, Success>
+public abstract class Transition<TSubject, TState, TInput> : Operation<TSubject, TInput, TState>
+    where TSubject : IStateful<TState>
     where TState : class, IMarked, IEquatable<TState>
     where TInput : OperationInput
 {
@@ -30,41 +32,22 @@ public abstract class Transition<TSubject, TState, TInput> : Operation<TSubject,
         return new AllowedSourcesBuilder<TSubject, TState, TInput>(_rulesBySource).AllowedFrom(sources);
     }
 
-    protected abstract TState CurrentState(TSubject subject);
-
-    protected abstract void Move(TSubject subject, TState state, TInput input);
-
-    protected virtual void AfterMove(TSubject subject, TInput input)
-    {
-    }
-
-    protected override Success Apply(TSubject subject, TInput input)
-    {
-        return Success.Value;
-    }
-
     protected sealed override IReadOnlyList<DomainFinding> CheckPreconditions(TSubject subject, TInput input)
     {
-        var current = CurrentState(subject);
+        var current = subject.State;
 
         bool isDeclaredSource = _rulesBySource.ContainsKey(current);
 
         return isDeclaredSource
             ? []
-            : [TransitionFinding.Create(current.Name, Target.Name)];
+            : [new TransitionFinding(current.Name, Target.Name)];
     }
 
     protected sealed override IReadOnlyList<CheckSet<TSubject, TInput, DomainFinding>> SelectChecks(TSubject subject)
     {
         var operationRules = base.SelectChecks(subject);
-        var sourceRules = _rulesBySource[CurrentState(subject)];
+        var sourceRules = _rulesBySource[subject.State];
 
         return [.. operationRules, sourceRules];
-    }
-
-    protected sealed override void AfterApply(TSubject subject, TInput input)
-    {
-        Move(subject, Target, input);
-        AfterMove(subject, input);
     }
 }

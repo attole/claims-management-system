@@ -1,6 +1,6 @@
 using ClaimsModule.Domain.Tests.Support.Core;
 
-namespace ClaimsModule.Domain.Tests.Core.Operations.Creation;
+namespace ClaimsModule.Domain.Tests.Core.Operations;
 
 public sealed class CreationOperationTests
 {
@@ -14,16 +14,5 @@ public sealed class CreationOperationTests
 
         outcome.IsSuccess.Should().BeTrue();
         outcome.Value.Should().Be("created");
-    }
-
-    [Fact]
-    public void Execute_RunsAfterCreateWithTheCreatedValueAfterApply()
-    {
-        var operation = new SampleCreationOperation();
-        var input = new SampleInput("created");
-
-        operation.Execute(input);
-
-        operation.Log.Should().Equal("apply created", "after created");
     }
 }

@@ -5,9 +5,9 @@ namespace ClaimsModule.Domain.Tests.Core.Transitions;
 public sealed class TransitionFindingTests
 {
     [Fact]
-    public void Create_NamesTheSourceAndTheTarget()
+    public void Constructor_NamesTheSourceAndTheTarget()
     {
-        var result = TransitionFinding.Create("Draft", "Closed");
+        var result = new TransitionFinding("Draft", "Closed");
 
         result.Code.Should().Be(TransitionFinding.DefaultCode);
         result.From.Should().Be("Draft");
@@ -16,9 +16,9 @@ public sealed class TransitionFindingTests
     }
 
     [Fact]
-    public void Create_LeavesTheValidTargetsForTheApplicationLayer()
+    public void Constructor_LeavesTheValidTargetsForTheApplicationLayer()
     {
-        var result = TransitionFinding.Create("Draft", "Closed");
+        var result = new TransitionFinding("Draft", "Closed");
 
         result.ValidTargets.Should().BeEmpty();
     }

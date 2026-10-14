@@ -1,7 +1,7 @@
 using ClaimsModule.Domain.Core.Base.Flows;
 using ClaimsModule.Domain.Core.Rules;
 
-namespace ClaimsModule.Domain.Core.Operations.Creation;
+namespace ClaimsModule.Domain.Core.Operations;
 
 public abstract class CreationOperation<TInput, TValue> : Operation<NoSubject, TInput, TValue>
     where TInput : OperationInput
@@ -13,15 +13,8 @@ public abstract class CreationOperation<TInput, TValue> : Operation<NoSubject, T
 
     protected abstract TValue Apply(TInput input);
 
-    protected virtual void AfterCreate(TValue value, TInput input)
-    {
-    }
-
     protected sealed override TValue Apply(NoSubject subject, TInput input)
     {
-        var value = Apply(input);
-        AfterCreate(value, input);
-
-        return value;
+        return Apply(input);
     }
 }

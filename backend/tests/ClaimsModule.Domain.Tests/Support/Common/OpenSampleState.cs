@@ -1,3 +1,3 @@
 namespace ClaimsModule.Domain.Tests.Support.Common;
 
-public sealed record OpenSampleState() : SampleState(SampleStatus.Open);
+public sealed record OpenSampleState() : SampleState(SampleStateKind.Open);

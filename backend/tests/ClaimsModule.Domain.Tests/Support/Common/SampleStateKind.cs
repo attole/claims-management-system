@@ -1,6 +1,6 @@
 namespace ClaimsModule.Domain.Tests.Support.Common;
 
-public enum SampleStatus
+public enum SampleStateKind
 {
     Draft,
     Open,

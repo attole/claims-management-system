@@ -1,4 +1,4 @@
-namespace ClaimsModule.Domain.Core.Operations.Creation;
+namespace ClaimsModule.Domain.Core.Operations;
 
 public readonly record struct NoSubject
 {
