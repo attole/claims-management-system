@@ -11,7 +11,7 @@ builder.Services
     .AddApplication()
     .AddPersistence(builder.Configuration)
     .AddInfrastructure()
-    .AddJwtAuthentication()
+    .AddJwt()
     .AddFrontendCors();
 
 builder.Services.AddControllers();
@@ -22,7 +22,7 @@ var app = builder.Build();
 
 app.UseExceptionHandler();
 app.UseHttpsRedirection();
-app.UseCors(CorsServiceExtensions.FrontendPolicyName);
+app.UseCors(FrontendCorsServiceExtensions.FrontendPolicyName);
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseInfrastructure();

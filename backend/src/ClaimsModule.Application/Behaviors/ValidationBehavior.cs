@@ -1,5 +1,4 @@
 using FluentValidation;
-using FluentValidation.Results;
 using MediatR;
 
 namespace ClaimsModule.Application.Behaviors;
@@ -13,7 +12,12 @@ public sealed class ValidationBehavior<TRequest, TResponse>(IEnumerable<IValidat
         RequestHandlerDelegate<TResponse> next,
         CancellationToken cancellationToken)
     {
-        var failures = await CollectFailuresAsync(request, cancellationToken);
+        var context = new ValidationContext<TRequest>(request);
+        var validations = validators.Select(validator => validator.ValidateAsync(context, cancellationToken));
+        var results = await Task.WhenAll(validations);
+        var failures = results
+            .SelectMany(result => result.Errors)
+            .ToList();
 
         if (failures.Count > 0)
         {
@@ -21,18 +25,5 @@ public sealed class ValidationBehavior<TRequest, TResponse>(IEnumerable<IValidat
         }
 
         return await next(cancellationToken);
-    }
-
-    private async Task<List<ValidationFailure>> CollectFailuresAsync(
-        TRequest request,
-        CancellationToken cancellationToken)
-    {
-        var context = new ValidationContext<TRequest>(request);
-        var results = await Task.WhenAll(
-            validators.Select(validator => validator.ValidateAsync(context, cancellationToken)));
-
-        return results
-            .SelectMany(result => result.Errors)
-            .ToList();
     }
 }

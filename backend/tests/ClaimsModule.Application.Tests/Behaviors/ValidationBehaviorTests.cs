@@ -9,7 +9,7 @@ public sealed class ValidationBehaviorTests
 {
     [Fact]
     [Trait("Rule", "A:VAL-AllCommands")]
-    public async Task Handle_ThrowsAndSkipsHandler_WhenAValidatorFails()
+    public async Task Handle_WhenAValidatorFails_ThrowsAndSkipsTheHandler()
     {
         var validator = new Mock<IValidator<string>>();
         validator
@@ -17,8 +17,9 @@ public sealed class ValidationBehaviorTests
             .ReturnsAsync(new ValidationResult([new ValidationFailure("Name", "required")]));
         var handlerCalled = false;
         var behavior = new ValidationBehavior<string, string>([validator.Object]);
+        var next = CreateNext(() => handlerCalled = true);
 
-        var act = () => behavior.Handle("request", CreateNext(() => handlerCalled = true), CancellationToken.None);
+        Func<Task<string>> act = () => behavior.Handle("request", next, CancellationToken.None);
 
         await act.Should().ThrowAsync<ValidationException>();
         handlerCalled.Should().BeFalse();
@@ -26,14 +27,14 @@ public sealed class ValidationBehaviorTests
 
     [Fact]
     [Trait("Rule", "A:VAL-AllCommands")]
-    public async Task Handle_CallsHandler_WhenNoValidatorReportsFailures()
+    public async Task Handle_WhenNoValidatorFails_CallsTheHandler()
     {
         var handlerCalled = false;
         var behavior = new ValidationBehavior<string, string>([]);
 
-        var response = await behavior.Handle("request", CreateNext(() => handlerCalled = true), CancellationToken.None);
+        var result = await behavior.Handle("request", CreateNext(() => handlerCalled = true), CancellationToken.None);
 
-        response.Should().Be("ok");
+        result.Should().Be("ok");
         handlerCalled.Should().BeTrue();
     }
 
@@ -42,6 +43,7 @@ public sealed class ValidationBehaviorTests
         return _ =>
         {
             onCalled();
+
             return Task.FromResult("ok");
         };
     }

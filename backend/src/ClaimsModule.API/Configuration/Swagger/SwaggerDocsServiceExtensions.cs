@@ -2,7 +2,7 @@ using Microsoft.Extensions.Options;
 
 namespace ClaimsModule.API.Configuration.Swagger;
 
-public static class SwaggerServiceExtensions
+public static class SwaggerDocsServiceExtensions
 {
     public static IServiceCollection AddSwaggerDocs(this IServiceCollection services)
     {

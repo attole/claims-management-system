@@ -3,7 +3,7 @@ using Microsoft.Extensions.Options;
 
 namespace ClaimsModule.API.Configuration.Cors;
 
-public static class CorsServiceExtensions
+public static class FrontendCorsServiceExtensions
 {
     public const string FrontendPolicyName = "Frontend";
 

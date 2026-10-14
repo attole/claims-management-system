@@ -11,7 +11,7 @@ public static class InfrastructureServiceExtensions
     public static IServiceCollection AddInfrastructure(this IServiceCollection services)
     {
         return services
-            .AddDatabaseOptions()
+            .AddDatabase()
             .AddBackgroundJobs()
             .AddDevAuth();
     }
