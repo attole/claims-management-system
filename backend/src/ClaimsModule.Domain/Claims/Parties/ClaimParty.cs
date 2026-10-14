@@ -43,7 +43,7 @@ public sealed class ClaimParty : Entity, IAuditable, ISoftDeletable, ITenantOwne
 
     public Guid OrganisationId { get; private set; } = Guid.Empty;
 
-    internal void Deactivate(DateTimeOffset now)
+    internal void Remove(DateTimeOffset now)
     {
         IsActive = false;
         UpdatedAt = now;

@@ -1,3 +1,4 @@
+using ClaimsModule.Domain.Claims.Issues.Operations;
 using ClaimsModule.Domain.Claims.Loss;
 using ClaimsModule.Domain.Claims.Loss.Operations;
 using ClaimsModule.Domain.Claims.Parties;
@@ -6,6 +7,7 @@ using ClaimsModule.Domain.Claims.RiskObjects;
 using ClaimsModule.Domain.Claims.RiskObjects.Operations;
 using ClaimsModule.Domain.Claims.Root;
 using ClaimsModule.Domain.Claims.Root.Operations;
+using ClaimsModule.Domain.Common.Roles;
 
 namespace ClaimsModule.Domain.Tests.Support.Claims;
 
@@ -15,6 +17,9 @@ public static class TestClaims
     public static readonly DateTimeOffset Later = Start.AddHours(1);
     public static readonly Guid Organisation = Guid.Parse("11111111-1111-1111-1111-111111111111");
     public static readonly Guid Actor = Guid.Parse("22222222-2222-2222-2222-222222222222");
+    public static readonly UserRole Handler = new UserHandlerRole();
+    public static readonly UserRole Supervisor = new UserSupervisorRole();
+    public static readonly UserRole Manager = new UserManagerRole();
     public const string Description = "Water damage in the kitchen after a burst pipe";
 
     public static Claim Empty()
@@ -40,6 +45,23 @@ public static class TestClaims
         claim.PopEvents();
 
         return claim;
+    }
+
+    public static Claim InState(ClaimState state)
+    {
+        var claim = Create(Claimant());
+        var input = new SampleMoveClaimInput(Handler, Actor, Start);
+        new SampleMoveClaimTransition(state).Execute(claim, input);
+        claim.PopEvents();
+
+        return claim;
+    }
+
+    public static void WaiveIssue(Claim claim, string code)
+    {
+        var issue = claim.Issues.Single(candidate => candidate.IsCurrent && candidate.Finding.Code == code);
+        var input = new WaiveIssueInput(issue.Id, Actor, Start);
+        new WaiveIssueOperation().Execute(claim, input);
     }
 
     public static Claim WithLoss(DateTimeOffset lossDate)

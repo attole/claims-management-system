@@ -2,7 +2,7 @@ using ClaimsModule.Domain.Common.Markers;
 
 namespace ClaimsModule.Domain.Claims.Root;
 
-public enum ClaimStatus
+public enum ClaimStateKind
 {
     Draft,
     Open,
@@ -13,18 +13,28 @@ public enum ClaimStatus
     Withdrawn,
 }
 
-public abstract record ClaimState(ClaimStatus Marker) : Marked<ClaimStatus>(Marker);
+public abstract record ClaimState(ClaimStateKind Marker) : Marked<ClaimStateKind>(Marker)
+{
+    public virtual bool IsPassThrough => false;
 
-public sealed record ClaimDraftState() : ClaimState(ClaimStatus.Draft);
+    public virtual ClaimState PassesTo => this;
+}
 
-public sealed record ClaimOpenState() : ClaimState(ClaimStatus.Open);
+public sealed record ClaimDraftState() : ClaimState(ClaimStateKind.Draft);
 
-public sealed record ClaimUnderInvestigationState() : ClaimState(ClaimStatus.UnderInvestigation);
+public sealed record ClaimOpenState() : ClaimState(ClaimStateKind.Open);
 
-public sealed record ClaimPendingPaymentState() : ClaimState(ClaimStatus.PendingPayment);
+public sealed record ClaimUnderInvestigationState() : ClaimState(ClaimStateKind.UnderInvestigation);
 
-public sealed record ClaimClosedState() : ClaimState(ClaimStatus.Closed);
+public sealed record ClaimPendingPaymentState() : ClaimState(ClaimStateKind.PendingPayment);
 
-public sealed record ClaimReopenedState() : ClaimState(ClaimStatus.Reopened);
+public sealed record ClaimClosedState() : ClaimState(ClaimStateKind.Closed);
 
-public sealed record ClaimWithdrawnState() : ClaimState(ClaimStatus.Withdrawn);
+public sealed record ClaimReopenedState() : ClaimState(ClaimStateKind.Reopened)
+{
+    public override bool IsPassThrough => true;
+
+    public override ClaimState PassesTo => new ClaimOpenState();
+}
+
+public sealed record ClaimWithdrawnState() : ClaimState(ClaimStateKind.Withdrawn);

@@ -12,7 +12,8 @@ from pathlib import Path
 
 ROOT = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else Path(__file__).resolve().parents[2]
 SKIP_DIRS = {".git", "node_modules", "bin", "obj", "dist", ".angular", ".vs", ".idea"}
-MESSAGE_ALLOWED = re.compile(r"^backend/src/ClaimsModule\.Domain/.+/(Rules|Checks)/[^/]+\.cs$")
+MESSAGE_ALLOWED = re.compile(
+    r"^backend/src/ClaimsModule\.Domain/(.+/(Rules|Checks)/[^/]+|Core/Transitions/TransitionFinding)\.cs$")
 TEXT_SUFFIXES = {".md", ".json", ".py", ".ts", ".cs", ".html", ".scss", ".yml", ".yaml", ".editorconfig"}
 LOCAL_DOCS = ["docs/spec.local.md", "docs/assessment.local.md"]
 REGISTER = "docs/rules.local.md"
@@ -27,7 +28,7 @@ BOOL_MEMBER = re.compile(
 BOOL_EXEMPT = {"Equals", "Authorize"}
 TEST_METHOD = re.compile(r"\[(?:Fact|Theory)\](?:\s*\[[^\]]*\])*\s*public (?:async )?(?:void|Task) (\w+)\(")
 INTERFACE = re.compile(r"^\s*(?:public|internal)(?: partial)? interface (\w+)", re.M)
-ENTITY_SUBFOLDERS = {"Operations", "Events", "Rules", "Checks"}
+ENTITY_SUBFOLDERS = {"Operations", "Transitions", "Events", "Rules", "Checks", "Bases"}
 LAYER_FORBIDS = {
     "Common": ["Claims", "Core"],
     "Core/Base/Checks": ["Core.Base.Flows", "Core.Rules", "Core.Operations", "Core.Transitions", "Claims"],
@@ -418,6 +419,8 @@ def check_domain(files):
             fail("layout", f"{DOMAIN}/{rel}: a claim entity folder holds only {sorted(ENTITY_SUBFOLDERS)}")
         if parts[0] == "Claims" and "Operations" in parts[:-1] and not stem.endswith("Operation"):
             fail("naming", f"{DOMAIN}/{rel}: a file in Operations/ is named <Verb><Thing>Operation")
+        if parts[0] == "Claims" and "Transitions" in parts[:-1] and not stem.endswith("Transition"):
+            fail("naming", f"{DOMAIN}/{rel}: a file in Transitions/ is named <Verb><Thing>Transition")
         if rel.startswith("Claims/") and re.search(r"/(Rules|Checks)/[^/]+\.cs$", rel):
             if not re.match(r"^(Is|Has)[A-Z]", stem):
                 fail("naming", f"{DOMAIN}/{rel}: a rule or check class must start with Is or Has")

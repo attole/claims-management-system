@@ -1,4 +1,5 @@
 using ClaimsModule.Domain.Claims.Root;
+using ClaimsModule.Domain.Claims.Root.Bases;
 
 namespace ClaimsModule.Domain.Tests.Support.Claims;
 

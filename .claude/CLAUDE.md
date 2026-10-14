@@ -28,7 +28,7 @@ CQRS through MediatR: state changes are Commands, reads are Queries. Significant
 
 Business rules come from the user and from two local, gitignored markdown documents in `docs/`: `spec.local.md` (functional specification) and `assessment.local.md` (technical assessment brief). Read them for domain detail.
 
-- They are confidential. Never paste or closely reproduce their text in tracked files (code, docs, temp notes, commit messages); paraphrase. One narrow exception: the spec's user-facing validation messages (`S:V-Messages`) are used verbatim as the message strings in Domain rule and check classes, because the spec requires those exact messages. They appear nowhere else (not in docs, temp notes, test descriptions, or commit messages).
+- They are confidential. Never paste or closely reproduce their text in tracked files (code, docs, temp notes, commit messages); paraphrase. One narrow exception: the spec's user-facing validation messages (`S:V-Messages`) are used verbatim as the message strings in Domain rule and check classes and in `TransitionFinding`, because the spec requires those exact messages. They appear nowhere else (not in docs, temp notes, test descriptions, or commit messages).
 - Cite a rule by source-qualified ID: `S:BR-R-03` (spec) or `A:BR-R-02` (assessment). Bare IDs are ambiguous because the two documents number rules independently.
 - Tie code to rules with the ID on code, not comments: `[Trait("Rule", "S:BR-R-03")]` on tests, `.WithErrorCode("S:BR-R-03")` on validators.
 - `docs/rules.local.md` (gitignored) is the compact rule register, built and refreshed by the spec-check skill. Prefer it over re-reading the full documents.
@@ -218,7 +218,7 @@ Layout
 - **Line length:** 120 characters maximum, backend and frontend code. Markdown has its own rule ('Output formatting').
 - **LINQ:** method syntax only. A chain of two or more LINQ calls, or any line that would pass the limit, puts each call on its own line starting with `.`, indented one level; a single LINQ call after a member or method call stays on its line (`claim.Parties.Select(party => party.Id)`).
 - **Parameters and arguments:** keep them on one line when the line fits the line length. When the line would pass the limit, put one item per line, indented one level. This is a length rule only: how many arguments a call has, or whether they are calls themselves, never forces a wrap. The same applies to constructor injection and object initializers. Never nest a wrapped call inside another call: put the inner creation or call into a named variable first (`var input = new AddPartyInput(...);` then `Execute(claim, input)`), and keep long literal text out of the call as a constant.
-- **Records and constructors:** a positional record keeps its base list on the declaration line when it fits (`public sealed record WaiveIssueInput(...) : ClaimBaseInput(Now, ActorId);`) and moves it to the next line, indented one level, when it does not. A constructor initializer (`: base(id)`, `: this(...)`) is always on its own line below the signature.
+- **Records and constructors:** a positional record keeps its base list on the declaration line when it fits (`public sealed record WaiveIssueInput(...) : ClaimBaseOperationInput(Now, ActorId);`) and moves it to the next line, indented one level, when it does not. A constructor initializer (`: base(id)`, `: this(...)`) is always on its own line below the signature.
 - **Blank lines:** one blank line between members; none after an opening brace or before a closing brace; one before the final `return` unless it is the first statement of its block. Inside a body, a blank line separates the steps of a test (arrange, act, assert) and the computed statement from its `return`.
 - **Wrapped lists:** a wrapped list (arguments, initializer, collection expression, enum members) puts one item per line and keeps a trailing comma after the last item where the language allows it.
 - **Ternaries:** a ternary that does not fit on one line puts `?` and `:` on their own lines, indented one level; the true branch comes first, and in a check the passing branch is the true branch.
@@ -248,7 +248,7 @@ Each kind of class has one shape, so the next one is written the same way.
 - **Check or rule:** constants `Code` (public), `Message` and `Field` (private); one `Check` method that names the statement in a `bool` that is true when the check passes (`bool hasClaimant = ...;`, `bool isNotLastClaimant = !...;`) and returns `statement ? Pass : Found(finding)`. A rule from the input takes its value through a primary-constructor parameter.
 - **Operation:** an input record declared first in the file, the operation class second. The constructor only calls `Require`. `Apply` makes one call on the subject's `internal` method and returns its value or `Success.Value`; it holds no condition.
 - **Flow over a whole entity:** an input record declared first in the same file, the flow with its checks in the constructor, a `protected override` decision property, and an `Apply` that builds a few named queries and then loops over them.
-- **Transition:** derives from the aggregate's transition base (`ClaimBaseTransition<TInput>`). The constructor names the target and declares each `AllowedFrom(...)` with its rules; an `Apply` override exists only for a change beyond the state. Nothing else is overridden.
+- **Transition:** derives from the aggregate's transition base (`ClaimBaseTransition<TInput>`). The constructor names the target and declares each `AllowedFrom(...)` with its rules; the aggregate's base seals `Apply`, which changes the state and returns the new one. Nothing is overridden.
 - **Entity (child):** constructors (private for EF, then `internal` with `id`, parent id, organisation id, details and `now`), properties, then `internal` mutators that change fields and set `UpdatedAt = now`.
 - **Aggregate root:** `internal` methods that change a child or a field, call `Touch(now)`, and `Raise` the event; the only `private` method is `Touch`.
 - **Details record:** the identifying values positional, the optional ones `{ get; init; }` with an explicit empty default.
@@ -285,7 +285,7 @@ One standard for every name. The name says the role, and the suffix of a type is
 - A verb or verb phrase for what it does: `AddParty`, `Execute`, `Evaluate`. `Async` suffix on async methods (not on `Handle` or controller actions); `CancellationToken` last.
 - `Create` makes a new object, `From` parses or converts a value into a validated one (`ClaimNumber.From`), `As<Thing>` returns a converted copy (`AsWarning`), `Get<Thing>` is a query.
 - A child entity's mutator is a bare verb (`Remove`); the root's method for it is the verb plus the thing (`RemoveRiskObject`).
-- The names the engine fixes are not changed: `Apply`, `AfterApply`, `CheckPreconditions`, `SelectChecks`, `CurrentState`, `Move`, `Require`, `AllowedFrom`, `WhenBlocked`, `WhenPreconditionFails`.
+- The names the engine fixes are not changed: `Apply`, `CheckPreconditions`, `SelectChecks`, `Require`, `AllowedFrom`, `WhenBlocked`, `WhenPreconditionFails`.
 
 **Types by role**
 
@@ -296,11 +296,11 @@ One standard for every name. The name says the role, and the suffix of a type is
 | Finding | `<Source>Finding` | `RuleFinding`, `TransitionFinding`, `IssueFinding` |
 | Entity data replaced whole | `<Thing>Details` | `PartyDetails` |
 | Input, operation, flow, outcome | `<Verb><Thing>` + `Input`, `Operation`, `Flow`, `Outcome` | `AddPartyInput`, `AddPartyOperation`, `EvaluateIssuesFlow` |
-| Base shared by one scope | `<Scope>Base<Role>` | `ClaimBaseInput`, `ClaimBaseOperation` |
+| Base shared by one scope | `<Scope>Base<Role>` (the transition input is `<Scope>TransitionInput`) | `ClaimBaseOperationInput`, `ClaimBaseOperation`, `ClaimBaseTransition`, `ClaimBaseTransitionInput` |
 | Domain event | `<Thing><PastVerb>` | `PartyAdded` |
 | Value object | the plain noun | `LossDate` |
 | Absent value | static `Empty` and an `IsSet` flag | `LossDate.Empty` |
-| Closed set | enum `<Concept>Kind` (the claim lifecycle keeps `ClaimStatus`), abstract record `<Concept>`, variants `<Owner><Value><Concept>` | `IssueStateKind`, `IssueState`, `IssueRaisedState` |
+| Closed set | enum `<Concept>Kind` (the claim lifecycle keeps `ClaimStateKind`), abstract record `<Concept>`, variants `<Owner><Value><Concept>` | `IssueStateKind`, `IssueState`, `IssueRaisedState` |
 | Options | `<Name>Options` | `JwtOptions` |
 | Command, query, DTO | `VerbNounCommand`, `GetNounQuery` / `ListNounsQuery`, `...Dto` / `...Request` / `...Response` | `CreateClaimCommand` |
 
@@ -368,19 +368,19 @@ EF Core migrations are generated by tooling and never hand-edited.
 
 The Domain has three top-level folders: `Core/` (the engine), `Common/` (entity and event base types, capability interfaces, markers, `Ids`) and `Claims/` (the claim aggregate).
 
-- `Claims/` holds only folders: `Root/` for the aggregate root (`Claim`, its state and values, and its base input, base operation and base transition) and one folder per child entity (`Parties/`, `RiskObjects/`, `Loss/`, `Issues/`).
-- A folder holds the entity or root, its closed sets and values, and these subfolders, created when the first file exists: `Operations/` (operations with their inputs), `Events/`, `Rules/` (rules that an operation or transition requires) and `Checks/` (checks that report another finding type, such as the issue checks).
+- `Claims/` holds only folders: `Root/` for the aggregate root (`Claim` and its values: state, number, severity) and one folder per child entity (`Parties/`, `RiskObjects/`, `Loss/`, `Issues/`, `StateChanges/`).
+- A folder holds the entity or root, its closed sets and values, and these subfolders, created when the first file exists: `Operations/` (operations with their inputs), `Transitions/` (transitions with their inputs), `Events/`, `Rules/` (rules that an operation or transition requires), `Checks/` (checks that report another finding type, such as the issue checks) and, in `Root/` only, `Bases/` (the aggregate's base input, base operation, base transition and the transition input).
 - A flow over a whole entity is one file in the folder root named after the flow (`EvaluateIssuesFlow.cs`), its input declared first.
-- Operations, transitions and rules that span entities live in `Root/Operations/` and `Root/Rules/`.
+- Operations, transitions and rules that span entities live in `Root/Operations/`, `Root/Transitions/` and `Root/Rules/`.
 
 ### Domain engine
 
-`Core` is generic and layered: `Core/Base/Checks`, `Core/Base/Flows`, `Core/Rules`, `Core/Operations` (with `Creation/`), `Core/Transitions`. A layer uses only the layers before it, `Core` never references `Claims`, and `Common` references neither. The ideas and reasons are in `docs/ARCHITECTURE.md` 'Domain engine'. Rules for working with it:
+`Core` is generic and layered: `Core/Base/Checks`, `Core/Base/Flows`, `Core/Rules`, `Core/Operations`, `Core/Transitions`. A layer uses only the layers before it, `Core` never references `Claims`, and `Common` references neither. The ideas and reasons are in `docs/ARCHITECTURE.md` 'Domain engine'. Rules for working with it:
 
 - Operations and transitions require rules, declared once in the constructor with `Require`: a ready instance, or a rule from the input (`input => new IsNotLastClaimant(input.PartyId)`). A check with another finding type runs in a flow of its own.
 - A precondition asks whether the action is possible on this subject at all, a rule whether this request is acceptable. "Not allowed in that state" is a rule that reads the state, never a conditional in an operation.
 - `Apply` is the only place the subject changes, through its `internal` methods; it returns a value or `Success`.
-- A transition is a locked flow configured only by its target, allowed sources and rules: never override its hooks. What every change of an aggregate shares (re-evaluating issues, the status event) lives once in the aggregate's base operation, base transition or creation follow-up.
+- A transition is a locked flow configured only by its target, allowed sources and rules: never override its hooks. What every change of an aggregate shares (re-evaluating issues, the status event) lives once in the aggregate's base operation or base transition; a creation operation does it in its own `Apply`.
 - A new kind of process derives from `Flow`; never copy the skeleton into an operation.
 - A `DomainFinding` blocks by default; `AsWarning()` makes it advisory.
 
@@ -390,7 +390,7 @@ Names follow 'Naming' and folders 'Domain folders'.
 
 - **A new entity in an aggregate:** a private parameterless constructor, a `Details` record, private setters and `internal` mutators taking `now`; a root method that calls the mutator, touches the root and raises the event; an operation deriving from the base operation; every precondition as a rule; a stored completeness problem as a check in `Issues/Checks/`; tests in the mirrored folders and an entry in `EntityConstructionTests`.
 - **A new aggregate:** a top-level folder shaped like `Claims/`, a base input and base operation in `Root/` (and a base transition once it has a lifecycle), a creation operation calling an `internal` factory, the capability interfaces it needs, and other aggregates referenced by id only.
-- **State:** a lifecycle is a closed set held in a get-only `State` property that only an `internal` root method sets. A move is a class deriving from the aggregate's transition base (`ClaimBaseTransition<TInput>`): the target, each `AllowedFrom(...)` with the rules that apply only from those states, and an `Apply` override only for a change beyond the state. The base raises the status event and runs the shared follow-up. No claim transition exists yet; `SampleClaimTransition` in the test fixtures shows the shape.
+- **State:** a lifecycle is a closed set held in a get-only `State` property that only an `internal` root method sets. A move is a class deriving from the aggregate's transition base (`ClaimBaseTransition<TInput>`), with its own small input record deriving from the aggregate's transition input (`ClaimBaseTransitionInput`: the actor, the actor's role and an optional reason): the target, each `AllowedFrom(...)` with the rules that apply only from those states. A change beyond the move is a separate operation that the Application runs in the same Unit of Work; data that belongs to the move travels on the transition input. The base sets the state, appends the history row, raises the state-changed event, follows a pass-through state (Reopened moves on to Open) and runs the shared issue evaluation. Who may perform a move is a rule on that transition (`HasPermittedRole`), not a check in the Application. `OpenClaimTransition` is the reference.
 - **Tests for a transition:** a declared source, an undeclared source, and the rules of each allowed-sources declaration.
 
 -

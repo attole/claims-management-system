@@ -1,6 +1,8 @@
 using ClaimsModule.Domain.Claims.Parties.Events;
 using ClaimsModule.Domain.Claims.Parties.Operations;
 using ClaimsModule.Domain.Claims.Parties.Rules;
+using ClaimsModule.Domain.Claims.Root;
+using ClaimsModule.Domain.Claims.Root.Rules;
 using ClaimsModule.Domain.Tests.Support.Claims;
 
 namespace ClaimsModule.Domain.Tests.Claims.Parties.Operations;
@@ -75,5 +77,17 @@ public sealed class RemovePartyOperationTests
         var outcome = new RemovePartyOperation().Execute(claim, input);
 
         outcome.Blocking.Should().ContainSingle().Which.Code.Should().Be(IsPartyActive.Code);
+    }
+
+    [Fact]
+    [Trait("Rule", IsClaimEditable.Code)]
+    public void RemoveParty_WhenTheClaimIsClosed_Fails()
+    {
+        var claim = TestClaims.InState(new ClaimClosedState());
+        var input = new RemovePartyInput(claim.Parties[0].Id, TestClaims.Actor, TestClaims.Later);
+
+        var outcome = new RemovePartyOperation().Execute(claim, input);
+
+        outcome.Blocking.Select(finding => finding.Code).Should().Contain(IsClaimEditable.Code);
     }
 }

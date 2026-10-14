@@ -1,10 +1,10 @@
 using ClaimsModule.Domain.Claims.Issues;
 using ClaimsModule.Domain.Core.Operations;
 
-namespace ClaimsModule.Domain.Claims.Root;
+namespace ClaimsModule.Domain.Claims.Root.Bases;
 
 public abstract class ClaimBaseOperation<TInput, TValue> : Operation<Claim, TInput, TValue>
-    where TInput : ClaimBaseInput
+    where TInput : ClaimBaseOperationInput
 {
     private readonly EvaluateIssuesFlow _issues = new();
 

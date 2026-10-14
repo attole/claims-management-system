@@ -5,6 +5,7 @@ using ClaimsModule.Domain.Claims.Issues.Operations;
 using ClaimsModule.Domain.Claims.Issues.Rules;
 using ClaimsModule.Domain.Claims.Root;
 using ClaimsModule.Domain.Claims.Root.Operations;
+using ClaimsModule.Domain.Claims.Root.Rules;
 using ClaimsModule.Domain.Tests.Support.Claims;
 
 namespace ClaimsModule.Domain.Tests.Claims.Issues.Operations;
@@ -82,5 +83,17 @@ public sealed class WaiveIssueOperationTests
 
         issue.State.Should().BeOfType<IssueWaivedState>();
         claim.Issues.Should().HaveCount(3);
+    }
+
+    [Fact]
+    [Trait("Rule", IsClaimEditable.Code)]
+    public void Waive_WhenTheClaimIsClosed_Fails()
+    {
+        var claim = TestClaims.InState(new ClaimClosedState());
+        var input = new WaiveIssueInput(claim.Issues[0].Id, TestClaims.Actor, TestClaims.Later);
+
+        var outcome = new WaiveIssueOperation().Execute(claim, input);
+
+        outcome.Blocking.Select(finding => finding.Code).Should().Contain(IsClaimEditable.Code);
     }
 }

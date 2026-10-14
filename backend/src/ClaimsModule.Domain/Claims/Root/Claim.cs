@@ -5,17 +5,19 @@ using ClaimsModule.Domain.Claims.Parties;
 using ClaimsModule.Domain.Claims.Parties.Events;
 using ClaimsModule.Domain.Claims.RiskObjects;
 using ClaimsModule.Domain.Claims.Root.Events;
+using ClaimsModule.Domain.Claims.StateChanges;
 using ClaimsModule.Domain.Common;
 using ClaimsModule.Domain.Common.Capabilities;
 using ClaimsModule.Domain.Common.Entities;
 
 namespace ClaimsModule.Domain.Claims.Root;
 
-public sealed class Claim : AggregateRoot, IAuditable, ISoftDeletable, ITenantOwned
+public sealed class Claim : AggregateRoot, IAuditable, ISoftDeletable, ITenantOwned, IStateful<ClaimState>
 {
     private readonly List<ClaimParty> _parties = [];
     private readonly List<ClaimRiskObject> _riskObjects = [];
     private readonly List<ClaimValidationIssue> _issues = [];
+    private readonly List<ClaimStateChange> _stateChanges = [];
 
     private Claim()
     {
@@ -62,6 +64,8 @@ public sealed class Claim : AggregateRoot, IAuditable, ISoftDeletable, ITenantOw
 
     public IReadOnlyList<ClaimValidationIssue> Issues => _issues.AsReadOnly();
 
+    public IReadOnlyList<ClaimStateChange> StateChanges => _stateChanges.AsReadOnly();
+
     public IReadOnlyList<ClaimValidationIssue> BlockingIssues => _issues
         .Where(issue => issue.IsUnresolvedCritical)
         .ToList();
@@ -100,10 +104,10 @@ public sealed class Claim : AggregateRoot, IAuditable, ISoftDeletable, ITenantOw
         return party;
     }
 
-    internal void DeactivateParty(Guid partyId, Guid actorId, DateTimeOffset now)
+    internal void RemoveParty(Guid partyId, Guid actorId, DateTimeOffset now)
     {
         var party = _parties.Single(candidate => candidate.Id == partyId && candidate.IsActive);
-        party.Deactivate(now);
+        party.Remove(now);
         Touch(now);
         Raise(new PartyRemoved(Ids.Next(now), now, actorId, Id, party.Id, party.Details.Role.Name));
     }
@@ -149,12 +153,13 @@ public sealed class Claim : AggregateRoot, IAuditable, ISoftDeletable, ITenantOw
         Touch(now);
     }
 
-    internal void ChangeState(ClaimState state, Guid actorId, DateTimeOffset now)
+    internal void ChangeState(ClaimState state, StateChangeReason reason, Guid actorId, DateTimeOffset now)
     {
-        string from = State.Name;
+        var from = State;
+        _stateChanges.Add(new ClaimStateChange(Ids.Next(now), Id, OrganisationId, from, state, reason, now));
         State = state;
         Touch(now);
-        Raise(new ClaimStatusChanged(Ids.Next(now), now, actorId, Id, from, state.Name));
+        Raise(new ClaimStateChanged(Ids.Next(now), now, actorId, Id, from.Name, state.Name, reason));
     }
 
     internal void WaiveIssue(Guid issueId, Guid actorId, DateTimeOffset now)

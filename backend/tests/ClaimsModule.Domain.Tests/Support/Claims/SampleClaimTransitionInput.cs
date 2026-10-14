@@ -1,5 +1,7 @@
-using ClaimsModule.Domain.Claims.Root;
+using ClaimsModule.Domain.Claims.Root.Bases;
+using ClaimsModule.Domain.Common.Roles;
 
 namespace ClaimsModule.Domain.Tests.Support.Claims;
 
-public sealed record SampleClaimTransitionInput(Guid ActorId, DateTimeOffset Now) : ClaimBaseInput(Now, ActorId);
+public sealed record SampleClaimTransitionInput(UserRole ActorRole, Guid ActorId, DateTimeOffset Now)
+    : ClaimBaseTransitionInput(ActorRole, ActorId, Now);

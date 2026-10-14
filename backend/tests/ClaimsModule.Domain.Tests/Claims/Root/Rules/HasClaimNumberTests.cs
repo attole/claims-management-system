@@ -1,6 +1,6 @@
 using ClaimsModule.Domain.Claims.Root;
 using ClaimsModule.Domain.Claims.Root.Rules;
-using ClaimsModule.Domain.Core.Operations.Creation;
+using ClaimsModule.Domain.Core.Operations;
 
 namespace ClaimsModule.Domain.Tests.Claims.Root.Rules;
 

@@ -1,16 +1,19 @@
 using ClaimsModule.Domain.Claims.RiskObjects.Rules;
 using ClaimsModule.Domain.Claims.Root;
+using ClaimsModule.Domain.Claims.Root.Bases;
+using ClaimsModule.Domain.Claims.Root.Rules;
 using ClaimsModule.Domain.Core.Operations;
 
 namespace ClaimsModule.Domain.Claims.RiskObjects.Operations;
 
 public sealed record RemoveRiskObjectInput(Guid RiskObjectId, Guid ActorId, DateTimeOffset Now)
-    : ClaimBaseInput(Now, ActorId);
+    : ClaimBaseOperationInput(Now, ActorId);
 
 public sealed class RemoveRiskObjectOperation : ClaimBaseOperation<RemoveRiskObjectInput, Success>
 {
     public RemoveRiskObjectOperation()
     {
+        Require(new IsClaimEditable());
         Require(input => new IsRiskObjectPresent(input.RiskObjectId));
     }
 

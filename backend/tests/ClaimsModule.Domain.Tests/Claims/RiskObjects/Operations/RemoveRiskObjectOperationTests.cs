@@ -1,5 +1,7 @@
 using ClaimsModule.Domain.Claims.RiskObjects.Operations;
 using ClaimsModule.Domain.Claims.RiskObjects.Rules;
+using ClaimsModule.Domain.Claims.Root;
+using ClaimsModule.Domain.Claims.Root.Rules;
 using ClaimsModule.Domain.Tests.Support.Claims;
 
 namespace ClaimsModule.Domain.Tests.Claims.RiskObjects.Operations;
@@ -44,5 +46,17 @@ public sealed class RemoveRiskObjectOperationTests
         var outcome = new RemoveRiskObjectOperation().Execute(claim, input);
 
         outcome.Blocking.Should().ContainSingle().Which.Code.Should().Be(IsRiskObjectPresent.Code);
+    }
+
+    [Fact]
+    [Trait("Rule", IsClaimEditable.Code)]
+    public void RemoveRiskObject_WhenTheClaimIsClosed_Fails()
+    {
+        var claim = TestClaims.InState(new ClaimClosedState());
+        var input = new RemoveRiskObjectInput(claim.RiskObjects[0].Id, TestClaims.Actor, TestClaims.Later);
+
+        var outcome = new RemoveRiskObjectOperation().Execute(claim, input);
+
+        outcome.Blocking.Should().ContainSingle().Which.Code.Should().Be(IsClaimEditable.Code);
     }
 }

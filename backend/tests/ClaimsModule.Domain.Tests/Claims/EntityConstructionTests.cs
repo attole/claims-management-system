@@ -3,6 +3,7 @@ using ClaimsModule.Domain.Claims.Loss;
 using ClaimsModule.Domain.Claims.Parties;
 using ClaimsModule.Domain.Claims.RiskObjects;
 using ClaimsModule.Domain.Claims.Root;
+using ClaimsModule.Domain.Claims.StateChanges;
 
 namespace ClaimsModule.Domain.Tests.Claims;
 
@@ -30,10 +31,13 @@ public sealed class EntityConstructionTests
         var loss = (LossEvent)Activator.CreateInstance(typeof(LossEvent), nonPublic: true)!;
         var issue = (ClaimValidationIssue)Activator.CreateInstance(typeof(ClaimValidationIssue), nonPublic: true)!;
 
+        var stateChange = (ClaimStateChange)Activator.CreateInstance(typeof(ClaimStateChange), nonPublic: true)!;
+
         party.Details.Should().NotBeNull();
         riskObject.Details.Should().NotBeNull();
         loss.Details.Should().Be(LossDetails.Empty);
         issue.Finding.Should().Be(IssueFinding.Empty);
         issue.State.Should().BeOfType<IssueRaisedState>();
+        stateChange.Reason.Should().Be(StateChangeReason.Empty);
     }
 }

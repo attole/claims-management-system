@@ -32,19 +32,19 @@ Where the specification and the assessment disagree, the specification is used a
 - A Draft is incomplete or unvalidated by definition, so it is saved with its problems stored as issues, and a rule marked Critical means a stored Critical issue (S:VAL-Severity). Only a request that cannot be bound fails at the API edge; the sample 422 body fixes the error shape only.
 - A reserve amount is the signed change the user typed; the "greater than zero" rule applies to the resulting balance, at submission and again at approval. An approved reserve is a history row with the status Approved or AutoApproved.
 - The 10 million in the roles table is read as the claim-wide cap with a manager override; a manager approves any amount above the supervisor limit (S:BR-R-02, S:BR-R-05).
-- Reopened is a normal state that moves on to Open in the same operation, leaving two status-change rows.
+- Reopened is a normal state that moves on to Open in the same operation, leaving two state-change rows.
 - A policy period is two inclusive calendar dates, compared with the calendar date of the loss date in its own offset. The reported dates are set by the system at creation; the estimated loss amount is optional and has no bound.
 - Which role may call which operation is decided in the Application layer; the documents state only the explicit rules (reopen, approval authority, the limit override).
-- The specification's validation messages are used verbatim in Domain rule and check classes, under a narrow exception in `CLAUDE.md`, and nowhere else.
+- The specification's validation messages are used verbatim in Domain rule and check classes and in the transition finding, under a narrow exception in `CLAUDE.md`, and nowhere else.
 
 ### Schema departures from the spec
 
 | Change | Departure | Why |
 |---|---|---|
 | Loss date, cause code | nullable loss date, cause code as text without a foreign key | a Draft may be incomplete; an unknown code is a stored issue (S:BR-C-05) |
-| Closed date, closure reason | dropped; derived from the latest change into Closed | the status-change history already holds them |
+| Closed date, closure reason | dropped; derived from the latest change into Closed | the state-change history already holds them |
 | `ClaimValidationIssue` (added) | stored child: rule id, message, severity, state (raised, cleared, acknowledged, waived) | the spec describes recorded issues but lists no entity |
-| `ClaimStatusChange` (added) | append-only child: from, to, optional reason (code and text), closing note, user, time | reasons and the closing note have no columns |
+| `ClaimStateChange` (added) | append-only child: from, to, optional reason (code and text), closing note, user, time | reasons and the closing note have no columns |
 | Limit override flag (added) | boolean on the claim, set by a manager-only operation | the claim-wide cap needs a flag (S:BR-R-05) |
 | Policy cancellation date (added) | nullable column; the coverage window ends at the earlier of the end and the cancellation date | a status alone cannot place a loss before a cancellation |
 | Claim severity | own type with an "unspecified" start; a plain operation sets it | the documents give no setter, default or rule |
@@ -79,7 +79,7 @@ The claim is the aggregate root; what must stay consistent with it is a child th
 - **No null.** A value that may be missing is a record with an `Empty` instance and an `IsSet` flag, because EF cannot map a struct to a nullable column.
 - **Ids and time.** Ids are sequential GUIDs made in the Domain. The Domain reads no clock: the time of a run is on the input, stamped once by the Application.
 - **A Draft may be incomplete;** what is missing is stored as validation issues instead of rejecting the save.
-- **Lifecycle as a closed set:** a state is a record per status, changed only by a transition.
+- **Lifecycle as a closed set:** a state is a record per value, changed only by a transition.
 
 ### Domain engine
 
@@ -92,16 +92,16 @@ The engine lives in `Domain/Core`. Each folder is a layer that uses only the lay
 | 1 | `Core/Base/Checks` | a check reports findings about a subject |
 | 2 | `Core/Base/Flows` | the template that runs checks around a step |
 | 3 | `Core/Rules` | a rule is a check with domain findings |
-| 4 | `Core/Operations` | a business action on a subject; `Creation/` for one with no subject yet |
+| 4 | `Core/Operations` | a business action on a subject; a creation operation has no subject yet |
 | 5 | `Core/Transitions` | an operation that moves a subject between states |
 
-Each aggregate adds its own bases on top, in its `Root` folder, for what every change of it shares (the claim has a base input, base operation and base transition).
+Each aggregate adds its own bases on top, in its `Root/Bases` folder, for what every change of it shares (the claim has a base input, base operation, base transition and the transition input).
 
 **Checks and rules.** A check returns findings about a subject; none means it passed. A rule is a check whose findings are domain findings: a code, a message, blocking by default or advisory. Operations and transitions require rules. Stored validation issues are checks with their own finding type, because an issue is not a refusal: it is recorded, shown and can be waived. Folders say which is which (`Rules/`, `Checks/`).
 
-**Flows and operations.** A flow runs preconditions, rules, an apply step and a follow-up. Where a blocked run ends is a decision declared on the flow (stop, skip or continue). An operation is a flow for one business action: it declares its rules once, takes its data and the time of the run in an input record the Application fills, and changes the subject only in its apply step, through the subject's internal methods. An aggregate's base operation adds what every change needs, such as re-evaluating its issues. Creation is an operation without a subject whose rules check the input.
+**Flows and operations.** A flow runs preconditions, rules, and an apply step. Where a blocked run ends is a decision declared on the flow (stop, skip or continue). An operation is a flow for one business action: it declares its rules once, takes its data and the time of the run in an input record the Application fills, and changes the subject only in its apply step, through the subject's internal methods. An aggregate's base operation adds what every change needs, such as re-evaluating its issues. Creation is an operation without a subject whose rules check the input; it creates and evaluates in its apply step.
 
-**Transitions.** A transition is an operation that moves its subject to another state, which makes the engine a state machine. It is configured, not programmed: a target, the source states it is allowed from with the rules that apply from them, and optional common rules. A move from an undeclared state always stops with a finding, and a transition cannot change how it runs, so it cannot skip a rule, its follow-up or its event. The aggregate's transition base supplies the state access, the status event and the follow-up. The finding names the source and the target; the Application lists the valid next states from the declared sources and targets of all transitions.
+**Transitions.** A transition is an operation that moves its subject to another state, which makes the engine a state machine. It is configured, not programmed: a target, the source states it is allowed from with the rules that apply from them, and optional common rules. A move from an undeclared state always stops with a finding, and a transition cannot change how it runs, so it cannot skip a rule, the history row or the event. A subject exposes its state through the `IStateful` capability, which is how the engine reads it. The aggregate's transition base supplies the state-change history row, the state-changed event and the follow-up; a state can be a pass-through state that moves on at once (Reopened moves on to Open in the same run, with a row and an event for each move). Who may make a move is a rule on the transition, so each move configures its own roles. The finding names the source and the target; the Application lists the valid next states from the declared sources and targets of all transitions.
 
 **Validation issues.** Checks run after every claim change and reconcile the stored issues with their findings: a new finding raises an issue, a resolved one is cleared, a waived one stays resolved while the problem remains. A Critical issue blocks opening; a waived one does not. The evaluation is idempotent.
 

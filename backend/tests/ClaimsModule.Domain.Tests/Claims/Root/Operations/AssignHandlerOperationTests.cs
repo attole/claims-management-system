@@ -1,4 +1,6 @@
+using ClaimsModule.Domain.Claims.Root;
 using ClaimsModule.Domain.Claims.Root.Operations;
+using ClaimsModule.Domain.Claims.Root.Rules;
 using ClaimsModule.Domain.Tests.Support.Claims;
 
 namespace ClaimsModule.Domain.Tests.Claims.Root.Operations;
@@ -16,5 +18,17 @@ public sealed class AssignHandlerOperationTests
 
         claim.AssignedHandlerId.Should().Be(handler);
         claim.UpdatedAt.Should().Be(TestClaims.Later);
+    }
+
+    [Fact]
+    [Trait("Rule", IsClaimEditable.Code)]
+    public void AssignHandler_WhenTheClaimIsWithdrawn_Fails()
+    {
+        var claim = TestClaims.InState(new ClaimWithdrawnState());
+        var input = new AssignHandlerInput(Guid.NewGuid(), TestClaims.Actor, TestClaims.Later);
+
+        var outcome = new AssignHandlerOperation().Execute(claim, input);
+
+        outcome.Blocking.Should().ContainSingle().Which.Code.Should().Be(IsClaimEditable.Code);
     }
 }

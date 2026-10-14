@@ -1,6 +1,8 @@
 using ClaimsModule.Domain.Claims.Parties;
 using ClaimsModule.Domain.Claims.Parties.Events;
 using ClaimsModule.Domain.Claims.Parties.Operations;
+using ClaimsModule.Domain.Claims.Root;
+using ClaimsModule.Domain.Claims.Root.Rules;
 using ClaimsModule.Domain.Tests.Support.Claims;
 
 namespace ClaimsModule.Domain.Tests.Claims.Parties.Operations;
@@ -33,5 +35,17 @@ public sealed class AddPartyOperationTests
         new AddPartyOperation().Execute(claim, input);
 
         claim.Parties.Count(party => party.Details.Role.Equals(new PartyClaimantRole())).Should().Be(2);
+    }
+
+    [Fact]
+    [Trait("Rule", IsClaimEditable.Code)]
+    public void AddParty_WhenTheClaimIsClosed_Fails()
+    {
+        var claim = TestClaims.InState(new ClaimClosedState());
+        var input = new AddPartyInput(TestClaims.Witness(), TestClaims.Actor, TestClaims.Later);
+
+        var outcome = new AddPartyOperation().Execute(claim, input);
+
+        outcome.Blocking.Should().ContainSingle().Which.Code.Should().Be(IsClaimEditable.Code);
     }
 }

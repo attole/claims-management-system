@@ -327,3 +327,34 @@ decisions: the user chose check versus rule folders, the transition base, the ev
 ai-errors: over-wide rename, an overridable transition, missing events and guards, helper scripts that corrupted files, docs that grew into inventories; caught by the user, review or the build
 human-vs-ai: the user set every structure and name choice; the AI implemented, verified with build and tests, and ran the review loop
 refs: CORRECTION-016, CORRECTION-017, CORRECTION-018, ASSESSMENT-005
+
+## CORRECTION-019 | p1 domain | 2026-10-14
+what: transition kept Move, AfterMove and an optional Apply, and creation kept AfterCreate; two hook layers hid where a change happened
+caught-by: user
+fix: transition became an operation returning the new state, sealed Apply in the claim base; creation applies and evaluates in its own Apply
+lesson: when a template has a hook for every step, ask whether the step is a separate operation the caller composes instead
+
+## CORRECTION-020 | p1 domain | 2026-10-14
+what: engine read the subject state through an abstract CurrentState method and TransitionFinding used a Create factory over a positional record
+caught-by: user
+fix: IStateful capability on the subject; TransitionFinding built from a source and a target with an init list for valid targets
+lesson: a method that only forwards a property is a missing capability interface; a factory that only fixes constants is a constructor
+
+## CORRECTION-021 | p1 domain | 2026-10-14
+what: state naming was split (status in types and history, state in the claim), and the folder and base names hid roles (bases, transitions and the history row mixed in root)
+caught-by: user
+fix: state everywhere (ClaimStateKind, ClaimStateChange, StateChanges, ClaimStateChanged), Bases/ and Transitions/ folders, ClaimBase* names for inputs and bases
+lesson: pick one word per concept before building on it; a rename ends only when docs, tests and leftover variable names follow
+
+## ASSESSMENT-006 | p1 domain | 2026-10-14
+area: design questions as a driver of simplification
+helped: high
+note: the user's why-questions (why this hook, why this factory, why this folder) each removed a layer; the AI first defended the structure and then agreed with an argued option
+
+## SUMMARY-015 | p1 domain | 2026-10-14
+topic: transition and creation simplification and the state rename
+story: pack 4 added the claim lifecycle; follow-up questions removed Move, AfterMove and AfterCreate, made transitions return the new state, added IStateful, simplified TransitionFinding, moved creation types to the operations root, and renamed status to state everywhere
+decisions: the user chose state as the one word, a locked transition with a sealed claim Apply, changes beyond a move as separate operations, IStateful, a two-argument finding, and keeping StateChanges as its own folder
+ai-errors: first proposals kept hooks and a factory the user showed were unneeded; a stale rename left variable and doc names; the test host needed a roll-forward setting for the installed runtime
+human-vs-ai: the user decided every structure and name; the AI implemented, ran build, tests, the workflow check and the review, and fixed the findings
+refs: CORRECTION-019, CORRECTION-020, CORRECTION-021, ASSESSMENT-006

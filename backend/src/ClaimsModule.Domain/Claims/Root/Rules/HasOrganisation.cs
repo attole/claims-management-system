@@ -1,5 +1,5 @@
 using ClaimsModule.Domain.Core.Base.Checks;
-using ClaimsModule.Domain.Core.Operations.Creation;
+using ClaimsModule.Domain.Core.Operations;
 using ClaimsModule.Domain.Core.Rules;
 
 namespace ClaimsModule.Domain.Claims.Root.Rules;
