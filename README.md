@@ -1,7 +1,6 @@
 # Claims Management System
 
-Vertical slice of a claims management system for a policy administration system: .NET 9 backend (Clean
-Architecture, CQRS) and Angular frontend. Design notes are in `docs/ARCHITECTURE.md`.
+Vertical slice of a claims management system for a policy administration system: .NET 9 backend (Clean Architecture, CQRS) and Angular frontend. Design notes are in `docs/ARCHITECTURE.md`.
 
 ## Local setup (backend)
 
@@ -45,8 +44,7 @@ Required settings are validated at startup. A missing one stops the app with a m
 | `ConnectionStrings:ClaimsDb` | `appsettings.Development.json` | `ConnectionStrings__ClaimsDb` |
 | `Cors:AllowedOrigins` (at least one) | `appsettings.Development.json` | `Cors__AllowedOrigins__0`, `__1`, ... |
 
-User-secrets are stored outside the repository, in the user profile. List them with
-`dotnet user-secrets list --project backend/src/ClaimsModule.API`.
+User-secrets are stored outside the repository, in the user profile. List them with `dotnet user-secrets list --project backend/src/ClaimsModule.API`.
 
 ### Feature switches
 
