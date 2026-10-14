@@ -4,10 +4,10 @@ General working plan: how AI is used across the project, which skill or rule app
 
 PHASES
 
-Phase 0 - Setup (current)
+Phase 0 - Setup (done)
 - Task suggestion: prepare tools and context before designing anything.
 - Here: CLAUDE.md (rules), skills (design, explore, code-review, dev-log, spec-check, ai-journal), the rule register (docs/rules.local.md), settings.json (permissions), local markdown copies of the domain documents, these temp notes.
-- Exit: user has reviewed CLAUDE.md and skills; settings.json in place.
+- Exit: user has reviewed CLAUDE.md and skills; settings.json in place. Done; CLAUDE.md has since been restructured (Domain section, Tests, Naming) and check_workflow.py also verifies the code layout.
 
 Phase 1 - Domain and architecture
 - Task suggestion: load the requirements as context, have AI help shape the project structure and domain model (aggregate roots, value objects, events), then validate its assumptions against the requirements.
@@ -21,7 +21,7 @@ Phase 2 - Data model
 - Record: review pass with code-review against the conventions.
 - Exit: migrations apply from scratch on a fresh database; seed data present.
 
-Phase 3 - Backend
+Phase 3 - Backend (current: Domain packs 1 to 3 done; next the lifecycle pack, then reserves, reference data and audit, then Application and Persistence)
 - Task suggestion: scaffold commands, queries and validators; give each handler its business-rule context; use AI on idempotency and concurrency questions.
 - Here: pack by pack, in the dependency order of the design's build sequence, with boilerplate batched inside a pack; stop after each pack for review. Rules are cited by source-qualified ID (see CLAUDE.md 'Domain sources'). dev-log for tracing flows such as the background jobs. code-review (fresh Opus reader) after each pack.
 - Record: corrections found by code-review or by the user; prompts worth showing.

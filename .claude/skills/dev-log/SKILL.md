@@ -94,6 +94,6 @@ Per CLAUDE.md 'Output discipline' the status line is the entire turn; the proced
 ## Guardrails
 
 - Git writes stay with the user (CLAUDE.md 'Shell & git'); run OFF before dev logs can be committed.
-- Dev logs go to the console only; never to a file, never to a data store. They are temporary and exempt from the 120-character line limit.
+- Dev logs go to the console only; never to a file, never to a data store. They are temporary and exempt from the line length in CLAUDE.md 'Code style'.
 - Never log secrets, tokens, or personal data; log IDs and non-sensitive state.
 - Approval-first actions follow CLAUDE.md 'Permissions model'.

@@ -16,19 +16,19 @@ End-to-end vertical slice of a claims management system for a PAS (policy admini
 
 Clean Architecture. The backend solution has exactly these projects:
 
-- `ClaimsModule.Domain` - entities, enumerations, value objects, domain events
+- `ClaimsModule.Domain` - aggregates, entities, closed sets, value objects, domain events, and the generic engine (`Core`) that runs checks, rules, flows, operations and transitions
 - `ClaimsModule.Application` - commands and queries with their handlers, validators, DTOs, AutoMapper profiles, interfaces
 - `ClaimsModule.Infrastructure` - Hangfire job definitions and adapters for outside services (Azure Blob, email)
 - `ClaimsModule.Persistence` - EF Core DbContext, repositories, Unit of Work, migrations
 - `ClaimsModule.API` - controllers, middleware, startup and configuration
 
-CQRS through MediatR: state changes are Commands, reads are Queries. Significant state transitions raise domain events. A Unit of Work coordinates persistence. `docs/ARCHITECTURE.md` is the final artifact: it starts as the original architecture plan and is updated as decisions change.
+CQRS through MediatR: state changes are Commands, reads are Queries. Significant state transitions raise domain events. A Unit of Work coordinates persistence. `docs/ARCHITECTURE.md` is the final artifact: it starts as the original architecture plan and is updated as decisions change; it holds the reasons, this file holds the rules.
 
 ### Domain sources
 
 Business rules come from the user and from two local, gitignored markdown documents in `docs/`: `spec.local.md` (functional specification) and `assessment.local.md` (technical assessment brief). Read them for domain detail.
 
-- They are confidential. Never paste or closely reproduce their text in tracked files (code, docs, temp notes, commit messages); paraphrase. One narrow exception: the spec's user-facing validation messages (`S:V-Messages`) are used verbatim as the message strings in Domain rule classes, because the spec requires those exact messages. They appear nowhere else (not in docs, temp notes, test descriptions, or commit messages).
+- They are confidential. Never paste or closely reproduce their text in tracked files (code, docs, temp notes, commit messages); paraphrase. One narrow exception: the spec's user-facing validation messages (`S:V-Messages`) are used verbatim as the message strings in Domain rule and check classes, because the spec requires those exact messages. They appear nowhere else (not in docs, temp notes, test descriptions, or commit messages).
 - Cite a rule by source-qualified ID: `S:BR-R-03` (spec) or `A:BR-R-02` (assessment). Bare IDs are ambiguous because the two documents number rules independently.
 - Tie code to rules with the ID on code, not comments: `[Trait("Rule", "S:BR-R-03")]` on tests, `.WithErrorCode("S:BR-R-03")` on validators.
 - `docs/rules.local.md` (gitignored) is the compact rule register, built and refreshed by the spec-check skill. Prefer it over re-reading the full documents.
@@ -82,7 +82,7 @@ The backend needs a .NET 9 runtime and a local SQL Server (LocalDB). Required se
 - Before changing multiple files, outline the plan first: which files, what changes in each, the order of operations. Wait for approval before executing. An explicit instruction to implement an approved pack counts as that approval; no second outline.
 - **An approved plan is NOT permission to write code.** Approving a plan or design (including via plan mode) authorizes the plan, not implementation. Implementation needs a separate, explicit instruction, and even then proceed one pack at a time: make the pack's changes, stop, report, wait for "continue" ("continue" after a pack report means the next pack; otherwise ask). Never one-shot multiple packs across a plan in a single turn.
 - **Pack:** one cohesive, separately reviewable set of changes taken from an approved design (for example an entity with its configuration, or a command with its handler and validator). A pack may span projects, and boilerplate inside it (entities, DTOs, mapping profiles) may be written together. The design's build sequence is grouped into packs.
-- Self-audit code before responding.
+- **A pack is done when:** `dotnet build backend` reports 0 warnings and 0 errors, `dotnet test backend` passes, the workflow check reports 0 findings, no code line is over the limit in 'Code style', no file has an unused using, and the new tests mirror the folders of the code they cover. Audit the code against these standards before reporting; the report names the files changed, the test count and any open point, then stops.
 - A significant rule, architecture, or convention change updates this file or `docs/ARCHITECTURE.md`. Session discoveries and provisional findings go to `.claude/temp/`.
 
 ### Conflict, uncertainty & sources of truth
@@ -128,6 +128,7 @@ Single source of truth for formatting in generated output, skills, and notes.
 - Arrows: `->` is allowed inline for flows and status transitions (`Pending -> Approved`). Never Unicode arrow characters. In a structured flow block use no arrows at all: top-to-bottom position implies order.
 - Section separators: a single `-` line between sections, in this file and all SKILL.md files.
 - Headings: a blank line after every heading.
+- Markdown (docs, notes, skills, this file) has no line limit: one paragraph or list item per line, no hard wraps. Code blocks and tables are exempt.
 
 ### Status notation
 
@@ -191,11 +192,11 @@ Return empty values instead of null: `[]`, `string.Empty`, or an empty object / 
 
 ### Extract logic into `private static` methods
 
-Methods that read no instance fields and have no side effects must be `static`.
+Write a method as one readable flow: a few named variables (one per query or step), then the steps in order. Do not split it into one helper per query or per condition. Extract a helper only when the logic is used in more than one place, when it is a separate concept that deserves its own name, or when the method would pass the complexity limit and cannot be simplified first. A method that reads no instance fields and has no side effects must be `static`.
 
 ### Cyclomatic complexity <= 4 per method
 
-No method may exceed a cyclomatic complexity of 4. Extract sub-methods, use switch expressions, or restructure.
+No method may exceed a cyclomatic complexity of 4. Simplify before extracting: chain filters in separate `Where` calls instead of `&&` or `||` in one lambda, use set or dictionary lookups, a switch expression or a pattern. Extract a sub-method only when that is not enough.
 
 ### API results go through one result abstraction
 
@@ -206,20 +207,110 @@ Every API operation returns through a single result abstraction (`Result<T>` or 
 - Always use braces `{}` for `if`, `else`, `for`, `foreach`, `while`, even single-line bodies.
 - Use `string.Equals` / `string.Compare` with `StringComparison` instead of `==` for string comparisons where culture or case sensitivity matters.
 - Use `.Equals()` instead of `==` when comparing non-primitive reference types.
-- Prefer explicit, readable expressions over clever one-liners. Put the result of a LINQ chain or any non-trivial expression into a named variable first, then use that variable in the `?:`, the `if` or the `return` (`bool isLastClaimant = ...;` then `return isLastClaimant ? ... : ...;`). A named result reads better and can be inspected in the debugger. Declare the type explicitly when the right side does not make it evident.
+- Methods have block bodies; only read-only properties may be expression-bodied.
+- Prefer explicit, readable expressions over clever one-liners. Put the result of a LINQ chain or any non-trivial expression into a named variable first, then use that variable in the `?:`, the `if` or the `return` (`bool isLastClaimant = ...;` then `return isLastClaimant ? ... : ...;`). A named result reads better and can be inspected in the debugger. Keep the count small: name a query or a step, not every sub-expression.
+- In the Domain a broken invariant throws a standard exception (`ArgumentException`, `InvalidOperationException`); a business refusal is a finding, never an exception.
 
 ### Code style
 
-- **Line length:** 120 characters maximum, backend and frontend.
-- **LINQ:** method syntax only. From the second chained call on, or when the line would pass the limit, put each call on its own line starting with `.`, indented one level.
-- **Parameters and arguments:** keep them on one line when the line fits in 120 characters. When the line would pass the limit, put one item per line, indented one level. A call with 4 or more arguments that includes an expression (a call, lambda, operator or similar) also goes one per line even when it fits; plain names, literals (including interpolated strings) and member access stay inline. The same applies to constructor injection.
-- **Files:** one type per file, and the file name equals the type name. Use file-scoped namespaces. Exception: types of one registry, such as a closed set of marker records with their marker enum, share one file named after the base type (`ClaimState.cs` holds the enum, the abstract record and every sealed record). This applies while each variant is empty or only overrides a member of the base (`PartyRole.cs`). A type with real logic or its own state gets its own file. A dependent type, one that exists only to serve a single other type (an operation's input record), lives in its owner's file, named after the owner (`AddPartyOperation.cs` holds `AddPartyInput`, declared first, then the operation class); a type used by several owners keeps its own file.
-- **Folders:** Application is organized by feature (for example `Claims/CreateClaim/` holds the command, handler, and validator), so a pack's files sit together.
-- **Domain folders:** by concept. `Claims/` holds only folders: `Root/` for the claim aggregate root itself (`Claim`, its states and values, with its own `Operations/`, `Events/` and `Rules/`) and one folder per child entity (`Parties/`, `RiskObjects/`, `Loss/`). A child folder holds the entity, its closed sets and values, and `Operations/`, `Events/` and `Rules/` subfolders, created when the first file exists. Operations and rules that span entities, such as lifecycle transitions, live in `Root/Operations/` and `Root/Rules/`. Tests mirror the folders.
-- **Interfaces:** named `I<Name>`, one per file. Interfaces that Infrastructure or Persistence implement (`IStorageService`, `IAuditLogService`, `IUnitOfWork`, repositories) are defined in Application. Domain defines none unless a domain concept needs one. Each implementing project registers its services in its own DI extension (`AddInfrastructure`, `AddPersistence`).
-- **Declarations:** `_camelCase` private fields; `Async` suffix on async methods (not on `Handle` or controller actions); `CancellationToken` as the last parameter; `sealed` classes by default; records for commands, queries, and DTOs; primary constructors for dependency injection; `var` only when the type is evident from the right side; no `#region`.
-- **Frontend:** Prettier formatting with `printWidth` 120, `.prettierrc` added when the Angular app is scaffolded.
-- **Enforcement:** `.editorconfig` carries the mechanical rules (namespaces, braces, `var`, naming, line length). LINQ, parameter layout, named intermediate variables and explicit empty defaults are checked in code review.
+Layout
+
+- **Line length:** 120 characters maximum, backend and frontend code. Markdown has its own rule ('Output formatting').
+- **LINQ:** method syntax only. A chain of two or more LINQ calls, or any line that would pass the limit, puts each call on its own line starting with `.`, indented one level; a single LINQ call after a member or method call stays on its line (`claim.Parties.Select(party => party.Id)`).
+- **Parameters and arguments:** keep them on one line when the line fits the line length. When the line would pass the limit, put one item per line, indented one level. This is a length rule only: how many arguments a call has, or whether they are calls themselves, never forces a wrap. The same applies to constructor injection and object initializers. Never nest a wrapped call inside another call: put the inner creation or call into a named variable first (`var input = new AddPartyInput(...);` then `Execute(claim, input)`), and keep long literal text out of the call as a constant.
+- **Records and constructors:** a positional record keeps its base list on the declaration line when it fits (`public sealed record WaiveIssueInput(...) : ClaimBaseInput(Now, ActorId);`) and moves it to the next line, indented one level, when it does not. A constructor initializer (`: base(id)`, `: this(...)`) is always on its own line below the signature.
+- **Blank lines:** one blank line between members; none after an opening brace or before a closing brace; one before the final `return` unless it is the first statement of its block. Inside a body, a blank line separates the steps of a test (arrange, act, assert) and the computed statement from its `return`.
+- **Wrapped lists:** a wrapped list (arguments, initializer, collection expression, enum members) puts one item per line and keeps a trailing comma after the last item where the language allows it.
+- **Ternaries:** a ternary that does not fit on one line puts `?` and `:` on their own lines, indented one level; the true branch comes first, and in a check the passing branch is the true branch.
+- **Usings:** `System` namespaces first, then the others alphabetically, in one block above the namespace; no unused usings (the build reports them as errors). A file-scoped namespace follows after one blank line.
+- **Frontend:** Prettier formatting with `printWidth` set to the line length, `.prettierrc` added when the Angular app is scaffolded.
+
+Declarations
+
+- `var` wherever the right side shows the type: object creation, casts, LINQ results, `foreach` variables, property and indexer reads (`var issue = claim.Issues[0];`), and calls named after what they return (`Claim.Create`, a test helper). Explicit types only for the built-in keyword types (`string`, `int`, `bool`, `decimal`), lambdas and delegates, collection expressions, and a variable declared as a base or interface type on purpose (`PartyType person = new PartyPersonType();`).
+- Never `Type name = new(...)`; write `var name = new Type(...)`.
+- Collections are `[]` collection expressions; an empty value is spelled out (`string.Empty`, `Guid.Empty`, `DateTimeOffset.MinValue`, `[]`), not `null` ('No null').
+- Classes are `sealed` unless built for inheritance; records for commands, queries, DTOs, inputs, events, findings and details; primary constructors for dependency injection and for classes whose only constructor parameters are used as fields.
+- Constants over `static readonly` for compile-time values; a private constant is still PascalCase.
+- Members are ordered: constants, fields, constructors (a private parameterless one for EF first), properties (identity and data, then collections, then computed properties, then the capability and audit properties last), public methods, internal methods, protected methods, private methods. Within a group a static factory comes first. In a hook-based class the properties that supply decisions come before the methods.
+- No `#region`, no commented-out code, no TODO markers.
+
+Enforcement
+
+- `.editorconfig` carries the mechanical rules (namespaces, braces, `var`, naming, line length).
+- `python -I .claude/tools/check_workflow.py` (which reads the line length from here) checks, for every backend project, line length, comments, namespaces, using order, the blank line before `return`, `Is`/`Has`/`Can`/`Should` on bool members, `I<Name>` interfaces, the `Is`/`Has` name and `Code` of rules and checks, the `...Operation` file names, the entity subfolders, the Domain layering, the test mirror and the underscore form of test names.
+- Code review checks the rest: LINQ layout, parameter layout and count, named intermediate variables, explicit empty defaults, member order and the code shapes.
+
+### Code shapes
+
+Each kind of class has one shape, so the next one is written the same way.
+
+- **Check or rule:** constants `Code` (public), `Message` and `Field` (private); one `Check` method that names the statement in a `bool` that is true when the check passes (`bool hasClaimant = ...;`, `bool isNotLastClaimant = !...;`) and returns `statement ? Pass : Found(finding)`. A rule from the input takes its value through a primary-constructor parameter.
+- **Operation:** an input record declared first in the file, the operation class second. The constructor only calls `Require`. `Apply` makes one call on the subject's `internal` method and returns its value or `Success.Value`; it holds no condition.
+- **Flow over a whole entity:** an input record declared first in the same file, the flow with its checks in the constructor, a `protected override` decision property, and an `Apply` that builds a few named queries and then loops over them.
+- **Transition:** derives from the aggregate's transition base (`ClaimBaseTransition<TInput>`). The constructor names the target and declares each `AllowedFrom(...)` with its rules; an `Apply` override exists only for a change beyond the state. Nothing else is overridden.
+- **Entity (child):** constructors (private for EF, then `internal` with `id`, parent id, organisation id, details and `now`), properties, then `internal` mutators that change fields and set `UpdatedAt = now`.
+- **Aggregate root:** `internal` methods that change a child or a field, call `Touch(now)`, and `Raise` the event; the only `private` method is `Touch`.
+- **Details record:** the identifying values positional, the optional ones `{ get; init; }` with an explicit empty default.
+- **Closed set:** one file named after the base type holding the marker enum, the abstract record, and the sealed variants with `() : Base(Kind.Value)`; a variant with behavior overrides the base member in a body.
+- **Event:** a positional record `(EventId, OccurredAt, ActorId, <ids and facts>) : DomainEvent(EventId, OccurredAt, ActorId)`, one parameter per line.
+- **Options:** a sealed class with a `SectionName` constant and `{ get; init; }` properties with explicit defaults; bound in the owning layer's `<Feature>ServiceExtensions` with `BindConfiguration`, and validated with `ValidateDataAnnotations().ValidateOnStart()` when a missing value must stop the app.
+- **Extension class:** `<Feature>ServiceExtensions` holds `Add<Feature>` (and `Use<Feature>`), where the class name and the `Add` method share the feature word (`FrontendCorsServiceExtensions`, `AddFrontendCors`).
+
+### Files and folders
+
+- **Files:** one type per file, and the file name equals the type name. Use file-scoped namespaces; a namespace equals its folder path. Exception: types of one registry, such as a closed set of marker records with their marker enum, share one file named after the base type (`ClaimState.cs` holds the enum, the abstract record and every sealed record). This applies while each variant is empty or only overrides a member of the base (`PartyRole.cs`). A type with real logic or its own state gets its own file. A dependent type, one that exists only to serve a single other type (an operation's input record), lives in its owner's file, named after the owner (`AddPartyOperation.cs` holds `AddPartyInput`, declared first, then the operation class); a type used by several owners keeps its own file.
+- **Interfaces:** one per file. Interfaces that Infrastructure or Persistence implement (`IStorageService`, `IAuditLogService`, `IUnitOfWork`, repositories) are defined in Application. Domain defines interfaces only for its own concepts (checks, rules, findings, events, capabilities). Each implementing project registers its services in its own DI extension (`AddInfrastructure`, `AddPersistence`).
+- **Folders:** PascalCase and plural for a collection of one role (`Operations`, `Events`, `Rules`, `Checks`, `Parties`, `RiskObjects`). Application is organized by feature (for example `Claims/CreateClaim/` holds the command, handler, and validator), so a pack's files sit together. Domain folders are by concept ('Domain folders'); test folders mirror the source folders ('Tests').
+
+### Naming
+
+One standard for every name. The name says the role, and the suffix of a type is its role.
+
+**General**
+
+- English, PascalCase for types, methods, properties, constants and enum members; camelCase for parameters and locals; `_camelCase` for private fields; `I` prefix for interfaces.
+- Whole words. The only abbreviations are the common ones (`Id`, `Dto`, `Url`, `Json`) and the names the spec gives (`RowVer`). Write an acronym as a word (`Dto`, not `DTO`). No type in a name (`ClaimList`, `strName`).
+- A collection is plural (`Parties`), an item is singular (`party`). A lambda parameter is the singular word of its element (`issue`, `finding`, `party`), or `_` when unused; never a single letter.
+- An id ends in `Id` (`ClaimId`), a timestamp in `At` (`UpdatedAt`), a calendar date in `Date` (`ReportedDate`), a user reference as the spec names it (`UserCreated`).
+- A name that the spec or the stored schema fixes (audit columns, `IsDeleted`, `DeletedAt`, `RowVer`, `OrganisationId`, `ReportDate`) is kept as written, even where it breaks a rule here.
+
+**Booleans**
+
+- Every `bool` member, method or property, starts with `Is`, `Has`, `Can` or `Should` (`IsBlocking`, `HasNoFindings`, `IsClaimant`, `HasPersonName`).
+- Exceptions: members that a framework or interface fixes (`Equals`, `Authorize`) and options-class properties bound to a configuration key (`Enabled`).
+
+**Methods**
+
+- A verb or verb phrase for what it does: `AddParty`, `Execute`, `Evaluate`. `Async` suffix on async methods (not on `Handle` or controller actions); `CancellationToken` last.
+- `Create` makes a new object, `From` parses or converts a value into a validated one (`ClaimNumber.From`), `As<Thing>` returns a converted copy (`AsWarning`), `Get<Thing>` is a query.
+- A child entity's mutator is a bare verb (`Remove`); the root's method for it is the verb plus the thing (`RemoveRiskObject`).
+- The names the engine fixes are not changed: `Apply`, `AfterApply`, `CheckPreconditions`, `SelectChecks`, `CurrentState`, `Move`, `Require`, `AllowedFrom`, `WhenBlocked`, `WhenPreconditionFails`.
+
+**Types by role**
+
+| Role | Name | Example |
+|---|---|---|
+| Check | `Is<Statement>` or `Has<Thing>` | `IsLossDatePresent`, `HasClaimant` |
+| Rule (a check that reports a `DomainFinding`) | same as a check | `IsNotLastClaimant` |
+| Finding | `<Source>Finding` | `RuleFinding`, `TransitionFinding`, `IssueFinding` |
+| Entity data replaced whole | `<Thing>Details` | `PartyDetails` |
+| Input, operation, flow, outcome | `<Verb><Thing>` + `Input`, `Operation`, `Flow`, `Outcome` | `AddPartyInput`, `AddPartyOperation`, `EvaluateIssuesFlow` |
+| Base shared by one scope | `<Scope>Base<Role>` | `ClaimBaseInput`, `ClaimBaseOperation` |
+| Domain event | `<Thing><PastVerb>` | `PartyAdded` |
+| Value object | the plain noun | `LossDate` |
+| Absent value | static `Empty` and an `IsSet` flag | `LossDate.Empty` |
+| Closed set | enum `<Concept>Kind` (the claim lifecycle keeps `ClaimStatus`), abstract record `<Concept>`, variants `<Owner><Value><Concept>` | `IssueStateKind`, `IssueState`, `IssueRaisedState` |
+| Options | `<Name>Options` | `JwtOptions` |
+| Command, query, DTO | `VerbNounCommand`, `GetNounQuery` / `ListNounsQuery`, `...Dto` / `...Request` / `...Response` | `CreateClaimCommand` |
+
+- A closed set without behavior is a plain enum (`AssetType`).
+- A finding's code says what went wrong, so its name says who reports it, not the problem.
+- A constant is PascalCase, private ones too; a rule or check keeps `Code` public and `Message` and `Field` private.
+
+**Tests**
+
+- A class is `<Type>Tests`; a method is `<Subject>_<Condition>_<Result>`. See 'Tests'.
 
 ### No explanatory comments
 
@@ -241,20 +332,66 @@ EF Core migrations are generated by tooling and never hand-edited.
 - Primary keys: sequential GUIDs. Money: `DECIMAL(19,4)`, never float or `money`. Timestamps: `DATETIMEOFFSET(7)`, stored in UTC.
 - Every business table carries soft-delete (`IsDeleted`, `DeletedAt`; append-only logs such as the audit log are the exception), audit columns (`CreatedAt`, `UpdatedAt`, `UserCreated`, `UserModified`), and a tenant column (name not yet decided; see S:DATA-Tenant and A:DATA-Tenant). Aggregate roots carry `RowVer` (`ROWVERSION`).
 - EF configuration: Fluent API via `IEntityTypeConfiguration<T>`, no data annotations for schema; global query filters for soft delete and tenant; `HasPrecision(19, 4)` on decimals.
-- Draft claims may be incomplete: the loss date column is nullable and the cause code has no database foreign key, so Critical validation issues can be stored on a Draft (deviation from the spec table; see `docs/ARCHITECTURE.md` 'Spec gaps and schema deviations').
+- Draft claims may be incomplete: the loss date column is nullable and the cause code has no database foreign key, so Critical validation issues can be stored on a Draft (deviation from the spec table; see `docs/ARCHITECTURE.md` 'Schema departures from the spec').
 - Seed data through `HasData` or migration scripts, never at application startup. No hard-coded GUIDs in application logic.
-- Names: tables and entities PascalCase singular; commands `VerbNounCommand`; queries `GetNounQuery` / `ListNounsQuery`; DTOs `...Dto` or `...Request` / `...Response`; routes kebab-case plural.
+- Names: tables and entities PascalCase singular; routes kebab-case plural; type names follow 'Naming'.
 - Cross-cutting: FluentValidation runs as a MediatR pipeline behavior; AutoMapper profiles live in Application; storage and audit sit behind interfaces (`IStorageService`, `IAuditLogService`); audit writes never go straight to the `DbContext` from handlers.
+
+### Tests
+
+- **Mirror:** one test class per type under test, named `<Type>Tests` (one class per operation, rule, check or closed set), in the folder that mirrors the type's folder and with the matching namespace. The only class without a source twin is `EntityConstructionTests`.
+- **Fixtures:** they live under `Support/`, mirroring the same folders (`Support/Claims`, `Support/Core`, `Support/Common`), and are used only by tests. Claims are filled through the operations (`TestClaims`), never through private state. Sample types are named `Sample<Role>` (`SampleFlow`, `SampleSubject`); a fixture constant is `const` or `static readonly` and PascalCase when public, `_camelCase` when private. Setup that two tests share is a private static helper in the class or a fixture in `Support/`, never a field that tests mutate.
+- **Name:** `<Subject>_<Condition>_<Result>`, PascalCase parts joined by underscores. The subject is the member under test (`Execute`, `Check`, `Combine`) or a noun phrase for the thing (`Roles`, `AFailedPrecondition`); the condition is dropped when there is none (`Execute_ReturnsTheValue`); the result is a verb phrase for the expected outcome. Examples: `Execute_FromAnUndeclaredSource_ReturnsNotPermittedAndChangesNothing`, `Handle_WhenAValidatorFails_ThrowsAndSkipsTheHandler`.
+- **Form:** arrange, act, assert, each block separated from the next by one blank line, no comments.
+    - Arrange holds everything the act needs, including the input record.
+    - Act is exactly one statement, the call under test. Its result, when asserted, is `var outcome` for a flow, operation or transition and `var result` for anything else; a call that must throw is `Action act` or `Func<T> act` and the assert is `act.Should().Throw<...>()`. A call whose value is not asserted stands alone, and the assert reads the effect (state, events, issues).
+    - Assert reads only the result and the arranged objects.
+    - A test with nothing to arrange starts at the act. A test about an arranged value (a closed-set table, an equality, a constant, a property) has an arrange block and an assert block and needs no act variable.
+- **One behavior per test:** one act and one reason to fail. The same act with different data is a `[Theory]`; two acts that are compared become two tests that share a helper.
+- **Attributes:** `[Fact]` or `[Theory]` first, then `[Trait("Rule", ...)]` for each rule the test covers (a document rule ID or a contract code constant), then the `[InlineData]` rows.
+- **Asserts:** FluentAssertions chains. A finding is asserted by its code, never by its message text. The class is `public sealed`.
+- **Style:** test code follows the same standards as production code.
+
+-
+
+## Domain
 
 ### Domain modeling
 
-- **No invented rules:** a check that no source states (a bound on an amount, a length) is not added; ask for the source first. A rule class exposes its rule ID as a `Code` constant, and its tests carry `[Trait("Rule", <Rule>.Code)]`.
-- **Time:** the Domain reads no clock. The operation time is `Now` on the input; every input derives from `OperationInput`, which rejects a default time, and the Application input builders stamp it once from the clock, so callers never set it. Entity mutators and `Ids.Next` take `now` as a parameter.
-- **Creation:** the aggregate root has a static factory that builds a minimal valid Draft (`Claim.Create`); parties, risk objects and loss details are added through the same operations as later edits. There are no creation records that copy their fields into the entity.
-- **Entity data:** a child entity keeps its editable data as one immutable details record (`PartyDetails`, `RiskObjectDetails`, `LossDetails`), held in a `Details` property and replaced as a whole (`with` builds a changed copy). The entity does not repeat the record's fields.
-- **Visibility:** the capability interfaces (`IAuditable`, `ISoftDeletable`, `ITenantOwned`) are get-only and entities use private setters; mutators are `internal` and the Persistence save interceptor stamps the audit, delete and tenant fields through the EF property API.
-- **EF friendliness:** every entity has a private parameterless constructor with empty placeholders, and a test builds each one through it. A value that may be absent and maps to a nullable column is a sealed record class with a static `Empty` and an `IsSet` flag (`LossDate`, `EstimatedLossAmount`), because EF cannot make a struct column nullable. Computed members and range comparisons on converted values do not translate to SQL, so list and search queries use projections or read models, never filtered Domain entities.
-- **Tests:** they mirror the folder tree and fill claims through the operations (`TestClaims`), not through private state.
+- **No invented rules:** a check that no source states (a bound on an amount, a length) is not added; ask for the source first. Every rule and check exposes its code as a `Code` constant: the source-qualified rule ID when a document states the rule (`S:BR-C-01`), or a plain upper-snake code for a rule that guards the system's own contract (`CLAIM_NUMBER_REQUIRED`); the constants are the only list. The class keeps `Message` and `Field` as private constants, so the failing line reads `CheckResult<DomainFinding>.Found(new RuleFinding(Code, Message, Field))`.
+- **Time:** the Domain reads no clock. The time is `Now` on the input (every input derives from `OperationInput`), stamped once by the Application. Entity mutators and `Ids.Next` take `now` as a parameter.
+- **Entities:** a child keeps its editable data in one immutable details record, replaced whole with `with`. Capability interfaces are get-only, setters are private, mutators are `internal`, and nothing outside the aggregate changes a child.
+- **EF friendliness:** every entity has a private parameterless constructor with empty placeholders, built by a test. A value that may be absent is a sealed record with a static `Empty` and an `IsSet` flag. List and search queries use projections or read models, never filtered Domain entities.
+- **Creation:** a claim is created by `CreateClaimOperation` as a minimal valid Draft; parties, risk objects and loss details are added by the same operations as later edits.
+
+### Domain folders
+
+The Domain has three top-level folders: `Core/` (the engine), `Common/` (entity and event base types, capability interfaces, markers, `Ids`) and `Claims/` (the claim aggregate).
+
+- `Claims/` holds only folders: `Root/` for the aggregate root (`Claim`, its state and values, and its base input, base operation and base transition) and one folder per child entity (`Parties/`, `RiskObjects/`, `Loss/`, `Issues/`).
+- A folder holds the entity or root, its closed sets and values, and these subfolders, created when the first file exists: `Operations/` (operations with their inputs), `Events/`, `Rules/` (rules that an operation or transition requires) and `Checks/` (checks that report another finding type, such as the issue checks).
+- A flow over a whole entity is one file in the folder root named after the flow (`EvaluateIssuesFlow.cs`), its input declared first.
+- Operations, transitions and rules that span entities live in `Root/Operations/` and `Root/Rules/`.
+
+### Domain engine
+
+`Core` is generic and layered: `Core/Base/Checks`, `Core/Base/Flows`, `Core/Rules`, `Core/Operations` (with `Creation/`), `Core/Transitions`. A layer uses only the layers before it, `Core` never references `Claims`, and `Common` references neither. The ideas and reasons are in `docs/ARCHITECTURE.md` 'Domain engine'. Rules for working with it:
+
+- Operations and transitions require rules, declared once in the constructor with `Require`: a ready instance, or a rule from the input (`input => new IsNotLastClaimant(input.PartyId)`). A check with another finding type runs in a flow of its own.
+- A precondition asks whether the action is possible on this subject at all, a rule whether this request is acceptable. "Not allowed in that state" is a rule that reads the state, never a conditional in an operation.
+- `Apply` is the only place the subject changes, through its `internal` methods; it returns a value or `Success`.
+- A transition is a locked flow configured only by its target, allowed sources and rules: never override its hooks. What every change of an aggregate shares (re-evaluating issues, the status event) lives once in the aggregate's base operation, base transition or creation follow-up.
+- A new kind of process derives from `Flow`; never copy the skeleton into an operation.
+- A `DomainFinding` blocks by default; `AsWarning()` makes it advisory.
+
+### Extending the Domain
+
+Names follow 'Naming' and folders 'Domain folders'.
+
+- **A new entity in an aggregate:** a private parameterless constructor, a `Details` record, private setters and `internal` mutators taking `now`; a root method that calls the mutator, touches the root and raises the event; an operation deriving from the base operation; every precondition as a rule; a stored completeness problem as a check in `Issues/Checks/`; tests in the mirrored folders and an entry in `EntityConstructionTests`.
+- **A new aggregate:** a top-level folder shaped like `Claims/`, a base input and base operation in `Root/` (and a base transition once it has a lifecycle), a creation operation calling an `internal` factory, the capability interfaces it needs, and other aggregates referenced by id only.
+- **State:** a lifecycle is a closed set held in a get-only `State` property that only an `internal` root method sets. A move is a class deriving from the aggregate's transition base (`ClaimBaseTransition<TInput>`): the target, each `AllowedFrom(...)` with the rules that apply only from those states, and an `Apply` override only for a change beyond the state. The base raises the status event and runs the shared follow-up. No claim transition exists yet; `SampleClaimTransition` in the test fixtures shows the shape.
+- **Tests for a transition:** a declared source, an undeclared source, and the rules of each allowed-sources declaration.
 
 -
 
@@ -288,7 +425,8 @@ Ask-first actions, every time, even if a similar one was approved earlier:
 
 Run `python -I .claude/tools/check_workflow.py` automatically and silently at these points, and speak up only when it reports findings:
 
-- after Claude edits this file, a skill, `settings.json`, a temp note, the rule register, or `docs/AI-WORKFLOW.md`;
+- after Claude edits this file, a skill, `settings.json`, a temp note, the rule register, `docs/AI-WORKFLOW.md` or `docs/ARCHITECTURE.md`;
+- after a code pack, because it also checks the code layout ('Code style');
 - after an ai-journal entry, a parking-lot append, and "spec-check build";
 - when the user says they are about to commit or asks whether the repo is ready.
 
@@ -298,12 +436,14 @@ Fix findings in files Claude touched before continuing; for findings in other fi
 
 Skills live in `.claude/skills/<name>/SKILL.md`.
 
-- **explore:** "explore X", "find X" (X is code, a location, or behavior), "investigate X", "trace X", "how does X work", "where is X", "look up X", or a claim to verify against the code (a claim naming a rule ID goes to spec-check instead). Invoke the skill before investigating directly. Checking ONE already-named fact (a single symbol's location, one file's content) is a direct lookup, not an investigation.
-- **design:** "design X", "how should we build X". Produces a design; never writes code.
-- **code-review:** "code review", "review the code", "review the changes", "review the branch", "check my changes" (a code object is required; "review the design" is not a code review). Report-only; fixing a finding is a separate, explicit request.
-- **spec-check:** "spec-check", "check rules", "rule coverage", "check <rule ID>", "spec-check build". Also runs passively after every code-review. Read-only except build.
-- **ai-journal:** "log prompt", "log correction", "log split", "log assessment", "log session", "log summary", "summarize journal", "journal this", "list journal", "compile journal". Records real events only and merges related events into topic-level entries and SUMMARY narratives; proactive offers always ask first.
-- **dev-log:** user-invoked only, as `/dev-log on`, `/dev-log check`, or `/dev-log off` (the skill is not model-invoked). If asked for dev logs in plain words, reply with the command instead of adding logs by hand. Never leave an untagged dev log in code.
+The phrases that trigger each skill are in its `SKILL.md` 'Triggers'. What only this file says:
+
+- **explore:** invoke it before investigating directly. Checking ONE already-named fact (a single symbol's location, one file's content) is a direct lookup, not an investigation. A claim naming a rule ID goes to spec-check instead.
+- **design:** produces a design; never writes code.
+- **code-review:** a code object is required ("review the design" is not a code review). Report-only; fixing a finding is a separate, explicit request.
+- **spec-check:** also runs passively after every code-review. Read-only except "spec-check build".
+- **ai-journal:** records real events only and merges related events into topic-level entries and SUMMARY narratives; proactive offers always ask first.
+- **dev-log:** user-invoked only, as `/dev-log on`, `/dev-log check` or `/dev-log off` (not model-invoked). If asked for dev logs in plain words, reply with the command instead of adding logs by hand. Never leave an untagged dev log in code.
 
 ### Temp notes
 
