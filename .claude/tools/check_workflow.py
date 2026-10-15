@@ -29,6 +29,7 @@ BOOL_EXEMPT = {"Equals", "Authorize"}
 TEST_METHOD = re.compile(r"\[(?:Fact|Theory)\](?:\s*\[[^\]]*\])*\s*public (?:async )?(?:void|Task) (\w+)\(")
 INTERFACE = re.compile(r"^\s*(?:public|internal)(?: partial)? interface (\w+)", re.M)
 ENTITY_SUBFOLDERS = {"Operations", "Transitions", "Events", "Rules", "Checks", "Bases"}
+AGGREGATE_FOLDERS = ("Claims", "Reserves", "ReserveChanges")
 LAYER_FORBIDS = {
     "Common": ["Claims", "Core"],
     "Core/Base/Checks": ["Core.Base.Flows", "Core.Rules", "Core.Operations", "Core.Transitions", "Claims"],
@@ -415,13 +416,14 @@ def check_domain(files):
                         fail("layering", f"{DOMAIN}/{rel} uses {use}, which a {layer} file must not use")
         stem = Path(rel).stem
         parts = rel.split("/")
-        if parts[0] == "Claims" and len(parts) > 3 and parts[2] not in ENTITY_SUBFOLDERS:
-            fail("layout", f"{DOMAIN}/{rel}: a claim entity folder holds only {sorted(ENTITY_SUBFOLDERS)}")
-        if parts[0] == "Claims" and "Operations" in parts[:-1] and not stem.endswith("Operation"):
+        is_aggregate = parts[0] in AGGREGATE_FOLDERS
+        if is_aggregate and len(parts) > 3 and parts[2] not in ENTITY_SUBFOLDERS:
+            fail("layout", f"{DOMAIN}/{rel}: an entity folder holds only {sorted(ENTITY_SUBFOLDERS)}")
+        if is_aggregate and "Operations" in parts[:-1] and not stem.endswith("Operation"):
             fail("naming", f"{DOMAIN}/{rel}: a file in Operations/ is named <Verb><Thing>Operation")
-        if parts[0] == "Claims" and "Transitions" in parts[:-1] and not stem.endswith("Transition"):
+        if is_aggregate and "Transitions" in parts[:-1] and not stem.endswith("Transition"):
             fail("naming", f"{DOMAIN}/{rel}: a file in Transitions/ is named <Verb><Thing>Transition")
-        if rel.startswith("Claims/") and re.search(r"/(Rules|Checks)/[^/]+\.cs$", rel):
+        if is_aggregate and re.search(r"/(Rules|Checks)/[^/]+\.cs$", rel):
             if not re.match(r"^(Is|Has)[A-Z]", stem):
                 fail("naming", f"{DOMAIN}/{rel}: a rule or check class must start with Is or Has")
             if "const string Code" not in text:
