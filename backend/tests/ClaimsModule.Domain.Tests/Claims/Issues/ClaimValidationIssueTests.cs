@@ -1,7 +1,9 @@
 using ClaimsModule.Domain.Claims.Issues;
 using ClaimsModule.Domain.Claims.Issues.Checks;
-using ClaimsModule.Domain.Claims.Issues.Operations;
-using ClaimsModule.Domain.Claims.Loss.Operations;
+using ClaimsModule.Domain.Claims.Issues.Flows;
+using ClaimsModule.Domain.Claims.Issues.Inputs;
+using ClaimsModule.Domain.Claims.Loss.Flows;
+using ClaimsModule.Domain.Claims.Loss.Inputs;
 using ClaimsModule.Domain.Tests.Support.Claims;
 
 namespace ClaimsModule.Domain.Tests.Claims.Issues;
@@ -14,9 +16,12 @@ public sealed class ClaimValidationIssueTests
     public void ARaisedCriticalIssue_IsCurrentAndUnresolved()
     {
         var claim = TestClaims.Empty();
+        var current = claim.Issues
+            .Where(issue => issue.IsCurrent)
+            .ToList();
 
-        claim.Issues.Should().OnlyContain(issue => issue.IsCurrent && issue.IsUnresolvedCritical);
-        claim.Issues.Should().OnlyContain(issue => issue.State is IssueRaisedState);
+        current.Should().HaveCount(4);
+        current.Should().OnlyContain(issue => issue.IsUnresolvedCritical && issue.State is IssueRaisedState);
     }
 
     [Fact]
@@ -25,10 +30,10 @@ public sealed class ClaimValidationIssueTests
         var claim = TestClaims.Empty();
         var loss = TestClaims.Loss(TestClaims.Start.AddDays(-1), TestClaims.Description);
         var update = new UpdateLossDetailsInput(loss, TestClaims.Actor, TestClaims.Later, TestClaims.Reference());
-        new UpdateLossDetailsOperation().Execute(claim, update);
+        UpdateLossDetailsOperation.Execute(claim, update);
         var input = new EvaluateIssuesInput(TestClaims.Later, TestClaims.Actor, TestClaims.Reference());
 
-        new EvaluateIssuesFlow().Execute(claim, input);
+        EvaluateIssuesFlow.Execute(claim, input);
 
         var dateIssue = claim.Issues.Single(issue => issue.Finding.Code == IsLossDatePresent.Code);
         dateIssue.State.Should().BeOfType<IssueClearedState>();
@@ -44,7 +49,7 @@ public sealed class ClaimValidationIssueTests
         var issue = claim.Issues[0];
         var input = new WaiveIssueInput(issue.Id, TestClaims.Actor, TestClaims.Later, TestClaims.Reference());
 
-        new WaiveIssueOperation().Execute(claim, input);
+        WaiveIssueOperation.Execute(claim, input);
 
         issue.IsCurrent.Should().BeTrue();
         issue.IsUnresolvedCritical.Should().BeFalse();
@@ -57,13 +62,13 @@ public sealed class ClaimValidationIssueTests
         var claim = TestClaims.Empty();
         var issue = claim.Issues.Single(candidate => candidate.Finding.Code == IsLossDatePresent.Code);
         var waive = new WaiveIssueInput(issue.Id, TestClaims.Actor, TestClaims.Later, TestClaims.Reference());
-        new WaiveIssueOperation().Execute(claim, waive);
+        WaiveIssueOperation.Execute(claim, waive);
         var loss = TestClaims.Loss(TestClaims.Start.AddDays(-1), TestClaims.Description);
         var fix = new UpdateLossDetailsInput(loss, _otherActor, TestClaims.Later.AddHours(1), TestClaims.Reference());
-        new UpdateLossDetailsOperation().Execute(claim, fix);
+        UpdateLossDetailsOperation.Execute(claim, fix);
         var input = new EvaluateIssuesInput(TestClaims.Later.AddHours(1), _otherActor, TestClaims.Reference());
 
-        new EvaluateIssuesFlow().Execute(claim, input);
+        EvaluateIssuesFlow.Execute(claim, input);
 
         issue.State.Should().BeOfType<IssueClearedState>();
         issue.ResolvedBy.Should().Be(_otherActor);

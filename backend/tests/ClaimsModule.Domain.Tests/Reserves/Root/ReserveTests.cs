@@ -1,5 +1,5 @@
 using ClaimsModule.Domain.Reserves.Root;
-using ClaimsModule.Domain.Reserves.Root.Operations;
+using ClaimsModule.Domain.Reserves.Root.Inputs;
 using ClaimsModule.Domain.Tests.Support.Claims;
 using ClaimsModule.Domain.Tests.Support.ReserveChanges;
 

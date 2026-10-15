@@ -9,10 +9,9 @@ public sealed class OperationTests
     [Fact]
     public void Execute_WhenEveryRulePasses_AppliesAndReturnsTheValue()
     {
-        var operation = new SampleOperation([SampleRules.Pass(), SampleRules.Pass()], []);
         var subject = new SampleSubject();
 
-        var outcome = operation.Execute(subject, _input);
+        var outcome = PassingSampleOperation.Execute(subject, _input);
 
         outcome.IsSuccess.Should().BeTrue();
         outcome.Value.Should().Be("text");
@@ -22,57 +21,49 @@ public sealed class OperationTests
     [Fact]
     public void Execute_CollectsEveryErrorAndDoesNotApply()
     {
-        var operation = new SampleOperation([SampleRules.Fail("A"), SampleRules.Pass(), SampleRules.Fail("B")], []);
         var subject = new SampleSubject();
 
-        var outcome = operation.Execute(subject, _input);
+        var outcome = FailingSampleOperation.Execute(subject, _input);
 
         outcome.IsSuccess.Should().BeFalse();
-        outcome.Blocking.Select(finding => finding.Code).Should().Equal("A", "B");
-        operation.ApplyCount.Should().Be(0);
+        outcome.Blocking.Select(finding => finding.Code)
+            .Should().Equal(FailingSampleOperation.FirstFailure, FailingSampleOperation.SecondFailure);
         subject.Log.Should().BeEmpty();
     }
 
     [Fact]
     public void Execute_KeepsWarningsOnSuccess()
     {
-        var operation = new SampleOperation([SampleRules.Warn("W")], []);
-
-        var outcome = operation.Execute(new SampleSubject(), _input);
+        var outcome = WarningSampleOperation.Execute(new SampleSubject(), _input);
 
         outcome.IsSuccess.Should().BeTrue();
-        outcome.Advisory.Select(finding => finding.Code).Should().Equal("W");
+        outcome.Advisory.Select(finding => finding.Code).Should().Equal(WarningSampleOperation.Warned);
     }
 
     [Fact]
     public void Execute_ReportsWarningsAlongsideErrors()
     {
-        var operation = new SampleOperation([SampleRules.Warn("W"), SampleRules.Fail("E")], []);
+        var outcome = MixedSampleOperation.Execute(new SampleSubject(), _input);
 
-        var outcome = operation.Execute(new SampleSubject(), _input);
-
-        outcome.Blocking.Select(finding => finding.Code).Should().Equal("E");
-        outcome.Advisory.Select(finding => finding.Code).Should().Equal("W");
+        outcome.Blocking.Select(finding => finding.Code).Should().Equal(MixedSampleOperation.Failed);
+        outcome.Advisory.Select(finding => finding.Code).Should().Equal(MixedSampleOperation.Warned);
     }
 
     [Fact]
     public void Execute_WhenTheInputMakesARuleFromTheInputFail_ReturnsItsFinding()
     {
-        var operation = CreateOperationFailingOnBadText();
         var subject = new SampleSubject();
-        var input = new SampleInput("bad");
+        var input = new SampleInput(TextSampleOperation.BadText);
 
-        var outcome = operation.Execute(subject, input);
+        var outcome = TextSampleOperation.Execute(subject, input);
 
-        outcome.Blocking.Select(finding => finding.Code).Should().Equal("BAD_INPUT");
+        outcome.Blocking.Select(finding => finding.Code).Should().Equal(TextSampleOperation.BadInput);
     }
 
     [Fact]
     public void Execute_WhenTheInputMakesARuleFromTheInputPass_Succeeds()
     {
-        var operation = CreateOperationFailingOnBadText();
-
-        var outcome = operation.Execute(new SampleSubject(), _input);
+        var outcome = TextSampleOperation.Execute(new SampleSubject(), _input);
 
         outcome.IsSuccess.Should().BeTrue();
     }
@@ -80,28 +71,10 @@ public sealed class OperationTests
     [Fact]
     public void Execute_PassesTheTimeOfTheInputToARuleFromTheInput()
     {
-        List<DateTimeOffset> seen = [];
-        var operation = new SampleOperation(
-            [],
-            [
-                input =>
-                {
-                    seen.Add(input.Now);
+        var subject = new SampleSubject();
 
-                    return SampleRules.Pass();
-                },
-            ]);
+        TimeSampleOperation.Execute(subject, _input);
 
-        operation.Execute(new SampleSubject(), _input);
-
-        seen.Should().Equal(SampleInput.Instant);
-    }
-
-    private static SampleOperation CreateOperationFailingOnBadText()
-    {
-        Func<SampleInput, DelegateRule> ruleFromInput =
-            input => input.Text == "bad" ? SampleRules.Fail("BAD_INPUT") : SampleRules.Pass();
-
-        return new SampleOperation([], [ruleFromInput]);
+        subject.Log.Should().Equal(SampleInput.Instant.ToString("O"), "apply text");
     }
 }

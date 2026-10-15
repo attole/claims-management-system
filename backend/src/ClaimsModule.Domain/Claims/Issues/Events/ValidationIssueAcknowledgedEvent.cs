@@ -3,9 +3,7 @@ using ClaimsModule.Domain.Common.Events;
 namespace ClaimsModule.Domain.Claims.Issues.Events;
 
 public sealed record ValidationIssueAcknowledgedEvent(
-    Guid EventId,
-    DateTimeOffset OccurredAt,
-    Guid ActorId,
+    EventStamp Stamp,
     Guid ClaimId,
     Guid IssueId,
-    string Code) : DomainEvent(EventId, OccurredAt, ActorId);
+    string Code) : DomainEvent(Stamp);

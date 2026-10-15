@@ -2,7 +2,7 @@ using ClaimsModule.Domain.Tests.Support.Common;
 
 namespace ClaimsModule.Domain.Tests.Support.Core;
 
-public sealed class CommonRuleSampleTransition : SampleTransition
+internal sealed class CommonRuleSampleTransition : SampleTransition<CommonRuleSampleTransition>
 {
     public const string CommonDenied = "COMMON_DENIED";
 

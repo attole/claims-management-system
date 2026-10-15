@@ -1,4 +1,5 @@
-using ClaimsModule.Domain.Claims.Issues.Operations;
+using ClaimsModule.Domain.Claims.Issues.Flows;
+using ClaimsModule.Domain.Claims.Issues.Inputs;
 using ClaimsModule.Domain.Claims.Issues.Rules;
 using ClaimsModule.Domain.Tests.Support.Claims;
 
@@ -35,7 +36,7 @@ public sealed class IsIssueWaivableTests
         var claim = TestClaims.Empty();
         var issueId = claim.Issues[0].Id;
         var input = new WaiveIssueInput(issueId, TestClaims.Actor, TestClaims.Later, TestClaims.Reference());
-        new WaiveIssueOperation().Execute(claim, input);
+        WaiveIssueOperation.Execute(claim, input);
 
         var result = new IsIssueWaivable(issueId).Check(claim);
 

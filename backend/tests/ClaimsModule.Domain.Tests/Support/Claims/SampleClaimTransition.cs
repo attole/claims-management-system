@@ -3,7 +3,7 @@ using ClaimsModule.Domain.Claims.Root.Bases;
 
 namespace ClaimsModule.Domain.Tests.Support.Claims;
 
-internal sealed class SampleClaimTransition : ClaimBaseTransition<SampleClaimTransitionInput>
+internal sealed class SampleClaimTransition : ClaimBaseTransition<SampleClaimTransition, SampleClaimTransitionInput>
 {
     public SampleClaimTransition() : base(new ClaimOpenState())
     {

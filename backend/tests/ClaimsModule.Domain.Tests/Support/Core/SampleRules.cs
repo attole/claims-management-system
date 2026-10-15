@@ -3,7 +3,7 @@ using ClaimsModule.Domain.Core.Rules;
 
 namespace ClaimsModule.Domain.Tests.Support.Core;
 
-public static class SampleRules
+internal static class SampleRules
 {
     public static DelegateRule Pass()
     {
@@ -18,5 +18,15 @@ public static class SampleRules
     public static DelegateRule Warn(string code)
     {
         return new DelegateRule(_ => CheckResult<DomainFinding>.Found(new RuleFinding(code, code).AsWarning()));
+    }
+
+    public static DelegateRule Log(string text)
+    {
+        return new DelegateRule(subject =>
+        {
+            subject.Log.Add(text);
+
+            return CheckResult<DomainFinding>.Pass;
+        });
     }
 }

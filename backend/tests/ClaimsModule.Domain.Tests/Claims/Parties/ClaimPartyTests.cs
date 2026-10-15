@@ -1,4 +1,5 @@
-using ClaimsModule.Domain.Claims.Parties.Operations;
+using ClaimsModule.Domain.Claims.Parties.Flows;
+using ClaimsModule.Domain.Claims.Parties.Inputs;
 using ClaimsModule.Domain.Tests.Support.Claims;
 
 namespace ClaimsModule.Domain.Tests.Claims.Parties;
@@ -22,7 +23,7 @@ public sealed class ClaimPartyTests
             TestClaims.Actor,
             TestClaims.Later,
             TestClaims.Reference());
-        new RemovePartyOperation().Execute(claim, input);
+        RemovePartyOperation.Execute(claim, input);
 
         claim.Parties[0].IsActiveClaimant.Should().BeFalse();
         claim.ActiveClaimantCount.Should().Be(1);

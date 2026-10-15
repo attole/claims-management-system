@@ -4,7 +4,7 @@ using ClaimsModule.Domain.Core.Rules;
 
 namespace ClaimsModule.Domain.Tests.Support.Claims;
 
-public sealed class FailingClaimRule : IRule<Claim>
+internal sealed class FailingClaimRule : IRule<Claim>
 {
     public const string Code = "CLAIM_RULE_FAILED";
 

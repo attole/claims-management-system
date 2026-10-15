@@ -1,6 +1,6 @@
 namespace ClaimsModule.Domain.Core.Base.Checks;
 
-public class CheckSet<TSubject, TInput, TFinding>
+internal class CheckSet<TSubject, TInput, TFinding>
     where TFinding : IFinding
 {
     private readonly List<Func<TInput, ICheck<TSubject, TFinding>>> _checksFromInput = [];

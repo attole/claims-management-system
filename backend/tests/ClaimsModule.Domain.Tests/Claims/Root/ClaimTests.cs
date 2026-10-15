@@ -1,17 +1,17 @@
 using ClaimsModule.Domain.Claims.Issues;
 using ClaimsModule.Domain.Claims.Issues.Checks;
 using ClaimsModule.Domain.Claims.Issues.Events;
-using ClaimsModule.Domain.Claims.Issues.Operations;
-using ClaimsModule.Domain.Claims.Loss.Operations;
+using ClaimsModule.Domain.Claims.Issues.Inputs;
+using ClaimsModule.Domain.Claims.Loss.Flows;
+using ClaimsModule.Domain.Claims.Loss.Inputs;
 using ClaimsModule.Domain.Claims.Parties.Events;
-using ClaimsModule.Domain.Claims.Parties.Operations;
+using ClaimsModule.Domain.Claims.Parties.Inputs;
 using ClaimsModule.Domain.Claims.RiskObjects;
-using ClaimsModule.Domain.Claims.RiskObjects.Operations;
+using ClaimsModule.Domain.Claims.RiskObjects.Inputs;
 using ClaimsModule.Domain.Claims.Root;
 using ClaimsModule.Domain.Claims.Root.Events;
-using ClaimsModule.Domain.Claims.Root.Operations;
+using ClaimsModule.Domain.Claims.Root.Inputs;
 using ClaimsModule.Domain.Claims.Root.Rules;
-using ClaimsModule.Domain.Claims.Root.Transitions;
 using ClaimsModule.Domain.Claims.StateChanges;
 using ClaimsModule.Domain.Tests.Support.Claims;
 
@@ -77,7 +77,7 @@ public sealed class ClaimTests
     [Trait("Rule", IsClaimEditable.Code)]
     public void AddParty_ToAClosedClaim_ReturnsTheFindingAndEvaluatesNothing()
     {
-        var claim = TestClaims.InState(new ClaimClosedState());
+        var claim = TestClaims.InState<ClaimClosedState>();
         var issuesBefore = claim.Issues.Count;
         var input = new AddPartyInput(
             TestClaims.Claimant(),
@@ -95,7 +95,7 @@ public sealed class ClaimTests
     [Trait("Rule", "S:ST-Reopened-Open")]
     public void Reopen_BySupervisor_EndsInOpenWithTwoStateChanges()
     {
-        var claim = TestClaims.InState(new ClaimClosedState());
+        var claim = TestClaims.InState<ClaimClosedState>();
         var input = new ReopenClaimInput(
             TestClaims.Supervisor,
             TestClaims.Actor,
@@ -116,7 +116,7 @@ public sealed class ClaimTests
     [Trait("Rule", HasPermittedRole.Code)]
     public void Reopen_ByAHandler_ReturnsTheFindingAndStaysClosed()
     {
-        var claim = TestClaims.InState(new ClaimClosedState());
+        var claim = TestClaims.InState<ClaimClosedState>();
         var input = new ReopenClaimInput(TestClaims.Handler, TestClaims.Actor, TestClaims.Later, TestClaims.Reference())
         {
             Reason = _reason,
@@ -137,7 +137,7 @@ public sealed class ClaimTests
 
         var outcome = claim.Open(input);
 
-        outcome.Value.Should().BeOfType<ClaimOpenState>();
+        outcome.Value.To.Should().BeOfType<ClaimOpenState>();
     }
 
     [Fact]
@@ -235,7 +235,7 @@ public sealed class ClaimTests
     [Fact]
     public void AssignHandler_WhenTheClaimIsWithdrawn_LeavesTheClaimUntouched()
     {
-        var claim = TestClaims.InState(new ClaimWithdrawnState());
+        var claim = TestClaims.InState<ClaimWithdrawnState>();
         var updatedAt = claim.UpdatedAt;
         var input = new AssignHandlerInput(Guid.NewGuid(), TestClaims.Actor, TestClaims.Later, TestClaims.Reference());
 
@@ -353,7 +353,7 @@ public sealed class ClaimTests
     [Trait("Rule", "S:ST-Open-Withdrawn")]
     public void Withdraw_RaisesTheReasonOnTheStateChangedEvent()
     {
-        var claim = TestClaims.InState(new ClaimOpenState());
+        var claim = TestClaims.InState<ClaimOpenState>();
         var reason = new StateChangeReason("CUSTOMER_REQUEST", "The insured withdrew the claim");
         var input = new WithdrawClaimInput(
             TestClaims.Handler,
@@ -374,7 +374,7 @@ public sealed class ClaimTests
     [Trait("Rule", "S:ST-Reopened-Open")]
     public void Reopen_RaisesAStateChangedEventForEachMove()
     {
-        var claim = TestClaims.InState(new ClaimClosedState());
+        var claim = TestClaims.InState<ClaimClosedState>();
         var input = new ReopenClaimInput(
             TestClaims.Supervisor,
             TestClaims.Actor,
@@ -414,7 +414,7 @@ public sealed class ClaimTests
         var claim = TestClaims.Empty();
         var loss = TestClaims.Loss(TestClaims.Start.AddDays(-1), TestClaims.Description);
         var update = new UpdateLossDetailsInput(loss, TestClaims.Actor, TestClaims.Later, TestClaims.Reference());
-        new UpdateLossDetailsOperation().Execute(claim, update);
+        UpdateLossDetailsOperation.Execute(claim, update);
         claim.PopEvents();
         var input = new EvaluateIssuesInput(TestClaims.Later, TestClaims.Actor, TestClaims.Reference());
 
@@ -432,7 +432,7 @@ public sealed class ClaimTests
         var claim = TestClaims.Create(TestClaims.Claimant());
         var loss = TestClaims.Loss(TestClaims.Later.AddDays(5), TestClaims.Description);
         var update = new UpdateLossDetailsInput(loss, TestClaims.Actor, TestClaims.Start, TestClaims.Reference());
-        new UpdateLossDetailsOperation().Execute(claim, update);
+        UpdateLossDetailsOperation.Execute(claim, update);
         var input = new EvaluateIssuesInput(TestClaims.Later, TestClaims.Actor, TestClaims.Reference());
 
         claim.EvaluateIssues(input);
@@ -466,6 +466,6 @@ public sealed class ClaimTests
         claim.SetSeverity(input);
 
         claim.PopEvents().OfType<ValidationIssueRaisedEvent>().Should().BeEmpty();
-        claim.Issues.Should().HaveCount(4);
+        claim.Issues.Count(issue => issue.IsCurrent).Should().Be(4);
     }
 }

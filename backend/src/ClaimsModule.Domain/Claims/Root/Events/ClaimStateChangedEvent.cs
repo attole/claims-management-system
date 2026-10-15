@@ -4,10 +4,8 @@ using ClaimsModule.Domain.Common.Events;
 namespace ClaimsModule.Domain.Claims.Root.Events;
 
 public sealed record ClaimStateChangedEvent(
-    Guid EventId,
-    DateTimeOffset OccurredAt,
-    Guid ActorId,
+    EventStamp Stamp,
     Guid ClaimId,
     string From,
     string To,
-    StateChangeReason Reason) : DomainEvent(EventId, OccurredAt, ActorId);
+    StateChangeReason Reason) : DomainEvent(Stamp);

@@ -7,10 +7,9 @@ public sealed class CreationOperationTests
     [Fact]
     public void Execute_ReturnsTheCreatedValueWithoutASubject()
     {
-        var operation = new SampleCreationOperation();
         var input = new SampleInput("created");
 
-        var outcome = operation.Execute(input);
+        var outcome = SampleCreationOperation.Execute(input);
 
         outcome.IsSuccess.Should().BeTrue();
         outcome.Value.Should().Be("created");

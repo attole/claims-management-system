@@ -2,7 +2,7 @@ using ClaimsModule.Domain.Tests.Support.Common;
 
 namespace ClaimsModule.Domain.Tests.Support.Core;
 
-public sealed class DuplicateSourceSampleTransition : SampleTransition
+internal sealed class DuplicateSourceSampleTransition : SampleTransition<DuplicateSourceSampleTransition>
 {
     public DuplicateSourceSampleTransition() : base(new ClosedSampleState())
     {

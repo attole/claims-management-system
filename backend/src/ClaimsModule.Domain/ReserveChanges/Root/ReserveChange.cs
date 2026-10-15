@@ -1,12 +1,11 @@
-using ClaimsModule.Domain.Common;
 using ClaimsModule.Domain.Common.Capabilities;
 using ClaimsModule.Domain.Common.Entities;
 using ClaimsModule.Domain.Core.Base.Flows;
 using ClaimsModule.Domain.Core.Rules;
-using ClaimsModule.Domain.ReserveChanges.Root.Bases;
+using ClaimsModule.Domain.Core.Transitions;
 using ClaimsModule.Domain.ReserveChanges.Root.Events;
-using ClaimsModule.Domain.ReserveChanges.Root.Operations;
-using ClaimsModule.Domain.ReserveChanges.Root.Transitions;
+using ClaimsModule.Domain.ReserveChanges.Root.Flows;
+using ClaimsModule.Domain.ReserveChanges.Root.Inputs;
 
 namespace ClaimsModule.Domain.ReserveChanges.Root;
 
@@ -76,93 +75,52 @@ public sealed class ReserveChange : AggregateRoot,
 
     public static FlowOutcome<ReserveChange, DomainFinding> Submit(SubmitReserveInput input)
     {
-        var outcome = new SubmitReserveOperation().Execute(input);
-
-        if (!outcome.IsSuccess)
-        {
-            return outcome;
-        }
-
-        var reserve = outcome.Value;
-        var submitted = new ReserveSubmittedEvent(
-            Ids.Next(input.Now),
-            input.Now,
-            input.ActorId,
-            reserve.Id,
-            reserve.Details.ReserveId,
-            reserve.Details.ClaimId,
-            reserve.Details.Amount);
-        reserve.Raise(submitted);
-        reserve.AutoApprove(input);
-
-        return outcome;
+        return SubmitReserveOperation.Execute(input)
+            .OnSuccess(reserve => reserve.Raise(new ReserveSubmittedEvent(
+                input.Stamp(),
+                reserve.Id,
+                reserve.Details.ReserveId,
+                reserve.Details.ClaimId,
+                reserve.Details.Amount)))
+            .OnSuccess(reserve => reserve.AutoApprove(input));
     }
 
-    public FlowOutcome<ReserveApprovalState, DomainFinding> Approve(ApproveReserveInput input)
+    public FlowOutcome<StateChange<ReserveApprovalState>, DomainFinding> Approve(ApproveReserveInput input)
     {
-        var from = ApprovalState;
-        var outcome = new ApproveReserveTransition().Execute(this, input);
-
-        if (outcome.IsSuccess)
-        {
-            RecordApproval(from, input);
-        }
-
-        return outcome;
+        return ApproveReserveTransition.Execute(this, input)
+            .OnSuccess(change => RecordApproval(change, input))
+            .OnSuccess(() => Settle(input));
     }
 
-    public FlowOutcome<ReserveApprovalState, DomainFinding> Reject(RejectReserveInput input)
+    public FlowOutcome<StateChange<ReserveApprovalState>, DomainFinding> Reject(RejectReserveInput input)
     {
-        var from = ApprovalState;
-        var outcome = new RejectReserveTransition().Execute(this, input);
-
-        if (outcome.IsSuccess)
-        {
-            RecordApproval(from, input);
-            CancelPosting(input);
-        }
-
-        return outcome;
+        return RejectReserveTransition.Execute(this, input)
+            .OnSuccess(change => RecordApproval(change, input))
+            .OnSuccess(() => CancelPosting(input))
+            .OnSuccess(() => Settle(input));
     }
 
-    public FlowOutcome<ReserveApprovalState, DomainFinding> Retract(RetractReserveInput input)
+    public FlowOutcome<StateChange<ReserveApprovalState>, DomainFinding> Retract(RetractReserveInput input)
     {
-        var from = ApprovalState;
-        var outcome = new RetractReserveTransition().Execute(this, input);
-
-        if (outcome.IsSuccess)
-        {
-            RecordApproval(from, input);
-            CancelPosting(input);
-        }
-
-        return outcome;
+        return RetractReserveTransition.Execute(this, input)
+            .OnSuccess(change => RecordApproval(change, input))
+            .OnSuccess(() => CancelPosting(input))
+            .OnSuccess(() => Settle(input));
     }
 
-    public FlowOutcome<ReservePostingState, DomainFinding> MarkPosted(MarkReservePostedInput input)
+    public FlowOutcome<StateChange<ReservePostingState>, DomainFinding> MarkPosted(MarkReservePostedInput input)
     {
-        var from = PostingState;
-        var outcome = new MarkReservePostedTransition().Execute(this, input);
-
-        if (outcome.IsSuccess)
-        {
-            RecordPosting(from, input);
-        }
-
-        return outcome;
+        return MarkReservePostedTransition.Execute(this, input)
+            .OnSuccess(change => RecordPosting(change, input))
+            .OnSuccess(() => Settle(input));
     }
 
-    public FlowOutcome<ReservePostingState, DomainFinding> MarkPostingFailed(MarkReservePostingFailedInput input)
+    public FlowOutcome<StateChange<ReservePostingState>, DomainFinding> MarkPostingFailed(
+        MarkReservePostingFailedInput input)
     {
-        var from = PostingState;
-        var outcome = new MarkReservePostingFailedTransition().Execute(this, input);
-
-        if (outcome.IsSuccess)
-        {
-            RecordPosting(from, input);
-        }
-
-        return outcome;
+        return MarkReservePostingFailedTransition.Execute(this, input)
+            .OnSuccess(change => RecordPosting(change, input))
+            .OnSuccess(() => Settle(input));
     }
 
     private void Touch(DateTimeOffset now)
@@ -170,60 +128,47 @@ public sealed class ReserveChange : AggregateRoot,
         UpdatedAt = now;
     }
 
+    private void Settle(ReserveChangeBaseOperationInput input)
+    {
+        Touch(input.Now);
+    }
+
     private void AutoApprove(SubmitReserveInput input)
     {
         var autoApprove = new AutoApproveReserveInput(input.ActorRole, input.ActorId, input.Now, input.Snapshot);
-        var from = ApprovalState;
-        var outcome = new AutoApproveReserveTransition().Execute(this, autoApprove);
-
-        if (outcome.IsSuccess)
-        {
-            RecordApproval(from, autoApprove);
-        }
+        AutoApproveReserveTransition.Execute(this, autoApprove)
+            .OnSuccess(change => RecordApproval(change, autoApprove))
+            .OnSuccess(() => Settle(autoApprove));
     }
 
     private void CancelPosting(ReserveChangeBaseTransitionInput input)
     {
         var cancel = new CancelReservePostingInput(input.ActorId, input.Now);
-        var from = PostingState;
-        var outcome = new CancelReservePostingTransition().Execute(this, cancel);
-
-        if (outcome.IsSuccess)
-        {
-            RecordPosting(from, cancel);
-        }
+        CancelReservePostingTransition.Execute(this, cancel).OnSuccess(change => RecordPosting(change, cancel));
     }
 
-    private void RecordApproval(ReserveApprovalState from, ReserveChangeBaseTransitionInput input)
+    private void RecordApproval(StateChange<ReserveApprovalState> change, ReserveChangeBaseTransitionInput input)
     {
-        var changed = new ReserveApprovalStateChangedEvent(
-            Ids.Next(input.Now),
-            input.Now,
-            input.ActorId,
+        Raise(new ReserveApprovalStateChangedEvent(
+            input.Stamp(),
             Id,
             Details.ReserveId,
             Details.ClaimId,
-            from.Name,
-            ApprovalState.Name,
-            input.Reason);
-        Touch(input.Now);
-        Raise(changed);
+            change.From.Name,
+            change.To.Name,
+            input.Reason));
     }
 
-    private void RecordPosting(ReservePostingState from, ReserveChangeBasePostingTransitionInput input)
+    private void RecordPosting(StateChange<ReservePostingState> change, ReserveChangeBasePostingTransitionInput input)
     {
-        var changed = new ReservePostingStateChangedEvent(
-            Ids.Next(input.Now),
-            input.Now,
-            input.ActorId,
+        Raise(new ReservePostingStateChangedEvent(
+            input.Stamp(),
             Id,
             Details.ReserveId,
             Details.ClaimId,
-            from.Name,
-            PostingState.Name,
+            change.From.Name,
+            change.To.Name,
             PostingDetails.JobId,
-            PostingDetails.FailureReason);
-        Touch(input.Now);
-        Raise(changed);
+            PostingDetails.FailureReason));
     }
 }

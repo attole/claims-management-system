@@ -37,4 +37,24 @@ public sealed class FlowOutcome<TValue, TFinding>
     {
         return new FlowOutcome<TValue, TFinding>(FlowStatus.Failed, default!, result);
     }
+
+    public FlowOutcome<TValue, TFinding> OnSuccess(Action<TValue> then)
+    {
+        if (IsSuccess)
+        {
+            then(_value);
+        }
+
+        return this;
+    }
+
+    public FlowOutcome<TValue, TFinding> OnSuccess(Action then)
+    {
+        if (IsSuccess)
+        {
+            then();
+        }
+
+        return this;
+    }
 }

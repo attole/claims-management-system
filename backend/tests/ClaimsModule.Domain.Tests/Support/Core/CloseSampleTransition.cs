@@ -4,7 +4,7 @@ using ClaimsModule.Domain.Tests.Support.Common;
 
 namespace ClaimsModule.Domain.Tests.Support.Core;
 
-public sealed class CloseSampleTransition : SampleTransition
+internal sealed class CloseSampleTransition : SampleTransition<CloseSampleTransition>
 {
     public const string TextRequired = "TEXT_REQUIRED";
 

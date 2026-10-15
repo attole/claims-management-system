@@ -3,9 +3,7 @@ using ClaimsModule.Domain.Common.Events;
 namespace ClaimsModule.Domain.Claims.Parties.Events;
 
 public sealed record PartyAddedEvent(
-    Guid EventId,
-    DateTimeOffset OccurredAt,
-    Guid ActorId,
+    EventStamp Stamp,
     Guid ClaimId,
     Guid PartyId,
-    string Role) : DomainEvent(EventId, OccurredAt, ActorId);
+    string Role) : DomainEvent(Stamp);

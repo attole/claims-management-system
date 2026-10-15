@@ -1,3 +1,4 @@
+using ClaimsModule.Domain.Common.Events;
 using ClaimsModule.Domain.Tests.Support.Common;
 
 namespace ClaimsModule.Domain.Tests.Common.Entities;
@@ -45,7 +46,7 @@ public sealed class EntityTests
     public void PopEvents_ReturnsRaisedEventsAndClearsThem()
     {
         var entity = new SampleEntity(Guid.NewGuid());
-        var domainEvent = new SampleEvent(Guid.NewGuid(), _now, Guid.Empty);
+        var domainEvent = new SampleEvent(new EventStamp(Guid.NewGuid(), _now, Guid.Empty));
         entity.Add(domainEvent);
 
         var result = entity.PopEvents();

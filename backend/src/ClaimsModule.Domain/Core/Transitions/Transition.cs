@@ -7,37 +7,40 @@ using ClaimsModule.Domain.Core.Rules;
 
 namespace ClaimsModule.Domain.Core.Transitions;
 
-public abstract class Transition<TSubject, TState, TInput> : Operation<TSubject, TInput, TState>
+internal abstract class Transition<TSelf, TSubject, TState, TInput>
+    : Operation<TSelf, TSubject, TInput, StateChange<TState>>
+    where TSelf : Transition<TSelf, TSubject, TState, TInput>, new()
     where TSubject : IStateful<TState>
     where TState : class, IMarked, IEquatable<TState>
     where TInput : OperationInput
 {
     private readonly Dictionary<TState, RuleSet<TSubject, TInput>> _rulesBySource = [];
+    private readonly TState _target;
 
     protected Transition(TState target)
     {
-        Target = target;
+        _target = target;
     }
 
-    public TState Target { get; }
+    public static TState Target => Instance._target;
 
-    public IReadOnlyCollection<TState> Sources => _rulesBySource.Keys;
+    public static IReadOnlyCollection<TState> Sources => Instance._rulesBySource.Keys;
 
     protected sealed override FlowDecision WhenBlocked => FlowDecision.Stop;
 
-    public sealed override FlowOutcome<TState, DomainFinding> Execute(TSubject subject, TInput input)
+    protected sealed override FlowOutcome<StateChange<TState>, DomainFinding> Run(TSubject subject, TInput input)
     {
         var current = subject.State;
         bool isDeclaredSource = _rulesBySource.ContainsKey(current);
 
         if (isDeclaredSource)
         {
-            return base.Execute(subject, input);
+            return base.Run(subject, input);
         }
 
-        var refusal = CheckResult<DomainFinding>.Found(new TransitionFinding(current.Name, Target.Name));
+        var refusal = CheckResult<DomainFinding>.Found(new TransitionFinding(current.Name, _target.Name));
 
-        return FlowOutcome<TState, DomainFinding>.Failure(refusal);
+        return FlowOutcome<StateChange<TState>, DomainFinding>.Failure(refusal);
     }
 
     protected AllowedSourcesBuilder<TSubject, TState, TInput> AllowedFrom(params TState[] sources)

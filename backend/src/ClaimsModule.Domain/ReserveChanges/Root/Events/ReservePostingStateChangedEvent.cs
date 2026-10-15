@@ -3,13 +3,11 @@ using ClaimsModule.Domain.Common.Events;
 namespace ClaimsModule.Domain.ReserveChanges.Root.Events;
 
 public sealed record ReservePostingStateChangedEvent(
-    Guid EventId,
-    DateTimeOffset OccurredAt,
-    Guid ActorId,
+    EventStamp Stamp,
     Guid ReserveChangeId,
     Guid ReserveId,
     Guid ClaimId,
     string From,
     string To,
     string JobId,
-    string FailureReason) : DomainEvent(EventId, OccurredAt, ActorId);
+    string FailureReason) : DomainEvent(Stamp);

@@ -1,4 +1,5 @@
-using ClaimsModule.Domain.Claims.RiskObjects.Operations;
+using ClaimsModule.Domain.Claims.RiskObjects.Flows;
+using ClaimsModule.Domain.Claims.RiskObjects.Inputs;
 using ClaimsModule.Domain.Claims.RiskObjects.Rules;
 using ClaimsModule.Domain.Tests.Support.Claims;
 
@@ -35,7 +36,7 @@ public sealed class IsRiskObjectPresentTests
         var claim = TestClaims.Create(TestClaims.Claimant());
         var riskObjectId = claim.RiskObjects[0].Id;
         var input = new RemoveRiskObjectInput(riskObjectId, TestClaims.Actor, TestClaims.Later, TestClaims.Reference());
-        new RemoveRiskObjectOperation().Execute(claim, input);
+        RemoveRiskObjectOperation.Execute(claim, input);
 
         var result = new IsRiskObjectPresent(riskObjectId).Check(claim);
 

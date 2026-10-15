@@ -3,13 +3,16 @@ using ClaimsModule.Domain.Tests.Support.Common;
 
 namespace ClaimsModule.Domain.Tests.Support.Core;
 
-public abstract class SampleTransition(SampleState target) : Transition<SampleSubject, SampleState, SampleInput>(target)
+internal abstract class SampleTransition<TSelf>(SampleState target)
+    : Transition<TSelf, SampleSubject, SampleState, SampleInput>(target)
+    where TSelf : SampleTransition<TSelf>, new()
 {
-    protected override SampleState Apply(SampleSubject subject, SampleInput input)
+    protected override StateChange<SampleState> Apply(SampleSubject subject, SampleInput input)
     {
+        var change = new StateChange<SampleState>(subject.State, Target);
         subject.Log.Add($"apply {input.Text} from {subject.State.Name}");
         subject.State = Target;
 
-        return subject.State;
+        return change;
     }
 }

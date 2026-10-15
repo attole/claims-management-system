@@ -1,6 +1,6 @@
 using ClaimsModule.Domain.ReserveChanges.Root;
-using ClaimsModule.Domain.ReserveChanges.Root.Operations;
-using ClaimsModule.Domain.ReserveChanges.Root.Transitions;
+using ClaimsModule.Domain.ReserveChanges.Root.Flows;
+using ClaimsModule.Domain.ReserveChanges.Root.Inputs;
 using ClaimsModule.Domain.Reserves.Root;
 using ClaimsModule.Domain.Tests.Support.Claims;
 
@@ -41,7 +41,7 @@ public static class TestReserves
     public static ReserveChange Submit(decimal amount, ReserveSnapshot snapshot)
     {
         var input = SubmitInput(amount, snapshot);
-        var reserve = new SubmitReserveOperation().Execute(input).Value;
+        var reserve = SubmitReserveOperation.Execute(input).Value;
         reserve.PopEvents();
 
         return reserve;
@@ -54,7 +54,7 @@ public static class TestReserves
         {
             Reason = "Not supported by the report",
         };
-        new RejectReserveTransition().Execute(reserve, input);
+        RejectReserveTransition.Execute(reserve, input);
         reserve.PopEvents();
 
         return reserve;
@@ -64,7 +64,7 @@ public static class TestReserves
     {
         var reserve = Submit(50_000m);
         var input = new RetractReserveInput(TestClaims.Handler, Submitter, TestClaims.Later, Snapshot());
-        new RetractReserveTransition().Execute(reserve, input);
+        RetractReserveTransition.Execute(reserve, input);
         reserve.PopEvents();
 
         return reserve;
@@ -74,7 +74,7 @@ public static class TestReserves
     {
         var reserve = Submit(amount);
         var input = new AutoApproveReserveInput(TestClaims.Handler, Submitter, TestClaims.Later, Snapshot());
-        new AutoApproveReserveTransition().Execute(reserve, input);
+        AutoApproveReserveTransition.Execute(reserve, input);
         reserve.PopEvents();
 
         return reserve;

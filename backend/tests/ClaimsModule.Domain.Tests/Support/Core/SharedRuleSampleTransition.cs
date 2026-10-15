@@ -2,7 +2,7 @@ using ClaimsModule.Domain.Tests.Support.Common;
 
 namespace ClaimsModule.Domain.Tests.Support.Core;
 
-public sealed class SharedRuleSampleTransition : SampleTransition
+internal sealed class SharedRuleSampleTransition : SampleTransition<SharedRuleSampleTransition>
 {
     public const string SharedDenied = "SHARED_DENIED";
 

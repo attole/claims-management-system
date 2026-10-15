@@ -21,7 +21,7 @@ public sealed class IsClaimEditableTests
     [Trait("Rule", IsClaimEditable.Code)]
     public void Check_WhenTheClaimIsClosed_ReturnsTheFinding()
     {
-        var claim = TestClaims.InState(new ClaimClosedState());
+        var claim = TestClaims.InState<ClaimClosedState>();
 
         var result = new IsClaimEditable().Check(claim);
 
@@ -32,7 +32,7 @@ public sealed class IsClaimEditableTests
     [Trait("Rule", IsClaimEditable.Code)]
     public void Check_WhenTheClaimIsWithdrawn_ReturnsTheFinding()
     {
-        var claim = TestClaims.InState(new ClaimWithdrawnState());
+        var claim = TestClaims.InState<ClaimWithdrawnState>();
 
         var result = new IsClaimEditable().Check(claim);
 

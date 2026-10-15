@@ -1,5 +1,5 @@
 using ClaimsModule.Domain.Claims.Issues;
-using ClaimsModule.Domain.Claims.Root.Bases;
+using ClaimsModule.Domain.Claims.Root.Inputs;
 using ClaimsModule.Domain.Common.Roles;
 
 namespace ClaimsModule.Domain.Tests.Support.Claims;

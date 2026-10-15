@@ -28,7 +28,7 @@ BOOL_MEMBER = re.compile(
 BOOL_EXEMPT = {"Equals", "Authorize"}
 TEST_METHOD = re.compile(r"\[(?:Fact|Theory)\](?:\s*\[[^\]]*\])*\s*public (?:async )?(?:void|Task) (\w+)\(")
 INTERFACE = re.compile(r"^\s*(?:public|internal)(?: partial)? interface (\w+)", re.M)
-ENTITY_SUBFOLDERS = {"Operations", "Transitions", "Events", "Rules", "Checks", "Bases"}
+ENTITY_SUBFOLDERS = {"Inputs", "Flows", "Events", "Rules", "Checks", "Bases"}
 AGGREGATE_FOLDERS = ("Claims", "Reserves", "ReserveChanges")
 LAYER_FORBIDS = {
     "Common": ["Claims", "Core"],
@@ -419,12 +419,12 @@ def check_domain(files):
         is_aggregate = parts[0] in AGGREGATE_FOLDERS
         if is_aggregate and len(parts) > 3 and parts[2] not in ENTITY_SUBFOLDERS:
             fail("layout", f"{DOMAIN}/{rel}: an entity folder holds only {sorted(ENTITY_SUBFOLDERS)}")
-        if is_aggregate and "Operations" in parts[:-1] and not stem.endswith("Operation"):
-            fail("naming", f"{DOMAIN}/{rel}: a file in Operations/ is named <Verb><Thing>Operation")
+        if is_aggregate and "Flows" in parts[:-1] and not stem.endswith(("Operation", "Transition", "Flow")):
+            fail("naming", f"{DOMAIN}/{rel}: a file in Flows/ is named <Verb><Thing>Operation, ...Transition or ...Flow")
+        if is_aggregate and "Inputs" in parts[:-1] and not stem.endswith("Input"):
+            fail("naming", f"{DOMAIN}/{rel}: a file in Inputs/ is named <Verb><Thing>Input")
         if is_aggregate and "Events" in parts[:-1] and not stem.endswith("Event"):
             fail("naming", f"{DOMAIN}/{rel}: a file in Events/ is named <Thing><PastVerb>Event")
-        if is_aggregate and "Transitions" in parts[:-1] and not stem.endswith("Transition"):
-            fail("naming", f"{DOMAIN}/{rel}: a file in Transitions/ is named <Verb><Thing>Transition")
         if is_aggregate and re.search(r"/(Rules|Checks)/[^/]+\.cs$", rel):
             if not re.match(r"^(Is|Has)[A-Z]", stem):
                 fail("naming", f"{DOMAIN}/{rel}: a rule or check class must start with Is or Has")

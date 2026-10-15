@@ -1,4 +1,5 @@
-using ClaimsModule.Domain.Claims.Parties.Operations;
+using ClaimsModule.Domain.Claims.Parties.Flows;
+using ClaimsModule.Domain.Claims.Parties.Inputs;
 using ClaimsModule.Domain.Claims.Parties.Rules;
 using ClaimsModule.Domain.Tests.Support.Claims;
 
@@ -45,7 +46,7 @@ public sealed class IsNotLastClaimantTests
     {
         var claim = TestClaims.Create(TestClaims.Claimant(), TestClaims.Claimant());
         var removed = claim.Parties[0].Id;
-        new RemovePartyOperation().Execute(claim, new RemovePartyInput(
+        RemovePartyOperation.Execute(claim, new RemovePartyInput(
             removed,
             TestClaims.Actor,
             TestClaims.Later,

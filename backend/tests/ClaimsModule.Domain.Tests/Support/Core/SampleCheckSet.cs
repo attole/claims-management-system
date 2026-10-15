@@ -3,7 +3,7 @@ using ClaimsModule.Domain.Core.Rules;
 
 namespace ClaimsModule.Domain.Tests.Support.Core;
 
-public sealed class SampleCheckSet : CheckSet<SampleSubject, SampleInput, DomainFinding>
+internal sealed class SampleCheckSet : CheckSet<SampleSubject, SampleInput, DomainFinding>
 {
     public SampleCheckSet(
         IEnumerable<IRule<SampleSubject>> rules,

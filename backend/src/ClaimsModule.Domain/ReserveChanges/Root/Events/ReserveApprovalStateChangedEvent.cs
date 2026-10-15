@@ -3,12 +3,10 @@ using ClaimsModule.Domain.Common.Events;
 namespace ClaimsModule.Domain.ReserveChanges.Root.Events;
 
 public sealed record ReserveApprovalStateChangedEvent(
-    Guid EventId,
-    DateTimeOffset OccurredAt,
-    Guid ActorId,
+    EventStamp Stamp,
     Guid ReserveChangeId,
     Guid ReserveId,
     Guid ClaimId,
     string From,
     string To,
-    string Reason) : DomainEvent(EventId, OccurredAt, ActorId);
+    string Reason) : DomainEvent(Stamp);

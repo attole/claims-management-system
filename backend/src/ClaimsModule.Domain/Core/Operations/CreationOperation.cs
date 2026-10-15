@@ -3,10 +3,11 @@ using ClaimsModule.Domain.Core.Rules;
 
 namespace ClaimsModule.Domain.Core.Operations;
 
-public abstract class CreationOperation<TInput, TValue> : Operation<NoSubject, TInput, TValue>
+internal abstract class CreationOperation<TSelf, TInput, TValue> : Operation<TSelf, NoSubject, TInput, TValue>
+    where TSelf : CreationOperation<TSelf, TInput, TValue>, new()
     where TInput : OperationInput
 {
-    public FlowOutcome<TValue, DomainFinding> Execute(TInput input)
+    public static FlowOutcome<TValue, DomainFinding> Execute(TInput input)
     {
         return Execute(NoSubject.Value, input);
     }

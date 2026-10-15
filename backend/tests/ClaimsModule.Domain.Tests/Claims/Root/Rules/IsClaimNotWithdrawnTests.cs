@@ -10,7 +10,7 @@ public sealed class IsClaimNotWithdrawnTests
     [Trait("Rule", IsClaimNotWithdrawn.Code)]
     public void Check_WhenTheClaimIsClosed_Passes()
     {
-        var claim = TestClaims.InState(new ClaimClosedState());
+        var claim = TestClaims.InState<ClaimClosedState>();
 
         var result = new IsClaimNotWithdrawn().Check(claim);
 
@@ -21,7 +21,7 @@ public sealed class IsClaimNotWithdrawnTests
     [Trait("Rule", IsClaimNotWithdrawn.Code)]
     public void Check_WhenTheClaimIsWithdrawn_ReturnsTheFinding()
     {
-        var claim = TestClaims.InState(new ClaimWithdrawnState());
+        var claim = TestClaims.InState<ClaimWithdrawnState>();
 
         var result = new IsClaimNotWithdrawn().Check(claim);
 

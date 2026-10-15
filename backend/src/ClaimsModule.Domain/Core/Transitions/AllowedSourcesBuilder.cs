@@ -4,7 +4,7 @@ using ClaimsModule.Domain.Core.Rules;
 
 namespace ClaimsModule.Domain.Core.Transitions;
 
-public sealed class AllowedSourcesBuilder<TSubject, TState, TInput>
+internal sealed class AllowedSourcesBuilder<TSubject, TState, TInput>
     where TState : class, IMarked, IEquatable<TState>
     where TInput : OperationInput
 {

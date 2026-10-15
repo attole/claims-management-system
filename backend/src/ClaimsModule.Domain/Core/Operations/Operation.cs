@@ -4,7 +4,9 @@ using ClaimsModule.Domain.Core.Rules;
 
 namespace ClaimsModule.Domain.Core.Operations;
 
-public abstract class Operation<TSubject, TInput, TValue> : Flow<TSubject, TInput, TValue, DomainFinding>
+internal abstract class Operation<TSelf, TSubject, TInput, TValue>
+    : Flow<TSelf, TSubject, TInput, TValue, DomainFinding>
+    where TSelf : Operation<TSelf, TSubject, TInput, TValue>, new()
     where TInput : OperationInput
 {
     protected abstract TValue Apply(TSubject subject, TInput input);

@@ -1,6 +1,6 @@
 namespace ClaimsModule.Domain.Core.Base.Flows;
 
-public enum FlowDecision
+internal enum FlowDecision
 {
     Stop,
     Continue,

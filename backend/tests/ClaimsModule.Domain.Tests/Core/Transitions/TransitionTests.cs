@@ -14,7 +14,7 @@ public sealed class TransitionTests
         var subject = new SampleSubject { State = new OpenSampleState() };
         var input = new SampleInput("done");
 
-        var outcome = new CloseSampleTransition().Execute(subject, input);
+        var outcome = CloseSampleTransition.Execute(subject, input);
 
         outcome.IsSuccess.Should().BeTrue();
         subject.State.Should().Be(new ClosedSampleState());
@@ -26,7 +26,7 @@ public sealed class TransitionTests
         var subject = new SampleSubject { State = new OpenSampleState() };
         var input = new SampleInput("done");
 
-        new CloseSampleTransition().Execute(subject, input);
+        CloseSampleTransition.Execute(subject, input);
 
         subject.Log.Should().Equal("apply done from Open");
     }
@@ -37,9 +37,9 @@ public sealed class TransitionTests
         var subject = new SampleSubject { State = new OpenSampleState() };
         var input = new SampleInput("done");
 
-        var outcome = new CloseSampleTransition().Execute(subject, input);
+        var outcome = CloseSampleTransition.Execute(subject, input);
 
-        outcome.Value.Should().Be(new ClosedSampleState());
+        outcome.Value.To.Should().Be(new ClosedSampleState());
     }
 
     [Fact]
@@ -49,7 +49,7 @@ public sealed class TransitionTests
         var subject = new SampleSubject { State = new DraftSampleState() };
         var input = new SampleInput("done");
 
-        var outcome = new CloseSampleTransition().Execute(subject, input);
+        var outcome = CloseSampleTransition.Execute(subject, input);
 
         var finding = outcome.Blocking
             .Should().ContainSingle()
@@ -68,7 +68,7 @@ public sealed class TransitionTests
         var subject = new SampleSubject { State = new ClosedSampleState() };
         var input = new SampleInput("x");
 
-        var outcome = new CommonRuleSampleTransition().Execute(subject, input);
+        var outcome = CommonRuleSampleTransition.Execute(subject, input);
 
         outcome.Blocking.Should().ContainSingle().Which.Should().BeOfType<TransitionFinding>();
     }
@@ -79,9 +79,9 @@ public sealed class TransitionTests
     {
         var subject = new SampleSubject { State = new DraftSampleState() };
         var input = new SampleInput("done");
-        Flow<SampleSubject, SampleInput, SampleState, DomainFinding> flow = new CloseSampleTransition();
 
-        var outcome = flow.Execute(subject, input);
+        var outcome = Flow<CloseSampleTransition, SampleSubject, SampleInput, StateChange<SampleState>, DomainFinding>
+            .Execute(subject, input);
 
         outcome.Blocking.Should().ContainSingle().Which.Should().BeOfType<TransitionFinding>();
     }
@@ -92,7 +92,7 @@ public sealed class TransitionTests
         var subject = new SampleSubject { State = new OpenSampleState() };
         var input = new SampleInput(" ");
 
-        var outcome = new CloseSampleTransition().Execute(subject, input);
+        var outcome = CloseSampleTransition.Execute(subject, input);
 
         outcome.Blocking.Select(finding => finding.Code).Should().Equal(CloseSampleTransition.TextRequired);
         subject.State.Should().Be(new OpenSampleState());
@@ -105,7 +105,7 @@ public sealed class TransitionTests
         var subject = new SampleSubject { State = new DraftSampleState() };
         var input = new SampleInput("x");
 
-        var outcome = new OpenSampleTransition().Execute(subject, input);
+        var outcome = OpenSampleTransition.Execute(subject, input);
 
         outcome.IsSuccess.Should().BeTrue();
         subject.State.Should().Be(new OpenSampleState());
@@ -117,7 +117,7 @@ public sealed class TransitionTests
         var subject = new SampleSubject { State = new ClosedSampleState() };
         var input = new SampleInput("x");
 
-        var outcome = new OpenSampleTransition().Execute(subject, input);
+        var outcome = OpenSampleTransition.Execute(subject, input);
 
         outcome.Blocking.Select(finding => finding.Code).Should().Equal(OpenSampleTransition.ReopenDenied);
         subject.State.Should().Be(new ClosedSampleState());
@@ -129,7 +129,7 @@ public sealed class TransitionTests
         var subject = new SampleSubject { State = new DraftSampleState() };
         var input = new SampleInput("x");
 
-        var outcome = new CommonRuleSampleTransition().Execute(subject, input);
+        var outcome = CommonRuleSampleTransition.Execute(subject, input);
 
         outcome.Blocking.Select(finding => finding.Code).Should().Equal(CommonRuleSampleTransition.CommonDenied);
     }
@@ -140,7 +140,7 @@ public sealed class TransitionTests
         var subject = new SampleSubject { State = new OpenSampleState() };
         var input = new SampleInput("x");
 
-        var outcome = new CommonRuleSampleTransition().Execute(subject, input);
+        var outcome = CommonRuleSampleTransition.Execute(subject, input);
 
         outcome.Blocking.Select(finding => finding.Code).Should().Equal(CommonRuleSampleTransition.CommonDenied);
     }
@@ -151,7 +151,7 @@ public sealed class TransitionTests
         var subject = new SampleSubject { State = new DraftSampleState() };
         var input = new SampleInput("x");
 
-        var outcome = new SharedRuleSampleTransition().Execute(subject, input);
+        var outcome = SharedRuleSampleTransition.Execute(subject, input);
 
         outcome.Blocking.Select(finding => finding.Code).Should().Equal(SharedRuleSampleTransition.SharedDenied);
     }
@@ -162,7 +162,7 @@ public sealed class TransitionTests
         var subject = new SampleSubject { State = new OpenSampleState() };
         var input = new SampleInput("x");
 
-        var outcome = new SharedRuleSampleTransition().Execute(subject, input);
+        var outcome = SharedRuleSampleTransition.Execute(subject, input);
 
         outcome.Blocking.Select(finding => finding.Code).Should().Equal(SharedRuleSampleTransition.SharedDenied);
     }
@@ -170,10 +170,9 @@ public sealed class TransitionTests
     [Fact]
     public void Sources_AndTarget_AreDeclaredByTheTransition()
     {
-        var transition = new OpenSampleTransition();
+        SampleState[] declared = [new DraftSampleState(), new ClosedSampleState()];
 
-        transition.Target.Should().Be(new OpenSampleState());
-        transition.Sources.Should().BeEquivalentTo(
-            new SampleState[] { new DraftSampleState(), new ClosedSampleState() });
+        OpenSampleTransition.Target.Should().Be(new OpenSampleState());
+        OpenSampleTransition.Sources.Should().BeEquivalentTo(declared);
     }
 }

@@ -1,6 +1,7 @@
 using ClaimsModule.Domain.ReserveChanges.Root;
 using ClaimsModule.Domain.ReserveChanges.Root.Events;
-using ClaimsModule.Domain.ReserveChanges.Root.Transitions;
+using ClaimsModule.Domain.ReserveChanges.Root.Flows;
+using ClaimsModule.Domain.ReserveChanges.Root.Inputs;
 using ClaimsModule.Domain.Tests.Support.Claims;
 using ClaimsModule.Domain.Tests.Support.ReserveChanges;
 
@@ -36,7 +37,7 @@ public sealed class ReserveChangeTests
             TestReserves.Approver,
             TestClaims.Later,
             TestReserves.Snapshot());
-        new ApproveReserveTransition().Execute(reserve, input);
+        ApproveReserveTransition.Execute(reserve, input);
 
         reserve.IsApproved.Should().BeTrue();
     }
@@ -60,7 +61,7 @@ public sealed class ReserveChangeTests
         {
             Reason = "Not supported by the report",
         };
-        new RejectReserveTransition().Execute(reserve, input);
+        RejectReserveTransition.Execute(reserve, input);
 
         reserve.IsRejected.Should().BeTrue();
     }
@@ -75,7 +76,7 @@ public sealed class ReserveChangeTests
         {
             Reason = "Not supported by the report",
         };
-        new RejectReserveTransition().Execute(reserve, input);
+        RejectReserveTransition.Execute(reserve, input);
 
         reserve.IsApproved.Should().BeFalse();
     }

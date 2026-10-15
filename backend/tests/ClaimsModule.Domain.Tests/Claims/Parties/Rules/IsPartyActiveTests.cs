@@ -1,4 +1,5 @@
-using ClaimsModule.Domain.Claims.Parties.Operations;
+using ClaimsModule.Domain.Claims.Parties.Flows;
+using ClaimsModule.Domain.Claims.Parties.Inputs;
 using ClaimsModule.Domain.Claims.Parties.Rules;
 using ClaimsModule.Domain.Tests.Support.Claims;
 
@@ -35,7 +36,7 @@ public sealed class IsPartyActiveTests
         var claim = TestClaims.Create(TestClaims.Claimant(), TestClaims.Witness());
         var partyId = claim.Parties[1].Id;
         var input = new RemovePartyInput(partyId, TestClaims.Actor, TestClaims.Later, TestClaims.Reference());
-        new RemovePartyOperation().Execute(claim, input);
+        RemovePartyOperation.Execute(claim, input);
 
         var result = new IsPartyActive(partyId).Check(claim);
 

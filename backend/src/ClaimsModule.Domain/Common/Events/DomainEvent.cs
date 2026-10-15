@@ -1,3 +1,10 @@
 namespace ClaimsModule.Domain.Common.Events;
 
-public abstract record DomainEvent(Guid EventId, DateTimeOffset OccurredAt, Guid ActorId) : IDomainEvent;
+public abstract record DomainEvent(EventStamp Stamp) : IDomainEvent
+{
+    public Guid EventId => Stamp.EventId;
+
+    public DateTimeOffset OccurredAt => Stamp.OccurredAt;
+
+    public Guid ActorId => Stamp.ActorId;
+}

@@ -18,7 +18,7 @@ public sealed class ClaimBaseTransitionTests
             TestClaims.Later,
             TestClaims.Reference());
 
-        var outcome = new SampleClaimTransition().Execute(claim, input);
+        var outcome = SampleClaimTransition.Execute(claim, input);
 
         outcome.IsSuccess.Should().BeTrue();
         claim.State.Should().BeOfType<ClaimOpenState>();
@@ -35,10 +35,10 @@ public sealed class ClaimBaseTransitionTests
             TestClaims.Actor,
             TestClaims.Later,
             TestClaims.Reference());
-        new SampleClaimTransition().Execute(claim, input);
+        SampleClaimTransition.Execute(claim, input);
         claim.PopEvents();
 
-        new SampleClaimTransition().Execute(claim, input);
+        SampleClaimTransition.Execute(claim, input);
 
         claim.PopEvents().OfType<ClaimStateChangedEvent>().Should().BeEmpty();
     }
@@ -54,7 +54,7 @@ public sealed class ClaimBaseTransitionTests
             TestClaims.Later,
             TestClaims.Reference());
 
-        var outcome = new BlockedSampleClaimTransition().Execute(claim, input);
+        var outcome = BlockedSampleClaimTransition.Execute(claim, input);
 
         outcome.Blocking.Should().ContainSingle().Which.Code.Should().Be(FailingClaimRule.Code);
         claim.State.Should().BeOfType<ClaimDraftState>();
@@ -72,9 +72,9 @@ public sealed class ClaimBaseTransitionTests
             TestClaims.Actor,
             TestClaims.Later,
             TestClaims.Reference());
-        new SampleClaimTransition().Execute(claim, input);
+        SampleClaimTransition.Execute(claim, input);
 
-        var outcome = new SampleClaimTransition().Execute(claim, input);
+        var outcome = SampleClaimTransition.Execute(claim, input);
 
         outcome.Blocking.Should().ContainSingle().Which.Should().BeOfType<TransitionFinding>();
         claim.State.Should().BeOfType<ClaimOpenState>();
@@ -93,7 +93,7 @@ public sealed class ClaimBaseTransitionTests
             Reason = new StateChangeReason("CODE", "text"),
         };
 
-        new SampleClaimTransition().Execute(claim, input);
+        SampleClaimTransition.Execute(claim, input);
 
         var change = claim.StateChanges.Should().ContainSingle().Subject;
         change.From.Should().BeOfType<ClaimDraftState>();

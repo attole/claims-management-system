@@ -2,7 +2,8 @@ using ClaimsModule.Domain.Common.Capabilities;
 using ClaimsModule.Domain.Common.Entities;
 using ClaimsModule.Domain.Core.Base.Flows;
 using ClaimsModule.Domain.Core.Rules;
-using ClaimsModule.Domain.Reserves.Root.Operations;
+using ClaimsModule.Domain.Reserves.Root.Flows;
+using ClaimsModule.Domain.Reserves.Root.Inputs;
 
 namespace ClaimsModule.Domain.Reserves.Root;
 
@@ -54,6 +55,6 @@ public sealed class Reserve : AggregateRoot, IAuditable, ISoftDeletable, ITenant
 
     public static FlowOutcome<Reserve, DomainFinding> Create(OpenReserveInput input)
     {
-        return new OpenReserveOperation().Execute(input);
+        return OpenReserveOperation.Execute(input);
     }
 }
