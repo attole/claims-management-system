@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.RegularExpressions;
 
 namespace ClaimsModule.Domain.Claims.Root;
@@ -12,6 +13,13 @@ public sealed partial record ClaimNumber
     public static ClaimNumber Empty { get; } = new(string.Empty);
 
     public string Value { get; }
+
+    public static ClaimNumber Create(int year, int sequence)
+    {
+        string value = string.Create(CultureInfo.InvariantCulture, $"CLM-{year:D4}-{sequence:D7}");
+
+        return From(value);
+    }
 
     public static ClaimNumber From(string value)
     {

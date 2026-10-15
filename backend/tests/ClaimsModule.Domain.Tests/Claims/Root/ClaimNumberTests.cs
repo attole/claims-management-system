@@ -17,6 +17,33 @@ public sealed class ClaimNumberTests
     [Theory]
     [Trait("Rule", "S:BR-C-04")]
     [Trait("Rule", "A:BR-C-04")]
+    [InlineData(2026, 1, "CLM-2026-0000001")]
+    [InlineData(2026, 1234567, "CLM-2026-1234567")]
+    [InlineData(999, 9999999, "CLM-0999-9999999")]
+    public void Create_FormatsTheYearAndThePaddedSequence(int year, int sequence, string expected)
+    {
+        var result = ClaimNumber.Create(year, sequence);
+
+        result.Value.Should().Be(expected);
+    }
+
+    [Theory]
+    [Trait("Rule", "S:BR-C-04")]
+    [Trait("Rule", "A:BR-C-04")]
+    [InlineData(2026, 10000000)]
+    [InlineData(2026, -1)]
+    [InlineData(10000, 1)]
+    [InlineData(-2026, 1)]
+    public void Create_RejectsAYearOrASequenceThatDoesNotFitTheFormat(int year, int sequence)
+    {
+        Func<ClaimNumber> act = () => ClaimNumber.Create(year, sequence);
+
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Theory]
+    [Trait("Rule", "S:BR-C-04")]
+    [Trait("Rule", "A:BR-C-04")]
     [InlineData("")]
     [InlineData(" CLM-2026-0000001")]
     [InlineData("CLM-2026-0000001\n")]
