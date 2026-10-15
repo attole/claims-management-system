@@ -5,7 +5,11 @@ using ClaimsModule.Domain.ReserveChanges.Root.Events;
 
 namespace ClaimsModule.Domain.ReserveChanges.Root;
 
-public sealed class ReserveChange : AggregateRoot, IAuditable, ITenantOwned, IStateful<ReserveApprovalState>
+public sealed class ReserveChange : AggregateRoot,
+    IAuditable,
+    ITenantOwned,
+    IStateful<ReserveApprovalState>,
+    IStateful<ReservePostingState>
 {
     private ReserveChange()
     {
@@ -37,6 +41,8 @@ public sealed class ReserveChange : AggregateRoot, IAuditable, ITenantOwned, ISt
 
     public ReservePostingState PostingState { get; private set; }
 
+    public ReservePostingDetails PostingDetails { get; private set; } = ReservePostingDetails.Empty;
+
     public ReserveBalances Balances { get; private set; } = ReserveBalances.Empty;
 
     public ReserveReview Review { get; private set; } = ReserveReview.Empty;
@@ -60,6 +66,8 @@ public sealed class ReserveChange : AggregateRoot, IAuditable, ITenantOwned, ISt
     public Guid OrganisationId { get; private set; } = Guid.Empty;
 
     ReserveApprovalState IStateful<ReserveApprovalState>.State => ApprovalState;
+
+    ReservePostingState IStateful<ReservePostingState>.State => PostingState;
 
     internal static ReserveChange Submit(
         Guid organisationId,
@@ -108,6 +116,30 @@ public sealed class ReserveChange : AggregateRoot, IAuditable, ITenantOwned, ISt
             from.Name,
             approval.Name,
             reason);
+        Raise(changed);
+    }
+
+    internal void ChangePostingState(
+        ReservePostingState posting,
+        ReservePostingDetails details,
+        Guid actorId,
+        DateTimeOffset now)
+    {
+        var from = PostingState;
+        PostingState = posting;
+        PostingDetails = details;
+        Touch(now);
+        var changed = new ReservePostingStateChanged(
+            Ids.Next(now),
+            now,
+            actorId,
+            Id,
+            Details.ReserveId,
+            Details.ClaimId,
+            from.Name,
+            posting.Name,
+            details.JobId,
+            details.FailureReason);
         Raise(changed);
     }
 

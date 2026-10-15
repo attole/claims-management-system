@@ -46,6 +46,29 @@ public static class TestReserves
         return reserve;
     }
 
+    public static ReserveChange SubmitRejected()
+    {
+        var reserve = Submit(50_000m);
+        var input = new RejectReserveInput(TestClaims.Supervisor, Approver, TestClaims.Later, Snapshot())
+        {
+            Reason = "Not supported by the report",
+        };
+        new RejectReserveTransition().Execute(reserve, input);
+        reserve.PopEvents();
+
+        return reserve;
+    }
+
+    public static ReserveChange SubmitRetracted()
+    {
+        var reserve = Submit(50_000m);
+        var input = new RetractReserveInput(TestClaims.Handler, Submitter, TestClaims.Later, Snapshot());
+        new RetractReserveTransition().Execute(reserve, input);
+        reserve.PopEvents();
+
+        return reserve;
+    }
+
     public static ReserveChange SubmitAutoApproved(decimal amount)
     {
         var reserve = Submit(amount);

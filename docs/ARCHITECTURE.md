@@ -58,6 +58,7 @@ Where the specification and the assessment disagree, the specification is used a
 | Claim severity | own type with an "unspecified" start; a plain operation sets it | the documents give no setter, default or rule |
 | Primary keys | sequential GUIDs generated in the Domain, never by the database | aggregates and events have ids at creation |
 | Reserve current amount | not stored; the sum of the reserve's approved changes, computed by a query | the spec calls it computed from history |
+| Reserve posting failure reason (added) | the failure reason is stored with the job id in a posting details record on the reserve change | the reserves tab can show why a posting failed; the spec only audits it |
 | Reserve review (changed) | who made the latest approval change, when, and the reason, on the reserve change instead of separate approved and rejected columns | a change is approved or rejected, never both, so half of the paired columns would always be empty |
 
 ### Decisions on gaps
@@ -198,6 +199,9 @@ The engine lives in `Domain/Core`. Each folder is a layer that uses only the lay
 | Approve | transition | PendingApproval -> Approved |
 | Reject | transition | PendingApproval -> Rejected |
 | Retract | transition | PendingApproval -> Cancelled |
+| MarkPosted | transition | Pending or Failed -> Posted (posting state) |
+| MarkPostingFailed | transition | Pending -> Failed (posting state) |
+| CancelPosting | transition | Pending -> Cancelled (posting state) |
 
 - A change is always created pending, like a claim is created as a Draft.
 - The Application runs AutoApprove right after the submit; a refusal there only leaves the change pending.
@@ -205,7 +209,7 @@ The engine lives in `Domain/Core`. Each folder is a layer that uses only the lay
 - A correction is a new Adjust or Reverse change.
 - Every approval change stores the actor, time and reason in the review and raises `ReserveApprovalStateChanged`.
 - The change fills its balances (previous and new) when it becomes approved.
-- The posting state starts Pending; the posting moves come in a later pack.
+- The posting state starts Pending and moves independently of the approval state.
 
 **Authority.**
 - An amount up to 10,000 may be auto-approved, whatever the submitter's role.
@@ -234,6 +238,8 @@ The engine lives in `Domain/Core`. Each folder is a layer that uses only the lay
 | HasApprovalRole | RESERVE_APPROVER_ROLE_REQUIRED | reject |
 | HasRejectionReason | RESERVE_REJECTION_REASON_REQUIRED | reject |
 | IsSubmitter | S:API-POST-reserve-retract | retract |
+| IsReserveChangeApproved | RESERVE_CHANGE_NOT_APPROVED | mark posted, mark posting failed |
+| IsReserveChangeRefused | RESERVE_CHANGE_NOT_REFUSED | cancel posting |
 
 **Snapshot.** The Application computes these values by query and passes them on the input:
 - Whether a policy is linked.
@@ -245,11 +251,13 @@ The engine lives in `Domain/Core`. Each folder is a layer that uses only the lay
 
 **Concurrency.** Every reserve change also touches the claim row on save in Persistence, which serializes concurrent approvals on one claim and keeps the claim's last-activity time current.
 
-**Posting (later pack).**
-- A background job posts an approved change and sets the posting state to Posted.
-- It is idempotent on the change's key and retries before setting Failed.
-- A failed posting can be retried.
-- A rejected or retracted change gets its posting cancelled.
+**Posting.**
+- The posting moves are transitions on the change, with its posting state as the subject.
+- Posted and Failed need an approved change; a cancel needs a rejected or retracted one.
+- A repeated post on a Posted change returns the not-permitted finding, which the job reads as already done.
+- A Failed change can be posted again.
+- Each move stores the job id and the failure reason in the posting details and raises `ReservePostingStateChanged`.
+- The job itself, its retries and the audit entries belong to Infrastructure and the Application.
 
 ### Application chains
 

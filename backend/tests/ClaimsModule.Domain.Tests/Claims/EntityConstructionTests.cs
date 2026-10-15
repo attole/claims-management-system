@@ -60,6 +60,7 @@ public sealed class EntityConstructionTests
 
         reserve.ApprovalState.Should().BeOfType<ReservePendingApprovalState>();
         reserve.PostingState.Should().BeOfType<ReservePostingPendingState>();
+        reserve.PostingDetails.Should().Be(ReservePostingDetails.Empty);
         reserve.Balances.Should().Be(ReserveBalances.Empty);
         reserve.Review.Should().Be(ReserveReview.Empty);
         reserve.Details.Amount.Should().Be(0m);
