@@ -47,4 +47,32 @@ public sealed class FlowOutcomeTests
 
         act.Should().Throw<InvalidOperationException>();
     }
+
+    [Fact]
+    public void Then_WhenTheOutcomeSucceeded_ReturnsTheNextOutcome()
+    {
+        var first = FlowOutcome<string, DomainFinding>.Success("first", CheckResult<DomainFinding>.Pass);
+
+        var outcome = first.Then(() => FlowOutcome<int, DomainFinding>.Success(7, CheckResult<DomainFinding>.Pass));
+
+        outcome.Value.Should().Be(7);
+    }
+
+    [Fact]
+    public void Then_WhenTheOutcomeFailed_SkipsTheNextStepAndKeepsTheFindings()
+    {
+        var finding = new RuleFinding("E", "e");
+        var first = FlowOutcome<string, DomainFinding>.Failure(CheckResult<DomainFinding>.Found(finding));
+        var wasRun = false;
+
+        var outcome = first.Then(() =>
+        {
+            wasRun = true;
+
+            return FlowOutcome<int, DomainFinding>.Success(7, CheckResult<DomainFinding>.Pass);
+        });
+
+        wasRun.Should().BeFalse();
+        outcome.Blocking.Should().Equal(finding);
+    }
 }

@@ -1,7 +1,7 @@
 using ClaimsModule.Domain.Claims.Issues.Checks;
 using ClaimsModule.Domain.Claims.Issues.Flows;
 using ClaimsModule.Domain.Claims.Issues.Inputs;
-using ClaimsModule.Domain.Claims.Loss.Flows;
+using ClaimsModule.Domain.Claims.Loss.Checks;
 using ClaimsModule.Domain.Claims.Loss.Inputs;
 using ClaimsModule.Domain.Tests.Support.Claims;
 
@@ -51,6 +51,7 @@ public sealed class EvaluateIssuesFlowTests
         var claim = TestClaims.Empty();
         var current = claim.Issues
             .Where(issue => issue.IsCurrent)
+            .Where(issue => issue.Finding.Severity.IsBlockingOpening)
             .ToList();
 
         current.Select(issue => issue.Finding.Code).Should().BeEquivalentTo(_emptyClaimCodes);
@@ -73,7 +74,7 @@ public sealed class EvaluateIssuesFlowTests
         var claim = TestClaims.Empty();
         var loss = TestClaims.Loss(TestClaims.Start.AddDays(-1), TestClaims.Description);
         var update = new UpdateLossDetailsInput(loss, TestClaims.Actor, TestClaims.Later, TestClaims.Reference());
-        UpdateLossDetailsOperation.Execute(claim, update);
+        TestClaims.ChangeLoss(claim, update);
         var input = new EvaluateIssuesInput(TestClaims.Later, TestClaims.Actor, TestClaims.Reference());
 
         var outcome = EvaluateIssuesFlow.Execute(claim, input);
@@ -101,7 +102,8 @@ public sealed class EvaluateIssuesFlowTests
     {
         var claim = TestClaims.WithLoss(TestClaims.Start.AddDays(2));
 
-        claim.BlockingIssues.Select(issue => issue.Finding.Code).Should().Equal(IsLossDateNotInFuture.Code);
+        claim.BlockingIssues.Select(issue => issue.Finding.Code)
+            .Should().BeEquivalentTo(IsLossDateNotInFuture.Code, IsLossDateNotAfterReport.Code);
     }
 
     [Fact]
@@ -139,14 +141,15 @@ public sealed class EvaluateIssuesFlowTests
 
         var outcome = EvaluateIssuesFlow.Execute(claim, input);
 
-        outcome.Blocking.Select(finding => finding.Code).Should().Equal(IsLossDateNotInFuture.Code);
+        outcome.Blocking.Select(finding => finding.Code)
+            .Should().BeEquivalentTo(IsLossDateNotInFuture.Code, IsLossDateNotAfterReport.Code);
     }
 
     [Fact]
     public void Execute_WhenTheInputTimeIsTheLossDate_ReportsNothing()
     {
-        var claim = TestClaims.WithLoss(TestClaims.Later);
-        var input = new EvaluateIssuesInput(TestClaims.Later, TestClaims.Actor, TestClaims.Reference());
+        var claim = TestClaims.WithLoss(TestClaims.Start);
+        var input = new EvaluateIssuesInput(TestClaims.Start, TestClaims.Actor, TestClaims.Reference());
 
         var outcome = EvaluateIssuesFlow.Execute(claim, input);
 

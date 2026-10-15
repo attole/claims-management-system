@@ -1,4 +1,5 @@
 using ClaimsModule.Domain.Claims.Issues.Checks;
+using ClaimsModule.Domain.Claims.Loss.Checks;
 using ClaimsModule.Domain.Claims.Root;
 using ClaimsModule.Domain.Claims.Root.Flows;
 using ClaimsModule.Domain.Claims.Root.Inputs;
@@ -57,6 +58,7 @@ public sealed class OpenClaimTransitionTests
     {
         var claim = TestClaims.WithLoss(TestClaims.Start.AddDays(2));
         TestClaims.WaiveIssue(claim, IsLossDateNotInFuture.Code);
+        TestClaims.WaiveIssue(claim, IsLossDateNotAfterReport.Code);
         var input = new OpenClaimInput(TestClaims.Handler, TestClaims.Actor, TestClaims.Later, TestClaims.Reference());
 
         var outcome = OpenClaimTransition.Execute(claim, input);

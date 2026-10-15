@@ -2,7 +2,8 @@ using ClaimsModule.Domain.Claims.Issues;
 using ClaimsModule.Domain.Claims.Issues.Checks;
 using ClaimsModule.Domain.Claims.Issues.Events;
 using ClaimsModule.Domain.Claims.Issues.Inputs;
-using ClaimsModule.Domain.Claims.Loss.Flows;
+using ClaimsModule.Domain.Claims.Loss;
+using ClaimsModule.Domain.Claims.Loss.Checks;
 using ClaimsModule.Domain.Claims.Loss.Inputs;
 using ClaimsModule.Domain.Claims.Parties.Events;
 using ClaimsModule.Domain.Claims.Parties.Inputs;
@@ -414,7 +415,7 @@ public sealed class ClaimTests
         var claim = TestClaims.Empty();
         var loss = TestClaims.Loss(TestClaims.Start.AddDays(-1), TestClaims.Description);
         var update = new UpdateLossDetailsInput(loss, TestClaims.Actor, TestClaims.Later, TestClaims.Reference());
-        UpdateLossDetailsOperation.Execute(claim, update);
+        TestClaims.ChangeLoss(claim, update);
         claim.PopEvents();
         var input = new EvaluateIssuesInput(TestClaims.Later, TestClaims.Actor, TestClaims.Reference());
 
@@ -432,7 +433,7 @@ public sealed class ClaimTests
         var claim = TestClaims.Create(TestClaims.Claimant());
         var loss = TestClaims.Loss(TestClaims.Later.AddDays(5), TestClaims.Description);
         var update = new UpdateLossDetailsInput(loss, TestClaims.Actor, TestClaims.Start, TestClaims.Reference());
-        UpdateLossDetailsOperation.Execute(claim, update);
+        TestClaims.ChangeLoss(claim, update);
         var input = new EvaluateIssuesInput(TestClaims.Later, TestClaims.Actor, TestClaims.Reference());
 
         claim.EvaluateIssues(input);
@@ -456,6 +457,7 @@ public sealed class ClaimTests
     public void SetSeverity_WhenNoIssueChanges_RaisesNoIssueEvents()
     {
         var claim = TestClaims.Empty();
+        var currentBefore = claim.Issues.Count(issue => issue.IsCurrent);
         claim.PopEvents();
         var input = new SetSeverityInput(
             ClaimSeverity.Critical,
@@ -466,6 +468,55 @@ public sealed class ClaimTests
         claim.SetSeverity(input);
 
         claim.PopEvents().OfType<ValidationIssueRaisedEvent>().Should().BeEmpty();
-        claim.Issues.Count(issue => issue.IsCurrent).Should().Be(4);
+        claim.Issues.Count(issue => issue.IsCurrent).Should().Be(currentBefore);
+    }
+
+    [Fact]
+    public void UpdateRiskObject_TouchesTheClaim()
+    {
+        var claim = TestClaims.Create(TestClaims.Claimant());
+        var details = new RiskObjectDetails(AssetType.Equipment, "Pump");
+        var input = new UpdateRiskObjectInput(
+            claim.RiskObjects[0].Id,
+            details,
+            TestClaims.Actor,
+            TestClaims.Later,
+            TestClaims.Reference());
+
+        claim.UpdateRiskObject(input);
+
+        claim.UpdatedAt.Should().Be(TestClaims.Later);
+    }
+
+    [Fact]
+    [Trait("Rule", IsClaimEditable.Code)]
+    public void UpdateLossDetails_ForAClosedClaim_ReturnsTheFindingAndKeepsTheLoss()
+    {
+        var claim = TestClaims.InState<ClaimClosedState>();
+        var before = claim.LossEvent.Details;
+        var loss = TestClaims.Loss(TestClaims.Start.AddDays(-1), TestClaims.Description);
+        var input = new UpdateLossDetailsInput(loss, TestClaims.Actor, TestClaims.Later, TestClaims.Reference());
+
+        var outcome = claim.UpdateLossDetails(input);
+
+        outcome.Blocking.Should().ContainSingle().Which.Code.Should().Be(IsClaimEditable.Code);
+        claim.LossEvent.Details.Should().Be(before);
+    }
+
+    [Fact]
+    public void UpdateLossDetails_AfterDraftWithAnEmptyLoss_IsRefusedAndTouchesNothing()
+    {
+        var claim = TestClaims.InState<ClaimOpenState>();
+        var updatedAt = claim.UpdatedAt;
+        var input = new UpdateLossDetailsInput(
+            LossDetails.Empty,
+            TestClaims.Actor,
+            TestClaims.Later,
+            TestClaims.Reference());
+
+        var outcome = claim.UpdateLossDetails(input);
+
+        outcome.IsSuccess.Should().BeFalse();
+        claim.UpdatedAt.Should().Be(updatedAt);
     }
 }

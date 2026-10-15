@@ -3,14 +3,20 @@ using ClaimsModule.Domain.Common.Entities;
 
 namespace ClaimsModule.Domain.Claims.Loss;
 
-public sealed class LossEvent : Entity, IAuditable, ISoftDeletable, ITenantOwned
+public sealed class ClaimLossEvent : Entity, IAuditable, ISoftDeletable, ITenantOwned
 {
-    private LossEvent()
+    private ClaimLossEvent()
     {
         Details = LossDetails.Empty;
     }
 
-    internal LossEvent(Guid id, Guid claimId, Guid organisationId, LossDetails details, DateTimeOffset now) : base(id)
+    internal ClaimLossEvent(
+        Guid id,
+        Guid claimId,
+        Guid organisationId,
+        LossDetails details,
+        DateTimeOffset now)
+        : base(id)
     {
         ClaimId = claimId;
         OrganisationId = organisationId;

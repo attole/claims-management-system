@@ -1,7 +1,7 @@
-using ClaimsModule.Domain.Claims.Issues.Checks;
+using ClaimsModule.Domain.Claims.Loss.Checks;
 using ClaimsModule.Domain.Tests.Support.Claims;
 
-namespace ClaimsModule.Domain.Tests.Claims.Issues.Checks;
+namespace ClaimsModule.Domain.Tests.Claims.Loss.Checks;
 
 public sealed class IsLossDatePresentTests
 {
@@ -11,7 +11,7 @@ public sealed class IsLossDatePresentTests
     {
         var claim = TestClaims.Empty();
 
-        var result = new IsLossDatePresent().Check(claim);
+        var result = new IsLossDatePresent().Check(claim.LossEvent.Details);
 
         result.Findings.Should().ContainSingle().Which.Code.Should().Be(IsLossDatePresent.Code);
     }
@@ -22,7 +22,7 @@ public sealed class IsLossDatePresentTests
     {
         var claim = TestClaims.Create(TestClaims.Claimant());
 
-        var result = new IsLossDatePresent().Check(claim);
+        var result = new IsLossDatePresent().Check(claim.LossEvent.Details);
 
         result.Findings.Should().BeEmpty();
     }

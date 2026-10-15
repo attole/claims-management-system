@@ -67,6 +67,11 @@ Where the specification and the assessment disagree, the specification is used a
 
 - **Liability determined:** the status-change request carries an explicit confirmation, required for the move to PendingPayment and written to the audit entry; nothing is stored on the claim. The frontend needs a matching control.
 - **Withdrawal and reopen reasons:** valid only with both a code and a text, stricter than the documents so every reason is reportable. The code is free text until a list exists.
+- **Loss date after the report date:** a Critical issue (`LOSS_DATE_AFTER_REPORT`), because a loss cannot postdate its own report. The documents only forbid a date in the future.
+- **Negative estimated loss:** refused by the value (an out-of-range exception), and the API validates it. The documents give the column only as a nullable amount.
+- **No risk object:** a Warning issue (`CLAIM_NO_RISK_OBJECT`). The documents list it as a warning example and the intake screen shows an advisory, but no check existed.
+- **Edits after Draft:** a Draft may be incomplete, but once the claim is past Draft a loss update that would leave a Critical loss issue is refused (`IsLossCompleteAfterDraft`), so a claim never falls back below what Open required. It is one rule on the loss update step, which runs on the loss object: the claim method first checks the claim's own rules (editable), then chains the loss step with the claim's state and the snapshot on its input. The rule runs the same loss flow over the proposed details and the loss's own report date, so the issues and the refusal share codes and messages. Only the loss has such a guard; the last-claimant rule already protects the claimant.
+- **One primary risk object:** a risk object can be set primary (on add or edit) only while no other active risk object is primary; the primary is moved by editing the old one first.
 - **Unspecified cases** (authentication failures, not found, concurrent edits, oversized uploads, idempotency-key replays) are decided when the API pack is designed and recorded here.
 
 ## Backend architecture

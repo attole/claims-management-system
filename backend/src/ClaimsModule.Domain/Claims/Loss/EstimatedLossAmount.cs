@@ -8,7 +8,7 @@ public sealed record EstimatedLossAmount
         IsSet = isSet;
     }
 
-    public EstimatedLossAmount(decimal value) : this(value, true)
+    public EstimatedLossAmount(decimal value) : this(Validated(value), true)
     {
     }
 
@@ -17,4 +17,11 @@ public sealed record EstimatedLossAmount
     public decimal Value { get; }
 
     public bool IsSet { get; }
+
+    private static decimal Validated(decimal value)
+    {
+        return value >= 0m
+            ? value
+            : throw new ArgumentOutOfRangeException(nameof(value), "An estimated loss cannot be negative.");
+    }
 }

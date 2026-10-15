@@ -4,26 +4,24 @@ using ClaimsModule.Domain.Claims.Root;
 using ClaimsModule.Domain.Common;
 using ClaimsModule.Domain.Core.Base.Checks;
 using ClaimsModule.Domain.Core.Base.Flows;
+using ClaimsModule.Domain.Core.Rules;
 
 namespace ClaimsModule.Domain.Claims.Issues.Flows;
 
 internal sealed class EvaluateIssuesFlow
-    : Flow<EvaluateIssuesFlow, Claim, EvaluateIssuesInput, IssueChanges, IssueFinding>
+    : Flow<EvaluateIssuesFlow, Claim, EvaluateIssuesInput, IssueChanges, DomainFinding>
 {
     public EvaluateIssuesFlow()
     {
-        Require(new IsLossDatePresent());
-        Require(input => new IsLossDateNotInFuture(input.Now));
-        Require(new IsDescriptionLongEnough());
+        Require(input => new HasValidLoss(input.Now, input.Reference));
         Require(new HasClaimant());
-        Require(input => new IsCauseCodeActive(input.Reference.ActiveCauseCodes));
         Require(new HasLinkedPolicy());
-        Require(input => new IsLossDateWithinPolicyPeriod(input.Reference.PolicyPeriod));
+        Require(new HasRiskObject());
     }
 
     protected override FlowDecision WhenBlocked => FlowDecision.Continue;
 
-    protected override IssueChanges Apply(Claim claim, EvaluateIssuesInput input, CheckResult<IssueFinding> result)
+    protected override IssueChanges Apply(Claim claim, EvaluateIssuesInput input, CheckResult<DomainFinding> result)
     {
         var findingCodes = result.Findings
             .Select(finding => finding.Code)
@@ -52,7 +50,7 @@ internal sealed class EvaluateIssuesFlow
                 Ids.Next(input.Now),
                 claim.Id,
                 claim.OrganisationId,
-                finding,
+                IssueFinding.From(finding),
                 input.Now))
             .ToList();
         claim.IssueList.AddRange(raised);

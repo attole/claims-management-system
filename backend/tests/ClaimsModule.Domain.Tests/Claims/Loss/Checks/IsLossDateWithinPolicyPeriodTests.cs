@@ -1,8 +1,8 @@
-using ClaimsModule.Domain.Claims.Issues.Checks;
+using ClaimsModule.Domain.Claims.Loss.Checks;
 using ClaimsModule.Domain.Claims.Root;
 using ClaimsModule.Domain.Tests.Support.Claims;
 
-namespace ClaimsModule.Domain.Tests.Claims.Issues.Checks;
+namespace ClaimsModule.Domain.Tests.Claims.Loss.Checks;
 
 public sealed class IsLossDateWithinPolicyPeriodTests
 {
@@ -13,7 +13,7 @@ public sealed class IsLossDateWithinPolicyPeriodTests
         var claim = TestClaims.Create(TestClaims.Claimant());
         var check = new IsLossDateWithinPolicyPeriod(TestClaims.Reference().PolicyPeriod);
 
-        var result = check.Check(claim);
+        var result = check.Check(claim.LossEvent.Details);
 
         result.Findings.Should().BeEmpty();
     }
@@ -25,7 +25,7 @@ public sealed class IsLossDateWithinPolicyPeriodTests
         var claim = TestClaims.WithLoss(TestClaims.OutsidePolicyPeriod);
         var check = new IsLossDateWithinPolicyPeriod(TestClaims.Reference().PolicyPeriod);
 
-        var result = check.Check(claim);
+        var result = check.Check(claim.LossEvent.Details);
 
         var finding = result.Findings.Should().ContainSingle().Subject;
         finding.Code.Should().Be(IsLossDateWithinPolicyPeriod.Code);
@@ -40,7 +40,7 @@ public sealed class IsLossDateWithinPolicyPeriodTests
         var period = new PolicyPeriod(new DateOnly(2026, 1, 1), new DateOnly(2026, 12, 31), new DateOnly(2026, 6, 30));
         var check = new IsLossDateWithinPolicyPeriod(period);
 
-        var result = check.Check(claim);
+        var result = check.Check(claim.LossEvent.Details);
 
         result.Findings.Should().ContainSingle().Which.Code.Should().Be(IsLossDateWithinPolicyPeriod.Code);
     }
@@ -53,7 +53,7 @@ public sealed class IsLossDateWithinPolicyPeriodTests
         var claim = TestClaims.WithLoss(lossDate);
         var check = new IsLossDateWithinPolicyPeriod(TestClaims.Reference().PolicyPeriod);
 
-        var result = check.Check(claim);
+        var result = check.Check(claim.LossEvent.Details);
 
         result.Findings.Should().ContainSingle().Which.Code.Should().Be(IsLossDateWithinPolicyPeriod.Code);
     }
@@ -65,7 +65,7 @@ public sealed class IsLossDateWithinPolicyPeriodTests
         var claim = TestClaims.WithLoss(TestClaims.OutsidePolicyPeriod);
         var check = new IsLossDateWithinPolicyPeriod(PolicyPeriod.Empty);
 
-        var result = check.Check(claim);
+        var result = check.Check(claim.LossEvent.Details);
 
         result.Findings.Should().BeEmpty();
     }
@@ -77,7 +77,7 @@ public sealed class IsLossDateWithinPolicyPeriodTests
         var claim = TestClaims.Empty();
         var check = new IsLossDateWithinPolicyPeriod(TestClaims.Reference().PolicyPeriod);
 
-        var result = check.Check(claim);
+        var result = check.Check(claim.LossEvent.Details);
 
         result.Findings.Should().BeEmpty();
     }

@@ -1,4 +1,4 @@
-using ClaimsModule.Domain.Claims.Issues.Checks;
+using ClaimsModule.Domain.Claims.Loss.Checks;
 using ClaimsModule.Domain.Claims.Root.Rules;
 using ClaimsModule.Domain.Tests.Support.Claims;
 
@@ -34,6 +34,7 @@ public sealed class HasNoBlockingIssuesTests
     {
         var claim = TestClaims.WithLoss(TestClaims.Start.AddDays(2));
         TestClaims.WaiveIssue(claim, IsLossDateNotInFuture.Code);
+        TestClaims.WaiveIssue(claim, IsLossDateNotAfterReport.Code);
 
         var result = new HasNoBlockingIssues().Check(claim);
 

@@ -1,8 +1,8 @@
-using ClaimsModule.Domain.Claims.Issues.Checks;
 using ClaimsModule.Domain.Claims.Loss;
+using ClaimsModule.Domain.Claims.Loss.Checks;
 using ClaimsModule.Domain.Tests.Support.Claims;
 
-namespace ClaimsModule.Domain.Tests.Claims.Issues.Checks;
+namespace ClaimsModule.Domain.Tests.Claims.Loss.Checks;
 
 public sealed class IsLossDateNotInFutureTests
 {
@@ -12,7 +12,7 @@ public sealed class IsLossDateNotInFutureTests
     {
         var claim = TestClaims.WithLoss(TestClaims.Later.AddTicks(1));
 
-        var result = new IsLossDateNotInFuture(TestClaims.Later).Check(claim);
+        var result = new IsLossDateNotInFuture(TestClaims.Later).Check(claim.LossEvent.Details);
 
         result.Findings.Should().ContainSingle().Which.Code.Should().Be(IsLossDateNotInFuture.Code);
     }
@@ -23,7 +23,7 @@ public sealed class IsLossDateNotInFutureTests
     {
         var claim = TestClaims.WithLoss(TestClaims.Later);
 
-        var result = new IsLossDateNotInFuture(TestClaims.Later).Check(claim);
+        var result = new IsLossDateNotInFuture(TestClaims.Later).Check(claim.LossEvent.Details);
 
         result.Findings.Should().BeEmpty();
     }
@@ -35,7 +35,7 @@ public sealed class IsLossDateNotInFutureTests
         var claim = TestClaims.Empty();
         claim.LossEvent.Details.LossDate.Should().Be(LossDate.Empty);
 
-        var result = new IsLossDateNotInFuture(TestClaims.Later).Check(claim);
+        var result = new IsLossDateNotInFuture(TestClaims.Later).Check(claim.LossEvent.Details);
 
         result.Findings.Should().BeEmpty();
     }

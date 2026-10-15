@@ -1,6 +1,7 @@
 using ClaimsModule.Domain.Claims.Issues;
 using ClaimsModule.Domain.Claims.Issues.Inputs;
 using ClaimsModule.Domain.Claims.Loss;
+using ClaimsModule.Domain.Claims.Loss.Flows;
 using ClaimsModule.Domain.Claims.Loss.Inputs;
 using ClaimsModule.Domain.Claims.Parties;
 using ClaimsModule.Domain.Claims.Parties.Inputs;
@@ -102,6 +103,20 @@ public static class TestClaims
         var input = new SampleMoveClaimInput(Handler, Actor, Start, Reference());
         SampleMoveClaimTransition<TState>.Execute(claim, input);
         claim.PopEvents();
+    }
+
+    public static void ChangeLoss(Claim claim, UpdateLossDetailsInput input)
+    {
+        var change = new ChangeLossInput(input.Loss, claim.State.Marker, input.Reference, input.Now, input.ActorId);
+        UpdateLossDetailsOperation.Execute(claim.LossEvent, change);
+    }
+
+    public static ClaimRiskObject AddPrimaryRiskObject(Claim claim)
+    {
+        var van = new RiskObjectDetails(AssetType.Vehicle, "Van") { IsPrimary = true };
+        var input = new AddRiskObjectInput(van, Actor, Start, Reference());
+
+        return claim.AddRiskObject(input).Value;
     }
 
     public static ClaimReserveSnapshot Reserves()

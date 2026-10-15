@@ -2,7 +2,7 @@ using ClaimsModule.Domain.Core.Base.Checks;
 
 namespace ClaimsModule.Domain.Core.Rules;
 
-public abstract record DomainFinding(string Code, string Message) : IFinding
+public abstract record DomainFinding(string Code, string Message, string Field) : IFinding
 {
     public bool IsBlocking { get; init; } = true;
 

@@ -38,7 +38,7 @@ public sealed class Claim : AggregateRoot, IAuditable, ISoftDeletable, ITenantOw
         ClaimNumber = ClaimNumber.Empty;
         State = new ClaimDraftState();
         Severity = ClaimSeverity.Unspecified;
-        LossEvent = new LossEvent(Guid.Empty, Guid.Empty, Guid.Empty, LossDetails.Empty, DateTimeOffset.MinValue);
+        LossEvent = new ClaimLossEvent(Guid.Empty, Guid.Empty, Guid.Empty, LossDetails.Empty, DateTimeOffset.MinValue);
     }
 
     internal Claim(Guid id, Guid organisationId, ClaimNumber claimNumber, DateTimeOffset now) : base(id)
@@ -50,7 +50,7 @@ public sealed class Claim : AggregateRoot, IAuditable, ISoftDeletable, ITenantOw
         ReportedDate = now;
         CreatedAt = now;
         UpdatedAt = now;
-        LossEvent = new LossEvent(Ids.Next(now), id, organisationId, LossDetails.Empty, now);
+        LossEvent = new ClaimLossEvent(Ids.Next(now), id, organisationId, LossDetails.Empty, now);
     }
 
     public ClaimNumber ClaimNumber { get; private set; }
@@ -69,7 +69,7 @@ public sealed class Claim : AggregateRoot, IAuditable, ISoftDeletable, ITenantOw
 
     public bool HasAggregateLimitOverride { get; internal set; } = false;
 
-    public LossEvent LossEvent { get; private set; }
+    public ClaimLossEvent LossEvent { get; private set; }
 
     public IReadOnlyList<ClaimParty> Parties => _parties.AsReadOnly();
 
@@ -135,14 +135,21 @@ public sealed class Claim : AggregateRoot, IAuditable, ISoftDeletable, ITenantOw
         return AddRiskObjectOperation.Execute(this, input).OnSuccess(() => Settle(input));
     }
 
+    public FlowOutcome<ClaimRiskObject, DomainFinding> UpdateRiskObject(UpdateRiskObjectInput input)
+    {
+        return UpdateRiskObjectOperation.Execute(this, input).OnSuccess(() => Settle(input));
+    }
+
     public FlowOutcome<ClaimRiskObject, DomainFinding> RemoveRiskObject(RemoveRiskObjectInput input)
     {
         return RemoveRiskObjectOperation.Execute(this, input).OnSuccess(() => Settle(input));
     }
 
-    public FlowOutcome<LossEvent, DomainFinding> UpdateLossDetails(UpdateLossDetailsInput input)
+    public FlowOutcome<ClaimLossEvent, DomainFinding> UpdateLossDetails(UpdateLossDetailsInput input)
     {
-        return UpdateLossDetailsOperation.Execute(this, input).OnSuccess(() => Settle(input));
+        return EnsureLossUpdatableFlow.Execute(this, input)
+            .Then(() => ChangeLoss(input))
+            .OnSuccess(() => Settle(input));
     }
 
     public FlowOutcome<Success, DomainFinding> AssignHandler(AssignHandlerInput input)
@@ -188,7 +195,7 @@ public sealed class Claim : AggregateRoot, IAuditable, ISoftDeletable, ITenantOw
             .OnSuccess(() => Settle(input));
     }
 
-    public FlowOutcome<IssueChanges, IssueFinding> EvaluateIssues(EvaluateIssuesInput input)
+    public FlowOutcome<IssueChanges, DomainFinding> EvaluateIssues(EvaluateIssuesInput input)
     {
         return EvaluateIssuesFlow.Execute(this, input).OnSuccess(changes => RecordIssueChanges(changes, input));
     }
@@ -246,6 +253,13 @@ public sealed class Claim : AggregateRoot, IAuditable, ISoftDeletable, ITenantOw
         var evaluation = new EvaluateIssuesInput(input.Now, input.ActorId, input.Reference);
         Touch(input.Now);
         EvaluateIssues(evaluation);
+    }
+
+    private FlowOutcome<ClaimLossEvent, DomainFinding> ChangeLoss(UpdateLossDetailsInput input)
+    {
+        var change = new ChangeLossInput(input.Loss, State.Marker, input.Reference, input.Now, input.ActorId);
+
+        return UpdateLossDetailsOperation.Execute(LossEvent, change);
     }
 
     private void RecordMove(StateChange<ClaimState> change, ClaimBaseTransitionInput input)

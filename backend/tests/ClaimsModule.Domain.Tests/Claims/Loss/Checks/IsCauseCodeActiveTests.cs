@@ -1,7 +1,7 @@
-using ClaimsModule.Domain.Claims.Issues.Checks;
+using ClaimsModule.Domain.Claims.Loss.Checks;
 using ClaimsModule.Domain.Tests.Support.Claims;
 
-namespace ClaimsModule.Domain.Tests.Claims.Issues.Checks;
+namespace ClaimsModule.Domain.Tests.Claims.Loss.Checks;
 
 public sealed class IsCauseCodeActiveTests
 {
@@ -12,7 +12,7 @@ public sealed class IsCauseCodeActiveTests
         var claim = TestClaims.Create(TestClaims.Claimant());
         var check = new IsCauseCodeActive(["WATER"]);
 
-        var result = check.Check(claim);
+        var result = check.Check(claim.LossEvent.Details);
 
         result.Findings.Should().BeEmpty();
     }
@@ -24,7 +24,7 @@ public sealed class IsCauseCodeActiveTests
         var claim = TestClaims.Create(TestClaims.Claimant());
         var check = new IsCauseCodeActive(["water"]);
 
-        var result = check.Check(claim);
+        var result = check.Check(claim.LossEvent.Details);
 
         result.Findings.Should().BeEmpty();
     }
@@ -36,7 +36,7 @@ public sealed class IsCauseCodeActiveTests
         var claim = TestClaims.Create(TestClaims.Claimant());
         var check = new IsCauseCodeActive(["COL-FIRE"]);
 
-        var result = check.Check(claim);
+        var result = check.Check(claim.LossEvent.Details);
 
         var finding = result.Findings.Should().ContainSingle().Subject;
         finding.Code.Should().Be(IsCauseCodeActive.Code);
@@ -50,7 +50,7 @@ public sealed class IsCauseCodeActiveTests
         var claim = TestClaims.Empty();
         var check = new IsCauseCodeActive(["WATER"]);
 
-        var result = check.Check(claim);
+        var result = check.Check(claim.LossEvent.Details);
 
         result.Findings.Should().ContainSingle().Which.Code.Should().Be(IsCauseCodeActive.Code);
     }

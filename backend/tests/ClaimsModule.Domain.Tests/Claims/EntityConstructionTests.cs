@@ -31,7 +31,7 @@ public sealed class EntityConstructionTests
     {
         var party = (ClaimParty)Activator.CreateInstance(typeof(ClaimParty), nonPublic: true)!;
         var riskObject = (ClaimRiskObject)Activator.CreateInstance(typeof(ClaimRiskObject), nonPublic: true)!;
-        var loss = (LossEvent)Activator.CreateInstance(typeof(LossEvent), nonPublic: true)!;
+        var loss = (ClaimLossEvent)Activator.CreateInstance(typeof(ClaimLossEvent), nonPublic: true)!;
         var issue = (ClaimValidationIssue)Activator.CreateInstance(typeof(ClaimValidationIssue), nonPublic: true)!;
 
         var stateChange = (ClaimStateChange)Activator.CreateInstance(typeof(ClaimStateChange), nonPublic: true)!;

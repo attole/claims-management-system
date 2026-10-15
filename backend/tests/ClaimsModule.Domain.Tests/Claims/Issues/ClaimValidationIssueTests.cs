@@ -1,8 +1,7 @@
 using ClaimsModule.Domain.Claims.Issues;
-using ClaimsModule.Domain.Claims.Issues.Checks;
 using ClaimsModule.Domain.Claims.Issues.Flows;
 using ClaimsModule.Domain.Claims.Issues.Inputs;
-using ClaimsModule.Domain.Claims.Loss.Flows;
+using ClaimsModule.Domain.Claims.Loss.Checks;
 using ClaimsModule.Domain.Claims.Loss.Inputs;
 using ClaimsModule.Domain.Tests.Support.Claims;
 
@@ -18,6 +17,7 @@ public sealed class ClaimValidationIssueTests
         var claim = TestClaims.Empty();
         var current = claim.Issues
             .Where(issue => issue.IsCurrent)
+            .Where(issue => issue.Finding.Severity.IsBlockingOpening)
             .ToList();
 
         current.Should().HaveCount(4);
@@ -30,7 +30,7 @@ public sealed class ClaimValidationIssueTests
         var claim = TestClaims.Empty();
         var loss = TestClaims.Loss(TestClaims.Start.AddDays(-1), TestClaims.Description);
         var update = new UpdateLossDetailsInput(loss, TestClaims.Actor, TestClaims.Later, TestClaims.Reference());
-        UpdateLossDetailsOperation.Execute(claim, update);
+        TestClaims.ChangeLoss(claim, update);
         var input = new EvaluateIssuesInput(TestClaims.Later, TestClaims.Actor, TestClaims.Reference());
 
         EvaluateIssuesFlow.Execute(claim, input);
@@ -65,7 +65,7 @@ public sealed class ClaimValidationIssueTests
         WaiveIssueOperation.Execute(claim, waive);
         var loss = TestClaims.Loss(TestClaims.Start.AddDays(-1), TestClaims.Description);
         var fix = new UpdateLossDetailsInput(loss, _otherActor, TestClaims.Later.AddHours(1), TestClaims.Reference());
-        UpdateLossDetailsOperation.Execute(claim, fix);
+        TestClaims.ChangeLoss(claim, fix);
         var input = new EvaluateIssuesInput(TestClaims.Later.AddHours(1), _otherActor, TestClaims.Reference());
 
         EvaluateIssuesFlow.Execute(claim, input);

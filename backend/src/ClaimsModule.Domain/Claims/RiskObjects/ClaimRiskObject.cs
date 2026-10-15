@@ -38,6 +38,12 @@ public sealed class ClaimRiskObject : Entity, IAuditable, ISoftDeletable, ITenan
 
     public Guid OrganisationId { get; private set; } = Guid.Empty;
 
+    internal void Update(RiskObjectDetails details, DateTimeOffset now)
+    {
+        Details = details;
+        UpdatedAt = now;
+    }
+
     internal void Remove(DateTimeOffset now)
     {
         IsDeleted = true;

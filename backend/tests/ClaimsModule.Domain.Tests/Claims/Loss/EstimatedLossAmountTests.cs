@@ -33,4 +33,12 @@ public sealed class EstimatedLossAmountTests
     {
         new EstimatedLossAmount(12.5m).Should().Be(new EstimatedLossAmount(12.5m));
     }
+
+    [Fact]
+    public void Amount_WhenNegative_IsRefused()
+    {
+        Func<EstimatedLossAmount> act = () => new EstimatedLossAmount(-0.01m);
+
+        act.Should().Throw<ArgumentOutOfRangeException>();
+    }
 }

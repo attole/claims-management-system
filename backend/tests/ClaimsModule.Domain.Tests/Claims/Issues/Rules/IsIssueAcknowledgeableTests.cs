@@ -1,5 +1,6 @@
 using ClaimsModule.Domain.Claims.Issues.Checks;
 using ClaimsModule.Domain.Claims.Issues.Rules;
+using ClaimsModule.Domain.Claims.Loss.Checks;
 using ClaimsModule.Domain.Tests.Support.Claims;
 
 namespace ClaimsModule.Domain.Tests.Claims.Issues.Rules;

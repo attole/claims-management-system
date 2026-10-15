@@ -57,4 +57,11 @@ public sealed class FlowOutcome<TValue, TFinding>
 
         return this;
     }
+
+    public FlowOutcome<TNext, TFinding> Then<TNext>(Func<FlowOutcome<TNext, TFinding>> next)
+    {
+        return IsSuccess
+            ? next()
+            : FlowOutcome<TNext, TFinding>.Failure(Result);
+    }
 }

@@ -1,7 +1,7 @@
-using ClaimsModule.Domain.Claims.Issues.Checks;
+using ClaimsModule.Domain.Claims.Loss.Checks;
 using ClaimsModule.Domain.Tests.Support.Claims;
 
-namespace ClaimsModule.Domain.Tests.Claims.Issues.Checks;
+namespace ClaimsModule.Domain.Tests.Claims.Loss.Checks;
 
 public sealed class IsDescriptionLongEnoughTests
 {
@@ -11,7 +11,7 @@ public sealed class IsDescriptionLongEnoughTests
     {
         var claim = TestClaims.WithDescription(new string('a', IsDescriptionLongEnough.MinimumLength - 1));
 
-        var result = new IsDescriptionLongEnough().Check(claim);
+        var result = new IsDescriptionLongEnough().Check(claim.LossEvent.Details);
 
         result.Findings.Should().ContainSingle().Which.Code.Should().Be(IsDescriptionLongEnough.Code);
     }
@@ -22,7 +22,7 @@ public sealed class IsDescriptionLongEnoughTests
     {
         var claim = TestClaims.WithDescription(new string('a', IsDescriptionLongEnough.MinimumLength));
 
-        var result = new IsDescriptionLongEnough().Check(claim);
+        var result = new IsDescriptionLongEnough().Check(claim.LossEvent.Details);
 
         result.Findings.Should().BeEmpty();
     }
@@ -34,7 +34,7 @@ public sealed class IsDescriptionLongEnoughTests
         string padded = "  " + new string('a', IsDescriptionLongEnough.MinimumLength - 1) + "  ";
         var claim = TestClaims.WithDescription(padded);
 
-        var result = new IsDescriptionLongEnough().Check(claim);
+        var result = new IsDescriptionLongEnough().Check(claim.LossEvent.Details);
 
         result.Findings.Should().ContainSingle();
     }
@@ -45,7 +45,7 @@ public sealed class IsDescriptionLongEnoughTests
     {
         var claim = TestClaims.Empty();
 
-        var result = new IsDescriptionLongEnough().Check(claim);
+        var result = new IsDescriptionLongEnough().Check(claim.LossEvent.Details);
 
         result.Findings.Should().ContainSingle();
     }

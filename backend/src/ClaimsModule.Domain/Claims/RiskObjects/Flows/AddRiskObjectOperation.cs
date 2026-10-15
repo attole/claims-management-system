@@ -1,4 +1,5 @@
 using ClaimsModule.Domain.Claims.RiskObjects.Inputs;
+using ClaimsModule.Domain.Claims.RiskObjects.Rules;
 using ClaimsModule.Domain.Claims.Root;
 using ClaimsModule.Domain.Claims.Root.Rules;
 using ClaimsModule.Domain.Common;
@@ -12,6 +13,7 @@ internal sealed class AddRiskObjectOperation
     public AddRiskObjectOperation()
     {
         Require(new IsClaimEditable());
+        Require(input => new HasNoOtherPrimaryRiskObject(Guid.Empty, input.Details.IsPrimary));
     }
 
     protected override ClaimRiskObject Apply(Claim claim, AddRiskObjectInput input)

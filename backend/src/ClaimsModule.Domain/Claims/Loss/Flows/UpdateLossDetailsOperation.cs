@@ -1,22 +1,21 @@
 using ClaimsModule.Domain.Claims.Loss.Inputs;
-using ClaimsModule.Domain.Claims.Root;
-using ClaimsModule.Domain.Claims.Root.Rules;
+using ClaimsModule.Domain.Claims.Loss.Rules;
 using ClaimsModule.Domain.Core.Operations;
 
 namespace ClaimsModule.Domain.Claims.Loss.Flows;
 
 internal sealed class UpdateLossDetailsOperation
-    : Operation<UpdateLossDetailsOperation, Claim, UpdateLossDetailsInput, LossEvent>
+    : Operation<UpdateLossDetailsOperation, ClaimLossEvent, ChangeLossInput, ClaimLossEvent>
 {
     public UpdateLossDetailsOperation()
     {
-        Require(new IsClaimEditable());
+        Require(change => new IsLossCompleteAfterDraft(change));
     }
 
-    protected override LossEvent Apply(Claim claim, UpdateLossDetailsInput input)
+    protected override ClaimLossEvent Apply(ClaimLossEvent loss, ChangeLossInput change)
     {
-        claim.LossEvent.Update(input.Loss, input.Now);
+        loss.Update(change.Details, change.Now);
 
-        return claim.LossEvent;
+        return loss;
     }
 }

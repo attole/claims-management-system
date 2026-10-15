@@ -1,4 +1,4 @@
-using ClaimsModule.Domain.Claims.Issues.Checks;
+using ClaimsModule.Domain.Claims.Loss.Checks;
 using ClaimsModule.Domain.Core.Base.Checks;
 using ClaimsModule.Domain.Core.Rules;
 
