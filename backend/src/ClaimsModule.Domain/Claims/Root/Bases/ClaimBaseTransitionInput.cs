@@ -7,4 +7,6 @@ public abstract record ClaimBaseTransitionInput(UserRole ActorRole, Guid ActorId
     : ClaimBaseOperationInput(Now, ActorId)
 {
     public StateChangeReason Reason { get; init; } = StateChangeReason.Empty;
+
+    public string Note { get; init; } = string.Empty;
 }

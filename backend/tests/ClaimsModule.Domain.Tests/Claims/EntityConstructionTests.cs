@@ -41,6 +41,7 @@ public sealed class EntityConstructionTests
         issue.Finding.Should().Be(IssueFinding.Empty);
         issue.State.Should().BeOfType<IssueRaisedState>();
         stateChange.Reason.Should().Be(StateChangeReason.Empty);
+        stateChange.Note.Should().BeEmpty();
     }
 
     [Fact]

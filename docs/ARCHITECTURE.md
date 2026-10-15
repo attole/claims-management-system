@@ -44,6 +44,8 @@ Where the specification and the assessment disagree, the specification is used a
 - Which role may call which operation is decided in the Application; the documents state only the explicit rules (reopen, approval authority, the limit override).
 - The specification's validation messages are used verbatim in Domain rule and check classes and in the transition finding, under a narrow exception in `CLAUDE.md`, and nowhere else.
 - The specification's approval and posting status columns are states in the Domain.
+- The closure message uses an ASCII hyphen where the specification has a dash.
+- Closing and moving to pending payment have no role rule, because the specification's transition table lists none.
 
 ### Schema departures from the spec
 
@@ -170,8 +172,17 @@ The engine lives in `Domain/Core`. Each folder is a layer that uses only the lay
 | Investigate | UnderInvestigation | Open | handler or supervisor role |
 | Withdraw | Withdrawn | Open, UnderInvestigation | a reason with code and text |
 | Reopen | Reopened | Closed | supervisor role, a reason |
+| SendToPayment | PendingPayment | Open | at least one approved reserve |
+| SendToPayment | PendingPayment | UnderInvestigation | at least one approved reserve, liability confirmed |
+| Close | Closed | Open, UnderInvestigation, PendingPayment | the four closure conditions |
 
-- The PendingPayment and Closed moves, with the closure conditions, come in a later pack.
+- The closure conditions are four rules: no reserve change awaiting approval (S:CC-01), no unresolved Critical issue (S:CC-02), a claimant (S:CC-03), and a closing note when a reserve balance is above zero (S:CC-04).
+- A failed close returns every failed condition at once.
+- A close with an open reserve balance also returns the S:CC-04 warning as an advisory finding, whether or not a note was given.
+- The reserve facts come in a snapshot on the input: the approved reserve count, whether a reserve change is pending, and whether a balance is open.
+- Liability confirmation is a flag on the move from UnderInvestigation and is not stored on the claim.
+- Any move may carry a note; it is stored on the state-change row, and a close with an open balance requires it.
+- The manager-only limit override is `SetLimitOverrideOperation`, which sets the flag on the claim.
 - Each move appends a `ClaimStateChange` row and raises `ClaimStateChangedEvent`.
 - A reopen leaves two rows because the Application runs the Open move right after it.
 

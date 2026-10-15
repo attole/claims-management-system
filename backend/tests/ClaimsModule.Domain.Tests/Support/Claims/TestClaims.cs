@@ -59,14 +59,41 @@ public static class TestClaims
         return claim;
     }
 
+    public static Claim WithLimitOverride()
+    {
+        var claim = Empty();
+        var input = new SetLimitOverrideInput(true, Manager, Actor, Start);
+        new SetLimitOverrideOperation().Execute(claim, input);
+
+        return claim;
+    }
+
     public static Claim InState(ClaimState state)
     {
         var claim = Create(Claimant());
+        MoveTo(claim, state);
+
+        return claim;
+    }
+
+    public static Claim InStateWithoutClaimant(ClaimState state)
+    {
+        var claim = Create();
+        MoveTo(claim, state);
+
+        return claim;
+    }
+
+    public static void MoveTo(Claim claim, ClaimState state)
+    {
         var input = new SampleMoveClaimInput(Handler, Actor, Start);
         new SampleMoveClaimTransition(state).Execute(claim, input);
         claim.PopEvents();
+    }
 
-        return claim;
+    public static ClaimReserveSnapshot Reserves()
+    {
+        return new ClaimReserveSnapshot(1, false, false);
     }
 
     public static void WaiveIssue(Claim claim, string code)

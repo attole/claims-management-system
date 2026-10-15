@@ -153,13 +153,19 @@ public sealed class Claim : AggregateRoot, IAuditable, ISoftDeletable, ITenantOw
         Touch(now);
     }
 
-    internal void ChangeState(ClaimState state, StateChangeReason reason, Guid actorId, DateTimeOffset now)
+    internal void ChangeState(ClaimState state, StateChangeReason reason, string note, Guid actorId, DateTimeOffset now)
     {
         var from = State;
-        _stateChanges.Add(new ClaimStateChange(Ids.Next(now), Id, OrganisationId, from, state, reason, now));
+        _stateChanges.Add(new ClaimStateChange(Ids.Next(now), Id, OrganisationId, from, state, reason, note, now));
         State = state;
         Touch(now);
         Raise(new ClaimStateChangedEvent(Ids.Next(now), now, actorId, Id, from.Name, state.Name, reason));
+    }
+
+    internal void SetLimitOverride(bool hasOverride, DateTimeOffset now)
+    {
+        HasAggregateLimitOverride = hasOverride;
+        Touch(now);
     }
 
     internal void WaiveIssue(Guid issueId, Guid actorId, DateTimeOffset now)

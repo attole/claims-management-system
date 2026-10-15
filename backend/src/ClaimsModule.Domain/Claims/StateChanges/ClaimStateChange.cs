@@ -20,6 +20,7 @@ public sealed class ClaimStateChange : Entity, IAuditable, ITenantOwned
         ClaimState from,
         ClaimState to,
         StateChangeReason reason,
+        string note,
         DateTimeOffset now)
         : base(id)
     {
@@ -28,6 +29,7 @@ public sealed class ClaimStateChange : Entity, IAuditable, ITenantOwned
         From = from;
         To = to;
         Reason = reason;
+        Note = note;
         CreatedAt = now;
         UpdatedAt = now;
     }
@@ -39,6 +41,8 @@ public sealed class ClaimStateChange : Entity, IAuditable, ITenantOwned
     public ClaimState To { get; private set; }
 
     public StateChangeReason Reason { get; private set; }
+
+    public string Note { get; private set; } = string.Empty;
 
     public DateTimeOffset CreatedAt { get; private set; } = DateTimeOffset.MinValue;
 

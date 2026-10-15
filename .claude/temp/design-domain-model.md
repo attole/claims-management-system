@@ -13,7 +13,7 @@ OPEN
 
 PROVISIONAL
 
-- Claim-side follow-up: PendingPayment and Closed transitions that read a reserve snapshot on the input (S:CC-01 to S:CC-04), the liability confirmation, the closing note on the state-change row, and the manager-only override-flag operation.
+- None; the Domain packs are built.
 
 DECISIONS
 
@@ -32,6 +32,5 @@ ANALOGUE
 
 NEXT
 
-- Pack 7: the claim-side follow-up above (the posting machine is built).
-- Then the reference data and audit pack.
+- Reference data and audit pack: cause codes (S:BR-C-05) and the audit entries.
 - Then the Application, Persistence, Infrastructure and API packs, each starting from notes-layer-application.md and notes-layer-persistence.md.

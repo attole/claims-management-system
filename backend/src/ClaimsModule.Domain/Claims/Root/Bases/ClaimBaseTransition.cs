@@ -7,7 +7,7 @@ public abstract class ClaimBaseTransition<TInput>(ClaimState target) : Transitio
 {
     protected sealed override ClaimState Apply(Claim claim, TInput input)
     {
-        claim.ChangeState(Target, input.Reason, input.ActorId, input.Now);
+        claim.ChangeState(Target, input.Reason, input.Note, input.ActorId, input.Now);
 
         return claim.State;
     }
