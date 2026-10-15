@@ -7,7 +7,7 @@ namespace ClaimsModule.Domain.Claims.Root.Operations;
 public sealed record AssignHandlerInput(Guid HandlerId, Guid ActorId, DateTimeOffset Now)
     : ClaimBaseOperationInput(Now, ActorId);
 
-public sealed class AssignHandlerOperation : ClaimBaseOperation<AssignHandlerInput, Success>
+public sealed class AssignHandlerOperation : Operation<Claim, AssignHandlerInput, Success>
 {
     public AssignHandlerOperation()
     {

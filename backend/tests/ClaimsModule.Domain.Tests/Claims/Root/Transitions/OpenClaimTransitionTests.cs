@@ -77,6 +77,19 @@ public sealed class OpenClaimTransitionTests
     }
 
     [Fact]
+    [Trait("Rule", "S:ST-Reopened-Open")]
+    public void Execute_FromReopened_OpensItWithoutFurtherRules()
+    {
+        var claim = TestClaims.InState(new ClaimReopenedState());
+        var input = new OpenClaimInput(TestClaims.Handler, TestClaims.Actor, TestClaims.Later);
+
+        var outcome = new OpenClaimTransition().Execute(claim, input);
+
+        outcome.IsSuccess.Should().BeTrue();
+        claim.State.Should().BeOfType<ClaimOpenState>();
+    }
+
+    [Fact]
     [Trait("Rule", HasPermittedRole.Code)]
     public void Execute_FromUnderInvestigationByASupervisor_ReturnsTheRoleFinding()
     {

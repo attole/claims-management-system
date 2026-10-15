@@ -16,7 +16,7 @@ public sealed class ReopenClaimTransitionTests
     [Fact]
     [Trait("Rule", "S:BR-ST-04")]
     [Trait("Rule", "S:ST-Closed-Reopened")]
-    public void Execute_ByASupervisorWithAReason_EndsInOpen()
+    public void Execute_ByASupervisorWithAReason_MovesToReopened()
     {
         var claim = TestClaims.InState(new ClaimClosedState());
         var input = new ReopenClaimInput(TestClaims.Supervisor, TestClaims.Actor, TestClaims.Later)
@@ -26,28 +26,13 @@ public sealed class ReopenClaimTransitionTests
 
         var outcome = new ReopenClaimTransition().Execute(claim, input);
 
-        outcome.IsSuccess.Should().BeTrue();
-        claim.State.Should().BeOfType<ClaimOpenState>();
+        outcome.Value.Should().BeOfType<ClaimReopenedState>();
+        claim.State.Should().BeOfType<ClaimReopenedState>();
     }
 
     [Fact]
-    [Trait("Rule", "S:ST-Reopened-Open")]
-    public void Execute_ByASupervisorWithAReason_ReturnsTheStateItEndsIn()
-    {
-        var claim = TestClaims.InState(new ClaimClosedState());
-        var input = new ReopenClaimInput(TestClaims.Supervisor, TestClaims.Actor, TestClaims.Later)
-        {
-            Reason = _reason,
-        };
-
-        var outcome = new ReopenClaimTransition().Execute(claim, input);
-
-        outcome.Value.Should().BeOfType<ClaimOpenState>();
-    }
-
-    [Fact]
-    [Trait("Rule", "S:ST-Reopened-Open")]
-    public void Execute_ByASupervisorWithAReason_RecordsTwoChangesWithTheReasonOnTheFirst()
+    [Trait("Rule", "S:BR-ST-04")]
+    public void Execute_ByASupervisorWithAReason_RecordsTheReasonOnTheStateChange()
     {
         var claim = TestClaims.InState(new ClaimClosedState());
         var input = new ReopenClaimInput(TestClaims.Supervisor, TestClaims.Actor, TestClaims.Later)
@@ -57,14 +42,14 @@ public sealed class ReopenClaimTransitionTests
 
         new ReopenClaimTransition().Execute(claim, input);
 
-        var changes = claim.StateChanges.TakeLast(2).ToList();
-        changes.Select(change => change.To.Name).Should().Equal("Reopened", "Open");
-        changes.Select(change => change.Reason).Should().Equal(_reason, StateChangeReason.Empty);
+        var change = claim.StateChanges.Last();
+        change.To.Should().BeOfType<ClaimReopenedState>();
+        change.Reason.Should().Be(_reason);
     }
 
     [Fact]
-    [Trait("Rule", "S:ST-Reopened-Open")]
-    public void Execute_ByASupervisorWithAReason_RaisesTwoStateChangedEvents()
+    [Trait("Rule", "S:BR-ST-04")]
+    public void Execute_ByASupervisorWithAReason_RaisesOneStateChangedEvent()
     {
         var claim = TestClaims.InState(new ClaimClosedState());
         var input = new ReopenClaimInput(TestClaims.Supervisor, TestClaims.Actor, TestClaims.Later)
@@ -75,7 +60,7 @@ public sealed class ReopenClaimTransitionTests
         new ReopenClaimTransition().Execute(claim, input);
 
         var events = claim.PopEvents().OfType<ClaimStateChanged>().ToList();
-        events.Select(changed => changed.To).Should().Equal("Reopened", "Open");
+        events.Select(changed => changed.To).Should().Equal("Reopened");
     }
 
     [Fact]

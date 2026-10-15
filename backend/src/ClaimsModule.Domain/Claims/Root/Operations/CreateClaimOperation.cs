@@ -1,4 +1,3 @@
-using ClaimsModule.Domain.Claims.Issues;
 using ClaimsModule.Domain.Claims.Root.Bases;
 using ClaimsModule.Domain.Claims.Root.Rules;
 using ClaimsModule.Domain.Core.Operations;
@@ -10,8 +9,6 @@ public sealed record CreateClaimInput(Guid OrganisationId, ClaimNumber ClaimNumb
 
 public sealed class CreateClaimOperation : CreationOperation<CreateClaimInput, Claim>
 {
-    private readonly EvaluateIssuesFlow _issues = new();
-
     public CreateClaimOperation()
     {
         Require(input => new HasOrganisation(input.OrganisationId));
@@ -20,9 +17,6 @@ public sealed class CreateClaimOperation : CreationOperation<CreateClaimInput, C
 
     protected override Claim Apply(CreateClaimInput input)
     {
-        var claim = Claim.Create(input.OrganisationId, input.ClaimNumber, input.ActorId, input.Now);
-        _issues.Execute(claim, new EvaluateIssuesInput(input.Now, input.ActorId));
-
-        return claim;
+        return Claim.Create(input.OrganisationId, input.ClaimNumber, input.ActorId, input.Now);
     }
 }

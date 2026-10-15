@@ -13,12 +13,7 @@ public enum ClaimStateKind
     Withdrawn,
 }
 
-public abstract record ClaimState(ClaimStateKind Marker) : Marked<ClaimStateKind>(Marker)
-{
-    public virtual bool IsPassThrough => false;
-
-    public virtual ClaimState PassesTo => this;
-}
+public abstract record ClaimState(ClaimStateKind Marker) : Marked<ClaimStateKind>(Marker);
 
 public sealed record ClaimDraftState() : ClaimState(ClaimStateKind.Draft);
 
@@ -30,11 +25,6 @@ public sealed record ClaimPendingPaymentState() : ClaimState(ClaimStateKind.Pend
 
 public sealed record ClaimClosedState() : ClaimState(ClaimStateKind.Closed);
 
-public sealed record ClaimReopenedState() : ClaimState(ClaimStateKind.Reopened)
-{
-    public override bool IsPassThrough => true;
-
-    public override ClaimState PassesTo => new ClaimOpenState();
-}
+public sealed record ClaimReopenedState() : ClaimState(ClaimStateKind.Reopened);
 
 public sealed record ClaimWithdrawnState() : ClaimState(ClaimStateKind.Withdrawn);

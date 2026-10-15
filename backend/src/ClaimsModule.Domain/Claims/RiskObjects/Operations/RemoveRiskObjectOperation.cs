@@ -9,7 +9,7 @@ namespace ClaimsModule.Domain.Claims.RiskObjects.Operations;
 public sealed record RemoveRiskObjectInput(Guid RiskObjectId, Guid ActorId, DateTimeOffset Now)
     : ClaimBaseOperationInput(Now, ActorId);
 
-public sealed class RemoveRiskObjectOperation : ClaimBaseOperation<RemoveRiskObjectInput, Success>
+public sealed class RemoveRiskObjectOperation : Operation<Claim, RemoveRiskObjectInput, Success>
 {
     public RemoveRiskObjectOperation()
     {

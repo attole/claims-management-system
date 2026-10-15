@@ -7,7 +7,7 @@ namespace ClaimsModule.Domain.Claims.Root.Operations;
 public sealed record SetSeverityInput(ClaimSeverity Severity, Guid ActorId, DateTimeOffset Now)
     : ClaimBaseOperationInput(Now, ActorId);
 
-public sealed class SetSeverityOperation : ClaimBaseOperation<SetSeverityInput, Success>
+public sealed class SetSeverityOperation : Operation<Claim, SetSeverityInput, Success>
 {
     public SetSeverityOperation()
     {

@@ -1,3 +1,4 @@
+using ClaimsModule.Domain.Claims.Issues;
 using ClaimsModule.Domain.Claims.Issues.Operations;
 using ClaimsModule.Domain.Claims.Loss;
 using ClaimsModule.Domain.Claims.Loss.Operations;
@@ -17,16 +18,25 @@ public static class TestClaims
     public static readonly DateTimeOffset Later = Start.AddHours(1);
     public static readonly Guid Organisation = Guid.Parse("11111111-1111-1111-1111-111111111111");
     public static readonly Guid Actor = Guid.Parse("22222222-2222-2222-2222-222222222222");
-    public static readonly UserRole Handler = new UserHandlerRole();
-    public static readonly UserRole Supervisor = new UserSupervisorRole();
-    public static readonly UserRole Manager = new UserManagerRole();
+    public const UserRole Handler = UserRole.Handler;
+    public const UserRole Supervisor = UserRole.Supervisor;
+    public const UserRole Manager = UserRole.Manager;
     public const string Description = "Water damage in the kitchen after a burst pipe";
 
     public static Claim Empty()
     {
         var input = new CreateClaimInput(Organisation, ClaimNumber.From("CLM-2026-0000001"), Actor, Start);
 
-        return new CreateClaimOperation().Execute(input).Value;
+        var claim = new CreateClaimOperation().Execute(input).Value;
+        Evaluate(claim);
+
+        return claim;
+    }
+
+    public static void Evaluate(Claim claim)
+    {
+        var input = new EvaluateIssuesInput(Start, Actor);
+        new EvaluateIssuesFlow().Execute(claim, input);
     }
 
     public static Claim Create(params PartyDetails[] parties)
@@ -36,10 +46,12 @@ public static class TestClaims
 
         SetLoss(claim, Loss(Start.AddDays(-3), Description));
         new AddRiskObjectOperation().Execute(claim, new AddRiskObjectInput(riskObject, Actor, Start));
+        Evaluate(claim);
 
         foreach (var party in parties)
         {
             new AddPartyOperation().Execute(claim, new AddPartyInput(party, Actor, Start));
+            Evaluate(claim);
         }
 
         claim.PopEvents();
@@ -62,6 +74,7 @@ public static class TestClaims
         var issue = claim.Issues.Single(candidate => candidate.IsCurrent && candidate.Finding.Code == code);
         var input = new WaiveIssueInput(issue.Id, Actor, Start);
         new WaiveIssueOperation().Execute(claim, input);
+        Evaluate(claim);
     }
 
     public static Claim WithLoss(DateTimeOffset lossDate)
@@ -85,6 +98,7 @@ public static class TestClaims
     public static void SetLoss(Claim claim, LossDetails loss)
     {
         new UpdateLossDetailsOperation().Execute(claim, new UpdateLossDetailsInput(loss, Actor, Start));
+        Evaluate(claim);
     }
 
     public static LossDetails Loss(DateTimeOffset lossDate, string description)

@@ -8,7 +8,7 @@ namespace ClaimsModule.Domain.Claims.Loss.Operations;
 public sealed record UpdateLossDetailsInput(LossDetails Loss, Guid ActorId, DateTimeOffset Now)
     : ClaimBaseOperationInput(Now, ActorId);
 
-public sealed class UpdateLossDetailsOperation : ClaimBaseOperation<UpdateLossDetailsInput, Success>
+public sealed class UpdateLossDetailsOperation : Operation<Claim, UpdateLossDetailsInput, Success>
 {
     public UpdateLossDetailsOperation()
     {

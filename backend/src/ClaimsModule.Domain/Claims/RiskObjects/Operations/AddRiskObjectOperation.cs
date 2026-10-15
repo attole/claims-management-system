@@ -1,13 +1,14 @@
 using ClaimsModule.Domain.Claims.Root;
 using ClaimsModule.Domain.Claims.Root.Bases;
 using ClaimsModule.Domain.Claims.Root.Rules;
+using ClaimsModule.Domain.Core.Operations;
 
 namespace ClaimsModule.Domain.Claims.RiskObjects.Operations;
 
 public sealed record AddRiskObjectInput(RiskObjectDetails Details, Guid ActorId, DateTimeOffset Now)
     : ClaimBaseOperationInput(Now, ActorId);
 
-public sealed class AddRiskObjectOperation : ClaimBaseOperation<AddRiskObjectInput, ClaimRiskObject>
+public sealed class AddRiskObjectOperation : Operation<Claim, AddRiskObjectInput, ClaimRiskObject>
 {
     public AddRiskObjectOperation()
     {

@@ -81,9 +81,11 @@ public sealed class EvaluateIssuesFlowTests
         var claim = TestClaims.Empty();
         claim.PopEvents();
         var loss = TestClaims.Loss(TestClaims.Start.AddDays(-1), TestClaims.Description);
-        var input = new UpdateLossDetailsInput(loss, TestClaims.Actor, TestClaims.Later);
+        var update = new UpdateLossDetailsInput(loss, TestClaims.Actor, TestClaims.Later);
+        new UpdateLossDetailsOperation().Execute(claim, update);
+        var input = new EvaluateIssuesInput(TestClaims.Later, TestClaims.Actor);
 
-        new UpdateLossDetailsOperation().Execute(claim, input);
+        new EvaluateIssuesFlow().Execute(claim, input);
 
         claim.BlockingIssues.Select(issue => issue.Finding.Code).Should().Equal(HasClaimant.Code);
         var cleared = claim.PopEvents().OfType<ValidationIssueCleared>().ToList();
@@ -146,9 +148,11 @@ public sealed class EvaluateIssuesFlowTests
     {
         var claim = TestClaims.Create(TestClaims.Claimant());
         var loss = TestClaims.Loss(TestClaims.Later.AddDays(5), TestClaims.Description);
-        var input = new UpdateLossDetailsInput(loss, TestClaims.Actor, TestClaims.Later);
+        var update = new UpdateLossDetailsInput(loss, TestClaims.Actor, TestClaims.Start);
+        new UpdateLossDetailsOperation().Execute(claim, update);
+        var input = new EvaluateIssuesInput(TestClaims.Later, TestClaims.Actor);
 
-        new UpdateLossDetailsOperation().Execute(claim, input);
+        new EvaluateIssuesFlow().Execute(claim, input);
 
         claim.UpdatedAt.Should().Be(TestClaims.Later);
         claim.Issues.Count(issue => issue.IsCurrent).Should().Be(1);

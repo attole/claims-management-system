@@ -24,9 +24,11 @@ public sealed class ClaimValidationIssueTests
     {
         var claim = TestClaims.Empty();
         var loss = TestClaims.Loss(TestClaims.Start.AddDays(-1), TestClaims.Description);
-        var input = new UpdateLossDetailsInput(loss, TestClaims.Actor, TestClaims.Later);
+        var update = new UpdateLossDetailsInput(loss, TestClaims.Actor, TestClaims.Later);
+        new UpdateLossDetailsOperation().Execute(claim, update);
+        var input = new EvaluateIssuesInput(TestClaims.Later, TestClaims.Actor);
 
-        new UpdateLossDetailsOperation().Execute(claim, input);
+        new EvaluateIssuesFlow().Execute(claim, input);
 
         var dateIssue = claim.Issues.Single(issue => issue.Finding.Code == IsLossDatePresent.Code);
         dateIssue.State.Should().BeOfType<IssueClearedState>();
@@ -58,8 +60,10 @@ public sealed class ClaimValidationIssueTests
         new WaiveIssueOperation().Execute(claim, waive);
         var loss = TestClaims.Loss(TestClaims.Start.AddDays(-1), TestClaims.Description);
         var fix = new UpdateLossDetailsInput(loss, _otherActor, TestClaims.Later.AddHours(1));
-
         new UpdateLossDetailsOperation().Execute(claim, fix);
+        var input = new EvaluateIssuesInput(TestClaims.Later.AddHours(1), _otherActor);
+
+        new EvaluateIssuesFlow().Execute(claim, input);
 
         issue.State.Should().BeOfType<IssueClearedState>();
         issue.ResolvedBy.Should().Be(_otherActor);

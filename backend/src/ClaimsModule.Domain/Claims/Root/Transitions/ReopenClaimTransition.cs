@@ -14,7 +14,7 @@ public sealed class ReopenClaimTransition : ClaimBaseTransition<ReopenClaimInput
         : base(new ClaimReopenedState())
     {
         AllowedFrom(new ClaimClosedState())
-            .Require(input => new HasPermittedRole(input.ActorRole, new UserSupervisorRole()))
+            .Require(input => new HasPermittedRole(input.ActorRole, UserRole.Supervisor))
             .Require(input => new HasStateChangeReason(input.Reason));
     }
 }

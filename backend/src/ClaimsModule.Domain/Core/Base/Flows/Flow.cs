@@ -7,30 +7,19 @@ public abstract class Flow<TSubject, TInput, TValue, TFinding>
 {
     private readonly CheckSet<TSubject, TInput, TFinding> _checks = new();
 
-    protected virtual FlowDecision WhenPreconditionFails => FlowDecision.Stop;
-
     protected virtual FlowDecision WhenBlocked => FlowDecision.Stop;
 
-    public FlowOutcome<TValue, TFinding> Execute(TSubject subject, TInput input)
+    public virtual FlowOutcome<TValue, TFinding> Execute(TSubject subject, TInput input)
     {
-        var preconditionResult = new CheckResult<TFinding>(CheckPreconditions(subject, input));
-
-        if (IsEndingRun(preconditionResult, WhenPreconditionFails))
-        {
-            return EndRun(preconditionResult, WhenPreconditionFails);
-        }
-
         var evaluated = SelectChecks(subject).Select(set => set.Evaluate(subject, input));
-        var checkResult = CheckResult<TFinding>.Combine(evaluated);
-        var result = CheckResult<TFinding>.Combine([preconditionResult, checkResult]);
+        var result = CheckResult<TFinding>.Combine(evaluated);
 
-        if (IsEndingRun(checkResult, WhenBlocked))
+        if (IsEndingRun(result, WhenBlocked))
         {
             return EndRun(result, WhenBlocked);
         }
 
         var value = Apply(subject, input, result);
-        AfterApply(subject, input);
 
         return FlowOutcome<TValue, TFinding>.Success(value, result);
     }
@@ -50,15 +39,6 @@ public abstract class Flow<TSubject, TInput, TValue, TFinding>
     protected virtual IReadOnlyList<CheckSet<TSubject, TInput, TFinding>> SelectChecks(TSubject subject)
     {
         return [_checks];
-    }
-
-    protected virtual IReadOnlyList<TFinding> CheckPreconditions(TSubject subject, TInput input)
-    {
-        return [];
-    }
-
-    protected virtual void AfterApply(TSubject subject, TInput input)
-    {
     }
 
     private static bool IsEndingRun(CheckResult<TFinding> result, FlowDecision decision)

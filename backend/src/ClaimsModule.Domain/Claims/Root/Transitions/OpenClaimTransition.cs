@@ -16,6 +16,7 @@ public sealed class OpenClaimTransition : ClaimBaseTransition<OpenClaimInput>
             .Require(new HasNoBlockingIssues())
             .Require(new HasActiveClaimant());
         AllowedFrom(new ClaimUnderInvestigationState())
-            .Require(input => new HasPermittedRole(input.ActorRole, new UserHandlerRole()));
+            .Require(input => new HasPermittedRole(input.ActorRole, UserRole.Handler));
+        AllowedFrom(new ClaimReopenedState());
     }
 }

@@ -1,4 +1,3 @@
-using ClaimsModule.Domain.Claims.Issues.Checks;
 using ClaimsModule.Domain.Claims.Root;
 using ClaimsModule.Domain.Claims.Root.Events;
 using ClaimsModule.Domain.Claims.StateChanges;
@@ -65,19 +64,6 @@ public sealed class ClaimBaseTransitionTests
         outcome.Blocking.Should().ContainSingle().Which.Code.Should().Be(FailingClaimRule.Code);
         claim.State.Should().BeOfType<ClaimDraftState>();
         claim.PopEvents().OfType<ClaimStateChanged>().Should().BeEmpty();
-    }
-
-    [Fact]
-    public void Execute_ReEvaluatesTheStoredIssues()
-    {
-        var claim = TestClaims.Create(TestClaims.Claimant());
-        var beforeTheLoss = TestClaims.Start.AddDays(-10);
-        var input = new SampleClaimTransitionInput(TestClaims.Handler, TestClaims.Actor, beforeTheLoss);
-
-        new SampleClaimTransition().Execute(claim, input);
-
-        claim.State.Should().BeOfType<ClaimOpenState>();
-        claim.BlockingIssues.Select(issue => issue.Finding.Code).Should().Equal(IsLossDateNotInFuture.Code);
     }
 
     [Fact]

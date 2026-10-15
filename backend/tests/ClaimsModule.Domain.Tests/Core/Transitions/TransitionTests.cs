@@ -1,3 +1,5 @@
+using ClaimsModule.Domain.Core.Base.Flows;
+using ClaimsModule.Domain.Core.Rules;
 using ClaimsModule.Domain.Core.Transitions;
 using ClaimsModule.Domain.Tests.Support.Common;
 using ClaimsModule.Domain.Tests.Support.Core;
@@ -67,6 +69,19 @@ public sealed class TransitionTests
         var input = new SampleInput("x");
 
         var outcome = new CommonRuleSampleTransition().Execute(subject, input);
+
+        outcome.Blocking.Should().ContainSingle().Which.Should().BeOfType<TransitionFinding>();
+    }
+
+    [Fact]
+    [Trait("Rule", TransitionFinding.DefaultCode)]
+    public void Execute_ThroughTheFlowType_StillAnswersAnUndeclaredSource()
+    {
+        var subject = new SampleSubject { State = new DraftSampleState() };
+        var input = new SampleInput("done");
+        Flow<SampleSubject, SampleInput, SampleState, DomainFinding> flow = new CloseSampleTransition();
+
+        var outcome = flow.Execute(subject, input);
 
         outcome.Blocking.Should().ContainSingle().Which.Should().BeOfType<TransitionFinding>();
     }

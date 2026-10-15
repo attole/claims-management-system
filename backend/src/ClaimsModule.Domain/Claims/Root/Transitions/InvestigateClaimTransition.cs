@@ -13,6 +13,6 @@ public sealed class InvestigateClaimTransition : ClaimBaseTransition<Investigate
         : base(new ClaimUnderInvestigationState())
     {
         AllowedFrom(new ClaimOpenState())
-            .Require(input => new HasPermittedRole(input.ActorRole, new UserHandlerRole(), new UserSupervisorRole()));
+            .Require(input => new HasPermittedRole(input.ActorRole, UserRole.Handler, UserRole.Supervisor));
     }
 }

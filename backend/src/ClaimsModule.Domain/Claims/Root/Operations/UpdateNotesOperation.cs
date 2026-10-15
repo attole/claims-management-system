@@ -7,7 +7,7 @@ namespace ClaimsModule.Domain.Claims.Root.Operations;
 public sealed record UpdateNotesInput(string Notes, Guid ActorId, DateTimeOffset Now)
     : ClaimBaseOperationInput(Now, ActorId);
 
-public sealed class UpdateNotesOperation : ClaimBaseOperation<UpdateNotesInput, Success>
+public sealed class UpdateNotesOperation : Operation<Claim, UpdateNotesInput, Success>
 {
     public UpdateNotesOperation()
     {

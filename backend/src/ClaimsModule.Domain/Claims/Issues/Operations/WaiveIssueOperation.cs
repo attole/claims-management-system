@@ -9,7 +9,7 @@ namespace ClaimsModule.Domain.Claims.Issues.Operations;
 public sealed record WaiveIssueInput(Guid IssueId, Guid ActorId, DateTimeOffset Now)
     : ClaimBaseOperationInput(Now, ActorId);
 
-public sealed class WaiveIssueOperation : ClaimBaseOperation<WaiveIssueInput, Success>
+public sealed class WaiveIssueOperation : Operation<Claim, WaiveIssueInput, Success>
 {
     public WaiveIssueOperation()
     {

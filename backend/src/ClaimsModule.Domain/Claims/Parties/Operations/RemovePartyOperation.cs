@@ -9,7 +9,7 @@ namespace ClaimsModule.Domain.Claims.Parties.Operations;
 public sealed record RemovePartyInput(Guid PartyId, Guid ActorId, DateTimeOffset Now)
     : ClaimBaseOperationInput(Now, ActorId);
 
-public sealed class RemovePartyOperation : ClaimBaseOperation<RemovePartyInput, Success>
+public sealed class RemovePartyOperation : Operation<Claim, RemovePartyInput, Success>
 {
     public RemovePartyOperation()
     {
