@@ -358,3 +358,25 @@ decisions: the user chose state as the one word, a locked transition with a seal
 ai-errors: first proposals kept hooks and a factory the user showed were unneeded; a stale rename left variable and doc names; the test host needed a roll-forward setting for the installed runtime
 human-vs-ai: the user decided every structure and name; the AI implemented, ran build, tests, the workflow check and the review, and fixed the findings
 refs: CORRECTION-019, CORRECTION-020, CORRECTION-021, ASSESSMENT-006
+
+## PROMPT-007 | p1 domain | 2026-10-15
+purpose: set the boundary between the Domain and the Application and remove step chaining from the engine
+prompt: the Domain holds entities, events and rules on their states; flows of several steps are done in the Application by chaining operations and transitions; move parts there
+outcome: kept
+note: one sentence replaced the base operation, the AfterApply hook, the pass-through loop and the reserve starting-approval helper; the chains are now listed in ARCHITECTURE.md
+
+## CORRECTION-022 | p1 domain | 2026-10-15
+what: Domain bases and helpers chained steps (issue evaluation after every change, a Reopened pass-through loop, a starting-approval helper, review and ledger methods on the approval set)
+caught-by: user
+fix: bases and hooks removed; the Application chains steps; reserve changes are created pending and an auto-approve transition decides the rest
+lesson: before adding a hook or helper, ask whether the step is a rule on state or a second step the caller should run
+
+## SPLIT-004 | p1 domain | 2026-10-15
+item: design questions about the reserve domain (shape, naming, authority, chaining) and their implementation
+who: hybrid
+note: the user settled each structure and name in chat; the AI argued options, implemented, ran build, tests, the workflow check and a fresh-context review, then fixed the findings
+
+## ASSESSMENT-007 | p1 domain | 2026-10-15
+area: fresh-context code review plus passive spec-check after a large pack
+helped: medium
+note: the review found real shape and test-form defects and the spec check three untested rules; the user's own questions caught the design smells faster than the review did

@@ -26,6 +26,8 @@ PROVISIONAL
 - Infrastructure: the two Hangfire jobs, their startup registration and their audit writes live in Infrastructure and call the Domain posting steps (S:JOB-Registration). The request correlation id comes from the request context in Application when audit entries are written (S:AUD-Correlation).
 - Claim number generation is an Application interface implemented in Persistence (see notes-layer-persistence.md).
 
+- Every handler: load the aggregates, build the snapshot by query, build the input (time stamped once, actor and role from the authenticated user), run the step, read the outcome, run the chains in docs/ARCHITECTURE.md 'Application chains', save in one Unit of Work, enqueue jobs and write audit entries after the commit. An expected refusal (auto-approve) is not an error.
+
 NEXT
 
 - Build the Application layer after the Domain packs; start from the create-claim flow, the input builder interface and the closed-set service, because the Domain tests already use fixtures that mimic them.
