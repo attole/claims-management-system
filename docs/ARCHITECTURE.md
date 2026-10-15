@@ -38,7 +38,7 @@ Where the specification and the assessment disagree, the specification is used a
 - An approved reserve change has the approval Approved or AutoApproved.
 - The 10 million in the roles table is the claim-wide cap, with a manager override (S:BR-R-02, S:BR-R-05).
 - The claim total is the net sum over all reserves, with no exclusions.
-- Reopened is a normal state; the Application runs the Open move right after the reopen.
+- Reopened is a normal state; the claim's reopen method runs the Open move right after the reopen.
 - A policy period is two inclusive calendar dates, compared with the UTC calendar date of the loss date, because all timestamps are stored in UTC.
 - The reported dates are set by the system at creation; the estimated loss amount is optional and has no bound.
 - Which role may call which operation is decided in the Application; the documents state only the explicit rules (reopen, approval authority, the limit override).
@@ -75,107 +75,87 @@ Where the specification and the assessment disagree, the specification is used a
 
 Clean Architecture with five projects, dependencies pointing inward: `API` -> `Application` -> `Domain`. `Persistence` and `Infrastructure` implement interfaces that `Application` defines. The Domain has no project references and no packages.
 
-- **Domain:** aggregates with public behaviour methods, and behind them the single steps, rules and events, plus the generic engine that runs the steps.
-- **Application:** the use cases. It loads data, builds the input and the snapshot of values the rules need, calls one aggregate method, reads its outcome, saves through the Unit of Work, dispatches events and maps findings to responses.
+- **Domain:** the aggregates, their rules and events, and the small engine that runs a change.
+- **Application:** the use cases. It loads data, builds the input with the facts the rules need, calls one aggregate method, reads its outcome, saves through the Unit of Work, dispatches events and maps findings to responses.
 - **Persistence:** EF Core mapping, with a save interceptor for audit, soft-delete and tenant fields.
 - **Infrastructure:** Hangfire jobs and outside adapters.
 - **API:** controllers and startup.
 
 The Application and Persistence designs are written when those layers are built; the open points are in `.claude/temp/notes-layer-application.md` and `.claude/temp/notes-layer-persistence.md`.
 
-### Domain and Application
+### The domain model
 
-The Domain says what is true and what may change. The Application says what happens, in which order and in which transaction.
+The Domain is a domain-driven model: the claim with its children, the reserve and the reserve change are entities that own their state and change it only through their own public methods. The Application calls `claim.AddParty(input)` and the claim decides what that means.
 
-- The Domain holds state, rules, single steps, aggregate methods and events.
-- The public face of an aggregate is its methods. A method runs one step and the follow-ups that stay inside the same aggregate.
-- The steps, rules and checks are internal to the Domain.
-- The Domain never loads or saves, reads no clock, reads no other aggregate and never chains across aggregates.
-- The Application loads, builds the input, computes the snapshot, calls one aggregate method, reads its outcome, saves and dispatches events.
-- A true-or-false statement about state and request is a rule.
-- A change to one aggregate's state is a step.
-- A second aggregate, a load, a save, a clock, a user identity or a job belongs to the Application.
-- A value that needs data from outside the aggregate is computed by the Application into the snapshot on the input.
+Inside those methods every change runs through one small engine, which exists for error handling and order. A flow evaluates all of its rules before it changes anything and returns the refusals as findings, all at once and never as exceptions, so a refused change leaves the aggregate untouched; it applies its change in one place, so "rules, then the change, then what follows" is the same order for every method. Rules are named classes, and a new one is a class plus the line that requires it. The engine knows nothing about claims or reserves.
 
-### Snapshots
+| Concern | Where it lives | How |
+|---|---|---|
+| State and its changes | the aggregate, an entity | public methods; `internal` setters and child mutators; lifecycles as closed sets |
+| The conditions of a change | rules, internal classes with a `Code` | declared once per step; a failed rule is a finding |
+| Running a change | flows: operations, transitions, whole-entity flows | rules first, then `Apply`; the result is a `FlowOutcome` |
+| What follows a successful change | the aggregate method's chain | `OnSuccess` hooks: raise the event, record the move, run an inner step, settle |
+| Facts from outside the aggregate | a snapshot on the input | computed by the Application before the call |
+| Effects beyond the aggregate | domain events | handled by the Application around the commit |
 
-A snapshot is a read-only record of facts the Application computes by query and puts on a step's input. The Domain never loads, so a rule that needs a fact it does not own reads it from a snapshot.
+### How a change runs
+
+```csharp
+public FlowOutcome<ClaimParty, DomainFinding> AddParty(AddPartyInput input)
+{
+    return AddPartyOperation.Execute(this, input)
+        .OnSuccess(party => Raise(new PartyAddedEvent(input.Stamp(), Id, party.Id, party.Details.Role.Name)))
+        .OnSuccess(() => Settle(input));
+}
+```
+
+- The step evaluates its rules. If any blocks, the outcome carries every blocking finding, nothing has changed, and the chain falls through.
+- On success the follow-ups run in the written order: the event the step owns, a move record, an inner step of the same aggregate, and `Settle` last (touch and recompute derived state, the claim's issues).
+- The method returns the step's outcome; a follow-up never changes it, so a condition that could refuse is a rule on the step. The Application reads `IsSuccess`, `Value`, `Blocking` and `Advisory` and never looks inside the aggregate.
+
+### Context from the Application: inputs and snapshots
+
+The Domain never loads, reads no clock and knows no identity. Everything a change needs that the aggregate does not hold arrives on the input: the time and the actor, stamped once by the Application, the request data, and a snapshot of facts from outside the aggregate.
 
 | Snapshot | Holds | Used by |
 |---|---|---|
 | `ReserveSnapshot` | policy linked, claim approved total, override flag, reserve type, approved balance, next change sequence | the reserve change steps |
 | `ClaimReserveSnapshot` | approved reserve count, a change pending, a balance open | send to payment, close |
-| `ClaimReferenceSnapshot` | active cause-of-loss codes, policy period | issue evaluation |
+| `ClaimReferenceSnapshot` | active cause-of-loss codes, policy period | issue evaluation, on every claim input |
 
-- A fact the aggregate holds is read from the aggregate.
-- A fact held by another aggregate or by reference data arrives in a snapshot.
 - The definition of each fact (for example "approved" means Approved or AutoApproved) lives in one Application query per snapshot, covered by Application tests.
 - A stale snapshot is covered by the claim-row touch on save, which serializes concurrent changes on one claim.
 
-### Domain model
+### Model conventions
 
 - **Aggregates:** the claim is a root with children (parties, risk objects, loss, issues, state changes). A reserve and a reserve change are two roots. Aggregates refer to each other by id only.
-- **One door in:** children have private setters and `internal` mutators; the root's fields have `internal` setters and its child lists are reachable inside the Domain only. Every change goes through a public aggregate method, which runs a step and, on success, touches the root and raises the event.
 - **Entity data in one record,** replaced whole, so an edit cannot half-apply and EF maps it as a complex property.
 - **No null:** a value that may be missing is a record with an `Empty` instance and an `IsSet` flag, because EF cannot map a struct to a nullable column.
-- **Ids and time:** ids are sequential GUIDs made in the Domain; the time of a run is on the input, stamped once by the Application.
+- **Ids, time and actor:** ids are sequential GUIDs made in the Domain; an event takes its id, time and actor from the input as one `EventStamp`.
 - **A Draft may be incomplete;** what is missing is stored as validation issues instead of rejecting the save.
 - **Closed sets:** a set that carries facts, or that a transition uses as a state, is a marker enum plus a record per value. A set with neither is a plain enum.
 - **Claim numbers:** `ClaimNumber.Create(year, sequence)` formats and validates; `ClaimNumber.From` parses a stored number. The Application takes the sequence from the database counter.
 
 ### Domain engine
 
-All domain logic goes through one small engine, because rules written as conditionals spread over handlers and entities turn every new rule into a search. The engine knows nothing about claims or reserves. Extending the domain means adding a declaration, not changing the engine or its callers.
-
-The engine lives in `Domain/Core`. Each folder is a layer that uses only the layers above it, which the workflow check enforces; `Core` never references the aggregates.
+The engine lives in `Domain/Core`, layered so that each folder uses only the layers above it (enforced by the workflow check); `Core` never references the aggregates. Its machinery is internal; only the outcome, the findings, the inputs and `StateChange` are public.
 
 | Layer | Folder | Idea |
 |---|---|---|
 | 1 | `Core/Base/Checks` | a check reports findings about a subject |
-| 2 | `Core/Base/Flows` | the template that selects checks, evaluates them and applies |
+| 2 | `Core/Base/Flows` | the template that evaluates checks and applies; the outcome, with `OnSuccess` |
 | 3 | `Core/Rules` | a rule is a check with domain findings |
 | 4 | `Core/Operations` | a business action on a subject; a creation operation has no subject yet |
-| 5 | `Core/Transitions` | an operation that moves a subject between states |
+| 5 | `Core/Transitions` | an operation that moves a subject between states and returns the `StateChange` |
 
-**Checks and rules.**
-- A check returns findings about a subject; none means it passed.
-- A rule is a check whose findings are domain findings: a code, a message, blocking by default or advisory.
-- A domain finding is `RuleFinding` (code, message, field) or `TransitionFinding` (source, target, valid targets).
-- Stored validation issues are checks with their own finding type, because an issue is recorded and can be waived; it is not a refusal.
+- A rule is a check whose findings are domain findings: a code, a message, blocking by default or advisory. Stored validation issues are checks with their own finding type, because an issue is recorded and can be waived; it is not a refusal.
+- A step is one shared instance, built on first use and run through a static `Execute`; it holds nothing beyond its rules and changes the subject only in `Apply`, through `internal` members, without touching the root or raising events.
+- A transition is configured by a target and the source states it is allowed from, each with its rules; a move from an undeclared state returns one finding without running any rule. The aggregate's transition base sets the state, writes the history row and returns the change. Who may make a move is a rule on the transition.
+- `EvaluateIssuesFlow` reconciles the stored issues with their checks: a new finding raises an issue, a resolved one is cleared, a waived one stays resolved while the problem remains. It is idempotent and runs in every claim method's `Settle`.
+- Rule failures are findings; a broken invariant throws. Not found, forbidden and conflict belong to the Application. The engine loads nothing, saves nothing and decides nobody's permission.
+- Transitions are internal, so the claim will expose its valid next states for the Application (Application pack).
 
-**Flows and operations.**
-- A flow selects its checks, evaluates them, applies the decision on a blocked run (stop, skip or continue) and then applies.
-- An operation is a flow for one business action. It declares its rules once and takes its data and the time of the run in an input record.
-- The operation changes the subject only in its apply step, through the subject's `internal` members. It does not touch the root's update time and raises no event; the aggregate method does both after reading the outcome.
-- Creation is an operation without a subject, whose rules check the input.
-
-**Transitions.**
-- A transition is an operation that moves its subject to another state and returns the new state.
-- It is configured by a target, the source states it is allowed from with the rules that apply from them, and common rules.
-- A move from an undeclared state returns one finding without running any rule.
-- A subject exposes its state through the `IStateful` capability.
-- The aggregate's transition base does the state change: it sets the state and writes the history and the event.
-- Who may make a move is a rule on the transition.
-- The Application lists the valid next states from the declared sources and targets.
-
-**Validation issues.**
-- `EvaluateIssuesFlow` reconciles the stored issues with their checks: a new finding raises an issue, a resolved one is cleared, a waived one stays resolved while the problem remains.
-- A Critical issue blocks opening; a waived one does not.
-- The evaluation is idempotent, and the Application runs it after every claim change.
-
-**Failures and boundaries.**
-- Rule failures are findings, all returned at once.
-- A broken invariant throws.
-- Not found, forbidden and conflict belong to the Application.
-- The engine loads nothing, saves nothing and decides nobody's permission.
-
-**Extending.**
-- A new state is a record.
-- A new move is a transition class.
-- A new rule is a class plus a line that requires it.
-- A new action is an operation and its input.
-- A new aggregate adds its own base input.
-- The recipes are in `.claude/CLAUDE.md` 'Extending the Domain'.
+Extending: a new state is a record; a new move is a transition class; a new rule is a class plus a line that requires it; a new action is an operation and its input. The recipes are in `.claude/CLAUDE.md` 'Extending the Domain'.
 
 ### Claims
 
@@ -201,12 +181,12 @@ The engine lives in `Domain/Core`. Each folder is a layer that uses only the lay
 - Any move may carry a note; it is stored on the state-change row, and a close with an open balance requires it.
 - The manager-only limit override is `SetLimitOverrideOperation`, which sets the flag on the claim.
 - Each move appends a `ClaimStateChange` row and raises `ClaimStateChangedEvent`.
-- A reopen leaves two rows because the Application runs the Open move right after it.
+- A reopen leaves two rows because the reopen method runs the Open move right after it; Open from Reopened has no rules, so that inner step cannot be refused.
 
 **Validation checks.**
 - Critical: loss date present, loss date not in the future, description long enough, a claimant, and an active cause of loss code (S:BR-C-05).
 - Warning: no policy linked, and loss date outside the policy period (S:BR-C-02).
-- The Application passes a reference snapshot on the evaluation input: the active cause codes and the policy period (start, end and cancellation date).
+- The reference snapshot on every claim input carries the active cause codes and the policy period (start, end and cancellation date).
 - The policy period ends at the earlier of the expiration and the cancellation date; both ends are inclusive.
 - A claim holds its policy id; `LinkPolicyOperation` sets it, and the Application looks the policy up.
 - `AcknowledgeIssueOperation` resolves an unresolved Warning issue; Critical issues are waived, not acknowledged.
@@ -241,7 +221,7 @@ The engine lives in `Domain/Core`. Each folder is a layer that uses only the lay
 | CancelPosting | transition | Pending -> Cancelled (posting state) |
 
 - A change is always created pending, like a claim is created as a Draft.
-- The Application runs AutoApprove right after the submit; a refusal there only leaves the change pending.
+- The submit method runs AutoApprove right after the submit; a refusal there only leaves the change pending.
 - Approved, AutoApproved, Rejected and Cancelled changes never move again.
 - A correction is a new Adjust or Reverse change.
 - Every approval change stores the actor, time and reason in the review and raises `ReserveApprovalStateChangedEvent`.
@@ -278,14 +258,6 @@ The engine lives in `Domain/Core`. Each folder is a layer that uses only the lay
 | IsReserveChangeApproved | RESERVE_CHANGE_NOT_APPROVED | mark posted, mark posting failed |
 | IsReserveChangeRefused | RESERVE_CHANGE_NOT_REFUSED | cancel posting |
 
-**Snapshot.** The Application computes these values by query and passes them on the input:
-- Whether a policy is linked.
-- The claim's approved total.
-- The claim's override flag.
-- The reserve's component type.
-- The reserve's approved balance.
-- The next change sequence.
-
 **Concurrency.** Every reserve change also touches the claim row on save in Persistence, which serializes concurrent approvals on one claim and keeps the claim's last-activity time current.
 
 **Posting.**
@@ -298,24 +270,24 @@ The engine lives in `Domain/Core`. Each folder is a layer that uses only the lay
 
 ### Design trade-offs
 
-- **Aggregate methods over step objects.** An aggregate exposes public behaviour methods. Behind each is an internal operation or transition (command and specification objects) that holds its rules. The cost is one more hop; the gain is one pattern for every change, all findings at once, rules traced by code, and one door in, because the steps are internal.
-- **Facts passed in, not read.** Snapshots follow the "pass the needed values to the aggregate" approach. The alternative is a Domain interface that Persistence implements for reading. Passing values keeps the Domain free of infrastructure and testable with plain records; the cost is that fact definitions live in the Application.
-- **Two reserve aggregates.** A reserve change is its own root so that engine transitions can move it, and several changes can be pending on one reserve at once. The invariants that span them (non-negative balance, claim limit) are checked against a snapshot at submit and again at approval.
-- **No stored balance.** A reserve's balance is the sum of its approved changes, as the specification describes. Storing a figure would need a second step to keep it in sync.
-- **Steps are single; aggregates compose them.** A step has no hidden effects and no hooks. An aggregate method composes the follow-ups of its own aggregate (a reopen then the Open move, a claim change then the issue evaluation, a submit then the auto-approve attempt, a refusal then the posting cancel). The effects that cross a boundary (audit, the posting job) stay events with handlers.
-- **No runtime rule engine.** Rules are classes declared in code, one line per step. A settings-driven engine would hide the rules from review and from tests.
-- **Events.** The aggregate's public methods record events after a successful step (the issue evaluation flow records its own). The Unit of Work publishes them before the commit for reactions in the same transaction, and after the commit for effects outside it.
+- **Entities with behaviour, flows behind them.** The aggregate's public methods are the model's API; the engine behind them gives every method the same error handling and order. The cost is one more hop and a generic base with a self type; the gain is that no method hand-writes its checks, every rule has a name and a code, and a refusal can never half-apply.
+- **Follow-ups chained on the outcome, not hooks in the steps.** Hooks hid where a change happened and let a follow-up fail after it. The chain keeps the order visible in the method and the outcome the step's own; the deliberate limit is that a follow-up cannot refuse.
+- **Facts passed in, not read.** Snapshots keep the Domain free of infrastructure and testable with plain records; the alternative, a Domain interface that Persistence implements, was rejected. The cost is that fact definitions live in the Application.
+- **Two reserve aggregates.** A reserve change is its own root so that transitions can move it and several changes can be pending on one reserve. The invariants that span them (non-negative balance, claim limit) are checked against a snapshot at submit and again at approval.
+- **No stored balance.** A reserve's balance is the sum of its approved changes, as the specification describes; a stored figure would need a second step to keep it in sync.
+- **No runtime rule engine.** Rules are classes declared in code; a settings-driven engine would hide them from review and tests.
+- **Events.** Raised in the success follow-ups; the Unit of Work publishes them before the commit for reactions in the same transaction and after it for effects outside.
 
 ### Aggregate follow-ups and events
 
-These follow-ups run inside the aggregate method, in the same call:
+Inside the aggregate method, as `OnSuccess` hooks:
 
-- Any claim change, then `EvaluateIssuesFlow`, using the reference snapshot carried on the input (every claim input has it through `ClaimBaseOperationInput`).
+- Any claim change, then the issue evaluation, using the reference snapshot on every claim input.
 - A reopen, then the Open move from Reopened.
-- A reserve submit, then the auto-approve attempt. A refusal only leaves the change pending.
+- A reserve submit, then the auto-approve attempt; a refusal only leaves the change pending.
 - A reject or retract, then the posting cancel move.
 
-These cross a boundary and stay with the Application, driven by the events the aggregate records:
+Across the boundary, in the Application, driven by the events:
 
 - An approval or auto-approval, then the posting job after the commit.
 - Every domain event, then its audit entry.

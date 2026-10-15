@@ -17,14 +17,9 @@ PROVISIONAL
 
 DECISIONS
 
-- Settled architecture, interpretations and schema departures live in docs/ARCHITECTURE.md; code shapes and conventions live in .claude/CLAUDE.md.
-- Aggregates expose public methods that run a step and the follow-ups of their own aggregate; steps, rules and checks are internal (pack 9, user decision). Only boundary-crossing effects are events with handlers (docs/ARCHITECTURE.md 'Aggregate follow-ups and events').
-- The reference snapshot is the last positional parameter of every claim input (it lives on `ClaimBaseOperationInput`), so an aggregate method takes only its input; the claim evaluates issues after a successful step. The snapshot stays its own record, one property on the input, not a second abstraction.
-- Snapshots are the way facts from outside an aggregate reach a rule; the trade-offs and the alternative are in docs/ARCHITECTURE.md 'Design trade-offs'.
-- Flows have no hooks beyond the blocked decision; a transition answers an undeclared source straight from `Execute`.
-- A reserve change is created pending and moved by transitions; the starting state is never decided by a helper.
-- A reserve's balance is never stored; rules read a snapshot that the Application computes.
+- Settled architecture, interpretations and schema departures live in docs/ARCHITECTURE.md (the backend architecture sections); code shapes and conventions live in .claude/CLAUDE.md. The decisions of the domain packs have graduated there.
 - A closed set that carries no fact and is not an engine state is a plain enum (user role, reserve transaction type).
+- Test fixtures build claims through the public aggregate methods, so a fixture claim has been touched, evaluated and has raised its events like a real one.
 
 ANALOGUE
 
@@ -34,6 +29,5 @@ ANALOGUE
 
 NEXT
 
-- Move Reserve and ReserveChange to the same shape as Claim (steps change state; the public method touches and raises). Claim is done; the reserve aggregates still use `internal` mutators that touch and raise.
 - The audit entries and the reference-data lookups belong to the Application pack.
 - Then the Application, Persistence, Infrastructure and API packs, each starting from notes-layer-application.md and notes-layer-persistence.md.

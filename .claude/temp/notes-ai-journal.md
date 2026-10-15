@@ -385,3 +385,21 @@ note: the review found real shape and test-form defects and the spec check three
 area: one-shot pack build after an argued outline with the user's picks (posting and claim closure packs)
 helped: high
 note: source, tests and docs were written in one pass; only unused usings and long lines needed fixes, and review and spec-check found small shape and trace items
+
+
+## PROMPT-008 | p1 domain | 2026-10-15
+purpose: settle the aggregate method shape before refactoring every aggregate
+prompt: think on the general flow of an aggregate method and how it should be implemented
+outcome: kept
+note: produced the chain model (step, OnSuccess follow-ups, Settle last, a transition returning the state change) that was then built as one pack
+
+## CORRECTION-023 | p1 domain | 2026-10-15
+what: AI proposed a third engine type (FlowRun, then FlowExecution) to carry subject and input for method-group hooks; with lambda hooks the type carried nothing
+caught-by: user
+fix: OnSuccess on FlowOutcome as a tap that never changes the outcome; two engine types instead of three
+lesson: when a type exists only to serve one calling convention, drop it together with the convention
+
+## ASSESSMENT-009 | p1 domain | 2026-10-15
+area: resuming a pack cut by a session limit from the WIP commit
+helped: medium
+note: build and tests were green but one using-order finding and four stale doc lines survived; the workflow check and a reread caught them
