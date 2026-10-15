@@ -38,7 +38,7 @@ public sealed class CreateClaimOperationTests
     {
         var claim = TestClaims.Empty();
 
-        var created = claim.PopEvents().OfType<ClaimCreated>();
+        var created = claim.PopEvents().OfType<ClaimCreatedEvent>();
 
         created.Should().ContainSingle().Which.ClaimId.Should().Be(claim.Id);
     }

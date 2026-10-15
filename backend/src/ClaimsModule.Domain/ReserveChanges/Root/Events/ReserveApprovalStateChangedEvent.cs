@@ -2,7 +2,7 @@ using ClaimsModule.Domain.Common.Events;
 
 namespace ClaimsModule.Domain.ReserveChanges.Root.Events;
 
-public sealed record ReserveApprovalStateChanged(
+public sealed record ReserveApprovalStateChangedEvent(
     Guid EventId,
     DateTimeOffset OccurredAt,
     Guid ActorId,

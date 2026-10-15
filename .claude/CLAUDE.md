@@ -253,7 +253,7 @@ Each kind of class has one shape, so the next one is written the same way.
 - **Aggregate root:** `internal` methods that change a child or a field, call `Touch(now)`, and `Raise` the event; the only `private` method is `Touch`.
 - **Details record:** the identifying values positional, the optional ones `{ get; init; }` with an explicit empty default.
 - **Closed set:** one file named after the base type holding the marker enum, the abstract record, and the sealed variants with `() : Base(Kind.Value)`; a variant with behavior overrides the base member in a body.
-- **Event:** a positional record `(EventId, OccurredAt, ActorId, <ids and facts>) : DomainEvent(EventId, OccurredAt, ActorId)`, one parameter per line.
+- **Event:** a positional record named `<Thing><PastVerb>Event`, `(EventId, OccurredAt, ActorId, <ids and facts>) : DomainEvent(EventId, OccurredAt, ActorId)`, one parameter per line.
 - **Options:** a sealed class with a `SectionName` constant and `{ get; init; }` properties with explicit defaults; bound in the owning layer's `<Feature>ServiceExtensions` with `BindConfiguration`, and validated with `ValidateDataAnnotations().ValidateOnStart()` when a missing value must stop the app.
 - **Extension class:** `<Feature>ServiceExtensions` holds `Add<Feature>` (and `Use<Feature>`), where the class name and the `Add` method share the feature word (`FrontendCorsServiceExtensions`, `AddFrontendCors`).
 
@@ -297,7 +297,7 @@ One standard for every name. The name says the role, and the suffix of a type is
 | Entity data replaced whole | `<Thing>Details` | `PartyDetails` |
 | Input, operation, flow, outcome | `<Verb><Thing>` + `Input`, `Operation`, `Flow`, `Outcome` | `AddPartyInput`, `AddPartyOperation`, `EvaluateIssuesFlow` |
 | Base shared by one scope | `<Scope>Base<Role>` (the transition input is `<Scope>TransitionInput`) | `ClaimBaseOperationInput`, `ClaimBaseTransition`, `ClaimBaseTransitionInput` |
-| Domain event | `<Thing><PastVerb>` | `PartyAdded` |
+| Domain event | `<Thing><PastVerb>Event` | `PartyAddedEvent` |
 | Value object | the plain noun | `LossDate` |
 | Absent value | static `Empty` and an `IsSet` flag | `LossDate.Empty` |
 | Closed set | enum `<Concept>Kind` (the claim lifecycle keeps `ClaimStateKind`), abstract record `<Concept>`, variants `<Owner><Value><Concept>` | `IssueStateKind`, `IssueState`, `IssueRaisedState` |

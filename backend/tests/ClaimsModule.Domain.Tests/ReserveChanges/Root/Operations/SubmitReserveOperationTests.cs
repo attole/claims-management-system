@@ -48,7 +48,7 @@ public sealed class SubmitReserveOperationTests
 
         var outcome = new SubmitReserveOperation().Execute(input);
 
-        var submitted = outcome.Value.PopEvents().OfType<ReserveSubmitted>().Should().ContainSingle().Subject;
+        var submitted = outcome.Value.PopEvents().OfType<ReserveSubmittedEvent>().Should().ContainSingle().Subject;
         submitted.Amount.Should().Be(50_000m);
         submitted.ActorId.Should().Be(TestReserves.Submitter);
     }

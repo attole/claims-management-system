@@ -76,7 +76,7 @@ public sealed class ReserveChange : AggregateRoot,
         DateTimeOffset now)
     {
         var reserve = new ReserveChange(Ids.Next(now), organisationId, details, actorId, now);
-        var submitted = new ReserveSubmitted(
+        var submitted = new ReserveSubmittedEvent(
             Ids.Next(now),
             now,
             actorId,
@@ -106,7 +106,7 @@ public sealed class ReserveChange : AggregateRoot,
         }
 
         Touch(now);
-        var changed = new ReserveApprovalStateChanged(
+        var changed = new ReserveApprovalStateChangedEvent(
             Ids.Next(now),
             now,
             actorId,
@@ -129,7 +129,7 @@ public sealed class ReserveChange : AggregateRoot,
         PostingState = posting;
         PostingDetails = details;
         Touch(now);
-        var changed = new ReservePostingStateChanged(
+        var changed = new ReservePostingStateChangedEvent(
             Ids.Next(now),
             now,
             actorId,

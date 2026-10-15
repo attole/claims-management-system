@@ -22,7 +22,7 @@ public sealed class AddPartyOperationTests
         outcome.Value.IsActive.Should().BeTrue();
         claim.Parties.Should().HaveCount(2);
         claim.UpdatedAt.Should().Be(TestClaims.Later);
-        claim.PopEvents().Should().ContainSingle().Which.Should().BeOfType<PartyAdded>();
+        claim.PopEvents().Should().ContainSingle().Which.Should().BeOfType<PartyAddedEvent>();
     }
 
     [Fact]

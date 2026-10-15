@@ -32,7 +32,7 @@ public sealed class MarkReservePostedTransitionTests
 
         new MarkReservePostedTransition().Execute(reserve, input);
 
-        var changed = reserve.PopEvents().OfType<ReservePostingStateChanged>().Should().ContainSingle().Subject;
+        var changed = reserve.PopEvents().OfType<ReservePostingStateChangedEvent>().Should().ContainSingle().Subject;
         changed.From.Should().Be(nameof(ReservePostingStateKind.Pending));
         changed.To.Should().Be(nameof(ReservePostingStateKind.Posted));
         changed.JobId.Should().Be("job-1");

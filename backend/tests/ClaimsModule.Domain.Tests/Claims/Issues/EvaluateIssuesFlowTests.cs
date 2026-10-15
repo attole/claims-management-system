@@ -60,7 +60,7 @@ public sealed class EvaluateIssuesFlowTests
     {
         var claim = TestClaims.Empty();
 
-        var raised = claim.PopEvents().OfType<ValidationIssueRaised>();
+        var raised = claim.PopEvents().OfType<ValidationIssueRaisedEvent>();
 
         raised.Select(issue => issue.Code).Should().BeEquivalentTo(_emptyClaimCodes);
         raised.Should().OnlyContain(issue => issue.ClaimId == claim.Id && issue.ActorId == TestClaims.Actor);
@@ -88,7 +88,7 @@ public sealed class EvaluateIssuesFlowTests
         new EvaluateIssuesFlow().Execute(claim, input);
 
         claim.BlockingIssues.Select(issue => issue.Finding.Code).Should().Equal(HasClaimant.Code);
-        var cleared = claim.PopEvents().OfType<ValidationIssueCleared>().ToList();
+        var cleared = claim.PopEvents().OfType<ValidationIssueClearedEvent>().ToList();
         string[] clearedCodes = [IsLossDatePresent.Code, IsDescriptionLongEnough.Code];
         cleared.Select(issue => issue.Code).Should().BeEquivalentTo(clearedCodes);
         cleared.Should().OnlyContain(issue => issue.ActorId == TestClaims.Actor);
@@ -103,7 +103,7 @@ public sealed class EvaluateIssuesFlowTests
 
         new SetSeverityOperation().Execute(claim, input);
 
-        claim.PopEvents().OfType<ValidationIssueRaised>().Should().BeEmpty();
+        claim.PopEvents().OfType<ValidationIssueRaisedEvent>().Should().BeEmpty();
         claim.Issues.Should().HaveCount(3);
     }
 

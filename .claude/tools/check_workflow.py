@@ -421,6 +421,8 @@ def check_domain(files):
             fail("layout", f"{DOMAIN}/{rel}: an entity folder holds only {sorted(ENTITY_SUBFOLDERS)}")
         if is_aggregate and "Operations" in parts[:-1] and not stem.endswith("Operation"):
             fail("naming", f"{DOMAIN}/{rel}: a file in Operations/ is named <Verb><Thing>Operation")
+        if is_aggregate and "Events" in parts[:-1] and not stem.endswith("Event"):
+            fail("naming", f"{DOMAIN}/{rel}: a file in Events/ is named <Thing><PastVerb>Event")
         if is_aggregate and "Transitions" in parts[:-1] and not stem.endswith("Transition"):
             fail("naming", f"{DOMAIN}/{rel}: a file in Transitions/ is named <Verb><Thing>Transition")
         if is_aggregate and re.search(r"/(Rules|Checks)/[^/]+\.cs$", rel):

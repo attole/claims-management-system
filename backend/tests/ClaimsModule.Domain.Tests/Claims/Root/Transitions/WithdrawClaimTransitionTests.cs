@@ -35,7 +35,7 @@ public sealed class WithdrawClaimTransitionTests
 
         new WithdrawClaimTransition().Execute(claim, input);
 
-        var changed = claim.PopEvents().OfType<ClaimStateChanged>().Should().ContainSingle().Subject;
+        var changed = claim.PopEvents().OfType<ClaimStateChangedEvent>().Should().ContainSingle().Subject;
         changed.Reason.Should().Be(_reason);
     }
 

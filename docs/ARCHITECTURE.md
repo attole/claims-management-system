@@ -172,7 +172,7 @@ The engine lives in `Domain/Core`. Each folder is a layer that uses only the lay
 | Reopen | Reopened | Closed | supervisor role, a reason |
 
 - The PendingPayment and Closed moves, with the closure conditions, come in a later pack.
-- Each move appends a `ClaimStateChange` row and raises `ClaimStateChanged`.
+- Each move appends a `ClaimStateChange` row and raises `ClaimStateChangedEvent`.
 - A reopen leaves two rows because the Application runs the Open move right after it.
 
 **Edits.**
@@ -207,7 +207,7 @@ The engine lives in `Domain/Core`. Each folder is a layer that uses only the lay
 - The Application runs AutoApprove right after the submit; a refusal there only leaves the change pending.
 - Approved, AutoApproved, Rejected and Cancelled changes never move again.
 - A correction is a new Adjust or Reverse change.
-- Every approval change stores the actor, time and reason in the review and raises `ReserveApprovalStateChanged`.
+- Every approval change stores the actor, time and reason in the review and raises `ReserveApprovalStateChangedEvent`.
 - The change fills its balances (previous and new) when it becomes approved.
 - The posting state starts Pending and moves independently of the approval state.
 
@@ -256,7 +256,7 @@ The engine lives in `Domain/Core`. Each folder is a layer that uses only the lay
 - Posted and Failed need an approved change; a cancel needs a rejected or retracted one.
 - A repeated post on a Posted change returns the not-permitted finding, which the job reads as already done.
 - A Failed change can be posted again.
-- Each move stores the job id and the failure reason in the posting details and raises `ReservePostingStateChanged`.
+- Each move stores the job id and the failure reason in the posting details and raises `ReservePostingStateChangedEvent`.
 - The job itself, its retries and the audit entries belong to Infrastructure and the Application.
 
 ### Application chains

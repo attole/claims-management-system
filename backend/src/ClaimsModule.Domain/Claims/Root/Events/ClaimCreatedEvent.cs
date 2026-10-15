@@ -2,7 +2,7 @@ using ClaimsModule.Domain.Common.Events;
 
 namespace ClaimsModule.Domain.Claims.Root.Events;
 
-public sealed record ClaimCreated(
+public sealed record ClaimCreatedEvent(
     Guid EventId,
     DateTimeOffset OccurredAt,
     Guid ActorId,

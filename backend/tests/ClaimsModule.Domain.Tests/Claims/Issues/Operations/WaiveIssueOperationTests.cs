@@ -39,7 +39,7 @@ public sealed class WaiveIssueOperationTests
 
         new WaiveIssueOperation().Execute(claim, input);
 
-        var waived = claim.PopEvents().OfType<ValidationIssueWaived>().Should().ContainSingle().Subject;
+        var waived = claim.PopEvents().OfType<ValidationIssueWaivedEvent>().Should().ContainSingle().Subject;
         waived.IssueId.Should().Be(issue.Id);
         waived.Code.Should().Be(issue.Finding.Code);
         waived.ActorId.Should().Be(TestClaims.Actor);

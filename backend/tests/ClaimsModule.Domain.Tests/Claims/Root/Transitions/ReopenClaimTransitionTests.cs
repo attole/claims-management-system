@@ -59,7 +59,7 @@ public sealed class ReopenClaimTransitionTests
 
         new ReopenClaimTransition().Execute(claim, input);
 
-        var events = claim.PopEvents().OfType<ClaimStateChanged>().ToList();
+        var events = claim.PopEvents().OfType<ClaimStateChangedEvent>().ToList();
         events.Select(changed => changed.To).Should().Equal("Reopened");
     }
 

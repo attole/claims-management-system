@@ -35,7 +35,7 @@ public sealed class ApproveReserveTransitionTests
 
         new ApproveReserveTransition().Execute(reserve, input);
 
-        var changed = reserve.PopEvents().OfType<ReserveApprovalStateChanged>().Should().ContainSingle().Subject;
+        var changed = reserve.PopEvents().OfType<ReserveApprovalStateChangedEvent>().Should().ContainSingle().Subject;
         changed.From.Should().Be(nameof(ReserveApprovalStateKind.PendingApproval));
         changed.To.Should().Be(nameof(ReserveApprovalStateKind.Approved));
         changed.ActorId.Should().Be(TestReserves.Approver);

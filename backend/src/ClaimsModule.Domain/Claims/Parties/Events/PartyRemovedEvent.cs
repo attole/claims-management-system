@@ -2,7 +2,7 @@ using ClaimsModule.Domain.Common.Events;
 
 namespace ClaimsModule.Domain.Claims.Parties.Events;
 
-public sealed record PartyRemoved(
+public sealed record PartyRemovedEvent(
     Guid EventId,
     DateTimeOffset OccurredAt,
     Guid ActorId,

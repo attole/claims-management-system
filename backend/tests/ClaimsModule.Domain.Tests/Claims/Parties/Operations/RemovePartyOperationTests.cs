@@ -21,7 +21,7 @@ public sealed class RemovePartyOperationTests
 
         outcome.IsSuccess.Should().BeTrue();
         witness.IsActive.Should().BeFalse();
-        claim.PopEvents().Should().ContainSingle().Which.Should().BeOfType<PartyRemoved>();
+        claim.PopEvents().Should().ContainSingle().Which.Should().BeOfType<PartyRemovedEvent>();
     }
 
     [Fact]

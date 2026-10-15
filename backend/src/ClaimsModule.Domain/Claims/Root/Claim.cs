@@ -89,7 +89,7 @@ public sealed class Claim : AggregateRoot, IAuditable, ISoftDeletable, ITenantOw
     internal static Claim Create(Guid organisationId, ClaimNumber claimNumber, Guid actorId, DateTimeOffset now)
     {
         var claim = new Claim(Ids.Next(now), organisationId, claimNumber, now);
-        claim.Raise(new ClaimCreated(Ids.Next(now), now, actorId, claim.Id, claimNumber.Value));
+        claim.Raise(new ClaimCreatedEvent(Ids.Next(now), now, actorId, claim.Id, claimNumber.Value));
 
         return claim;
     }
@@ -99,7 +99,7 @@ public sealed class Claim : AggregateRoot, IAuditable, ISoftDeletable, ITenantOw
         var party = new ClaimParty(Ids.Next(now), Id, OrganisationId, details, now);
         _parties.Add(party);
         Touch(now);
-        Raise(new PartyAdded(Ids.Next(now), now, actorId, Id, party.Id, party.Details.Role.Name));
+        Raise(new PartyAddedEvent(Ids.Next(now), now, actorId, Id, party.Id, party.Details.Role.Name));
 
         return party;
     }
@@ -109,7 +109,7 @@ public sealed class Claim : AggregateRoot, IAuditable, ISoftDeletable, ITenantOw
         var party = _parties.Single(candidate => candidate.Id == partyId && candidate.IsActive);
         party.Remove(now);
         Touch(now);
-        Raise(new PartyRemoved(Ids.Next(now), now, actorId, Id, party.Id, party.Details.Role.Name));
+        Raise(new PartyRemovedEvent(Ids.Next(now), now, actorId, Id, party.Id, party.Details.Role.Name));
     }
 
     internal ClaimRiskObject AddRiskObject(RiskObjectDetails details, DateTimeOffset now)
@@ -159,7 +159,7 @@ public sealed class Claim : AggregateRoot, IAuditable, ISoftDeletable, ITenantOw
         _stateChanges.Add(new ClaimStateChange(Ids.Next(now), Id, OrganisationId, from, state, reason, now));
         State = state;
         Touch(now);
-        Raise(new ClaimStateChanged(Ids.Next(now), now, actorId, Id, from.Name, state.Name, reason));
+        Raise(new ClaimStateChangedEvent(Ids.Next(now), now, actorId, Id, from.Name, state.Name, reason));
     }
 
     internal void WaiveIssue(Guid issueId, Guid actorId, DateTimeOffset now)
@@ -167,14 +167,14 @@ public sealed class Claim : AggregateRoot, IAuditable, ISoftDeletable, ITenantOw
         var issue = _issues.Single(candidate => candidate.Id == issueId);
         issue.Waive(actorId, now);
         Touch(now);
-        Raise(new ValidationIssueWaived(Ids.Next(now), now, actorId, Id, issue.Id, issue.Finding.Code));
+        Raise(new ValidationIssueWaivedEvent(Ids.Next(now), now, actorId, Id, issue.Id, issue.Finding.Code));
     }
 
     internal void ClearIssue(ClaimValidationIssue issue, Guid actorId, DateTimeOffset now)
     {
         issue.Clear(actorId, now);
         Touch(now);
-        Raise(new ValidationIssueCleared(Ids.Next(now), now, actorId, Id, issue.Id, issue.Finding.Code));
+        Raise(new ValidationIssueClearedEvent(Ids.Next(now), now, actorId, Id, issue.Id, issue.Finding.Code));
     }
 
     internal void RaiseIssue(IssueFinding finding, Guid actorId, DateTimeOffset now)
@@ -184,7 +184,7 @@ public sealed class Claim : AggregateRoot, IAuditable, ISoftDeletable, ITenantOw
         Touch(now);
         var eventId = Ids.Next(now);
         string severity = finding.Severity.Name;
-        Raise(new ValidationIssueRaised(eventId, now, actorId, Id, issue.Id, finding.Code, severity));
+        Raise(new ValidationIssueRaisedEvent(eventId, now, actorId, Id, issue.Id, finding.Code, severity));
     }
 
     private void Touch(DateTimeOffset now)

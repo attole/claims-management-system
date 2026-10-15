@@ -30,7 +30,7 @@ public sealed class ClaimBaseTransitionTests
 
         new SampleClaimTransition().Execute(claim, input);
 
-        var changed = claim.PopEvents().OfType<ClaimStateChanged>().Should().ContainSingle().Subject;
+        var changed = claim.PopEvents().OfType<ClaimStateChangedEvent>().Should().ContainSingle().Subject;
         changed.ClaimId.Should().Be(claim.Id);
         changed.ActorId.Should().Be(TestClaims.Actor);
         changed.From.Should().Be("Draft");
@@ -49,7 +49,7 @@ public sealed class ClaimBaseTransitionTests
 
         new SampleClaimTransition().Execute(claim, input);
 
-        claim.PopEvents().OfType<ClaimStateChanged>().Should().BeEmpty();
+        claim.PopEvents().OfType<ClaimStateChangedEvent>().Should().BeEmpty();
     }
 
     [Fact]
@@ -63,7 +63,7 @@ public sealed class ClaimBaseTransitionTests
 
         outcome.Blocking.Should().ContainSingle().Which.Code.Should().Be(FailingClaimRule.Code);
         claim.State.Should().BeOfType<ClaimDraftState>();
-        claim.PopEvents().OfType<ClaimStateChanged>().Should().BeEmpty();
+        claim.PopEvents().OfType<ClaimStateChangedEvent>().Should().BeEmpty();
     }
 
     [Fact]

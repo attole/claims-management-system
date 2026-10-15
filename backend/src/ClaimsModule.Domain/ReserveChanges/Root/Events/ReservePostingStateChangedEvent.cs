@@ -2,11 +2,14 @@ using ClaimsModule.Domain.Common.Events;
 
 namespace ClaimsModule.Domain.ReserveChanges.Root.Events;
 
-public sealed record ReserveSubmitted(
+public sealed record ReservePostingStateChangedEvent(
     Guid EventId,
     DateTimeOffset OccurredAt,
     Guid ActorId,
     Guid ReserveChangeId,
     Guid ReserveId,
     Guid ClaimId,
-    decimal Amount) : DomainEvent(EventId, OccurredAt, ActorId);
+    string From,
+    string To,
+    string JobId,
+    string FailureReason) : DomainEvent(EventId, OccurredAt, ActorId);

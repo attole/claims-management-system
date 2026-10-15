@@ -2,7 +2,7 @@ using ClaimsModule.Domain.Common.Events;
 
 namespace ClaimsModule.Domain.Claims.Issues.Events;
 
-public sealed record ValidationIssueCleared(
+public sealed record ValidationIssueClearedEvent(
     Guid EventId,
     DateTimeOffset OccurredAt,
     Guid ActorId,
