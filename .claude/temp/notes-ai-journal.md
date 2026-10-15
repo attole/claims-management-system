@@ -380,3 +380,8 @@ note: the user settled each structure and name in chat; the AI argued options, i
 area: fresh-context code review plus passive spec-check after a large pack
 helped: medium
 note: the review found real shape and test-form defects and the spec check three untested rules; the user's own questions caught the design smells faster than the review did
+
+## ASSESSMENT-008 | p1 domain | 2026-10-15
+area: one-shot pack build after an argued outline with the user's picks (posting and claim closure packs)
+helped: high
+note: source, tests and docs were written in one pass; only unused usings and long lines needed fixes, and review and spec-check found small shape and trace items

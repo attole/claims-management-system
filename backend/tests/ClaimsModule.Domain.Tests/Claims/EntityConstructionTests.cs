@@ -18,6 +18,7 @@ public sealed class EntityConstructionTests
 
         claim.ClaimNumber.Should().Be(ClaimNumber.Empty);
         claim.State.Should().BeOfType<ClaimDraftState>();
+        claim.PolicyId.Should().Be(Guid.Empty);
         claim.Severity.Should().Be(ClaimSeverity.Unspecified);
         claim.LossEvent.Details.Should().Be(LossDetails.Empty);
         claim.Parties.Should().BeEmpty();

@@ -48,6 +48,8 @@ public sealed class Claim : AggregateRoot, IAuditable, ISoftDeletable, ITenantOw
 
     public DateTimeOffset ReportedDate { get; private set; } = DateTimeOffset.MinValue;
 
+    public Guid PolicyId { get; private set; } = Guid.Empty;
+
     public Guid AssignedHandlerId { get; private set; } = Guid.Empty;
 
     public string Notes { get; private set; } = string.Empty;
@@ -162,6 +164,12 @@ public sealed class Claim : AggregateRoot, IAuditable, ISoftDeletable, ITenantOw
         Raise(new ClaimStateChangedEvent(Ids.Next(now), now, actorId, Id, from.Name, state.Name, reason));
     }
 
+    internal void LinkPolicy(Guid policyId, DateTimeOffset now)
+    {
+        PolicyId = policyId;
+        Touch(now);
+    }
+
     internal void SetLimitOverride(bool hasOverride, DateTimeOffset now)
     {
         HasAggregateLimitOverride = hasOverride;
@@ -174,6 +182,14 @@ public sealed class Claim : AggregateRoot, IAuditable, ISoftDeletable, ITenantOw
         issue.Waive(actorId, now);
         Touch(now);
         Raise(new ValidationIssueWaivedEvent(Ids.Next(now), now, actorId, Id, issue.Id, issue.Finding.Code));
+    }
+
+    internal void AcknowledgeIssue(Guid issueId, Guid actorId, DateTimeOffset now)
+    {
+        var issue = _issues.Single(candidate => candidate.Id == issueId);
+        issue.Acknowledge(actorId, now);
+        Touch(now);
+        Raise(new ValidationIssueAcknowledgedEvent(Ids.Next(now), now, actorId, Id, issue.Id, issue.Finding.Code));
     }
 
     internal void ClearIssue(ClaimValidationIssue issue, Guid actorId, DateTimeOffset now)

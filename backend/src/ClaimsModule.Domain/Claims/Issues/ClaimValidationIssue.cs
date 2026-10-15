@@ -36,6 +36,8 @@ public sealed class ClaimValidationIssue : Entity, IAuditable, ISoftDeletable, I
 
     public bool IsUnresolvedCritical => !State.IsResolved && Finding.Severity.IsBlockingOpening;
 
+    public bool IsUnresolvedWarning => !State.IsResolved && !Finding.Severity.IsBlockingOpening;
+
     public DateTimeOffset CreatedAt { get; private set; } = DateTimeOffset.MinValue;
 
     public DateTimeOffset UpdatedAt { get; private set; } = DateTimeOffset.MinValue;
@@ -53,6 +55,14 @@ public sealed class ClaimValidationIssue : Entity, IAuditable, ISoftDeletable, I
     internal void Clear(Guid actorId, DateTimeOffset now)
     {
         State = new IssueClearedState();
+        ResolvedAt = now;
+        ResolvedBy = actorId;
+        UpdatedAt = now;
+    }
+
+    internal void Acknowledge(Guid actorId, DateTimeOffset now)
+    {
+        State = new IssueAcknowledgedState();
         ResolvedAt = now;
         ResolvedBy = actorId;
         UpdatedAt = now;

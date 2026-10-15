@@ -26,7 +26,7 @@ public sealed class WaiveIssueOperationTests
         issue.State.Should().BeOfType<IssueWaivedState>();
         issue.ResolvedBy.Should().Be(TestClaims.Actor);
         issue.ResolvedAt.Should().Be(TestClaims.Later);
-        claim.BlockingIssues.Should().HaveCount(2);
+        claim.BlockingIssues.Should().HaveCount(3);
     }
 
     [Fact]
@@ -82,7 +82,7 @@ public sealed class WaiveIssueOperationTests
         new SetSeverityOperation().Execute(claim, input);
 
         issue.State.Should().BeOfType<IssueWaivedState>();
-        claim.Issues.Should().HaveCount(3);
+        claim.Issues.Should().HaveCount(4);
     }
 
     [Fact]

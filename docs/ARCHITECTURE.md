@@ -39,7 +39,7 @@ Where the specification and the assessment disagree, the specification is used a
 - The 10 million in the roles table is the claim-wide cap, with a manager override (S:BR-R-02, S:BR-R-05).
 - The claim total is the net sum over all reserves, with no exclusions.
 - Reopened is a normal state; the Application runs the Open move right after the reopen.
-- A policy period is two inclusive calendar dates, compared with the calendar date of the loss date in its own offset.
+- A policy period is two inclusive calendar dates, compared with the UTC calendar date of the loss date, because all timestamps are stored in UTC.
 - The reported dates are set by the system at creation; the estimated loss amount is optional and has no bound.
 - Which role may call which operation is decided in the Application; the documents state only the explicit rules (reopen, approval authority, the limit override).
 - The specification's validation messages are used verbatim in Domain rule and check classes and in the transition finding, under a narrow exception in `CLAUDE.md`, and nowhere else.
@@ -94,6 +94,21 @@ The Domain says what is true and what may change. The Application says what happ
 - A change to one aggregate's state is a step.
 - A "then do X", a second aggregate, a load, a save, a clock, a user identity or a job belongs to the Application.
 - A value that needs data from outside the aggregate is computed by the Application into the snapshot on the input.
+
+### Snapshots
+
+A snapshot is a read-only record of facts the Application computes by query and puts on a step's input. The Domain never loads, so a rule that needs a fact it does not own reads it from a snapshot.
+
+| Snapshot | Holds | Used by |
+|---|---|---|
+| `ReserveSnapshot` | policy linked, claim approved total, override flag, reserve type, approved balance, next change sequence | the reserve change steps |
+| `ClaimReserveSnapshot` | approved reserve count, a change pending, a balance open | send to payment, close |
+| `ClaimReferenceSnapshot` | active cause-of-loss codes, policy period | issue evaluation |
+
+- A fact the aggregate holds is read from the aggregate.
+- A fact held by another aggregate or by reference data arrives in a snapshot.
+- The definition of each fact (for example "approved" means Approved or AutoApproved) lives in one Application query per snapshot, covered by Application tests.
+- A stale snapshot is covered by the claim-row touch on save, which serializes concurrent changes on one claim.
 
 ### Domain model
 
@@ -186,6 +201,15 @@ The engine lives in `Domain/Core`. Each folder is a layer that uses only the lay
 - Each move appends a `ClaimStateChange` row and raises `ClaimStateChangedEvent`.
 - A reopen leaves two rows because the Application runs the Open move right after it.
 
+**Validation checks.**
+- Critical: loss date present, loss date not in the future, description long enough, a claimant, and an active cause of loss code (S:BR-C-05).
+- Warning: no policy linked, and loss date outside the policy period (S:BR-C-02).
+- The Application passes a reference snapshot on the evaluation input: the active cause codes and the policy period (start, end and cancellation date).
+- The policy period ends at the earlier of the expiration and the cancellation date; both ends are inclusive.
+- A claim holds its policy id; `LinkPolicyOperation` sets it, and the Application looks the policy up.
+- `AcknowledgeIssueOperation` resolves an unresolved Warning issue; Critical issues are waived, not acknowledged.
+- Opening from Draft needs the policy-period warning cleared, waived or acknowledged (S:BR-C-02).
+
 **Edits.**
 - Parties, risk objects, loss details, severity and handler are refused on Closed and Withdrawn claims.
 - Notes are refused only on Withdrawn claims.
@@ -269,6 +293,16 @@ The engine lives in `Domain/Core`. Each folder is a layer that uses only the lay
 - A Failed change can be posted again.
 - Each move stores the job id and the failure reason in the posting details and raises `ReservePostingStateChangedEvent`.
 - The job itself, its retries and the audit entries belong to Infrastructure and the Application.
+
+### Design trade-offs
+
+- **Behaviour in step objects.** Operations, transitions and rules are separate objects around passive aggregates (command and specification objects). The cost is an indirection that a reader used to methods on entities may question; the gain is one pattern for every change, all findings at once, and rules traced by code. The aggregates may later front the steps with public methods, with the steps internal.
+- **Facts passed in, not read.** Snapshots follow the "pass the needed values to the aggregate" approach. The alternative is a Domain interface that Persistence implements for reading. Passing values keeps the Domain free of infrastructure and testable with plain records; the cost is that fact definitions live in the Application.
+- **Two reserve aggregates.** A reserve change is its own root so that engine transitions can move it, and several changes can be pending on one reserve at once. The invariants that span them (non-negative balance, claim limit) are checked against a snapshot at submit and again at approval.
+- **No stored balance.** A reserve's balance is the sum of its approved changes, as the specification describes. Storing a figure would need a second step to keep it in sync.
+- **The Domain runs single steps.** Follow-ups are chained outside the steps, so a step has no hidden effects. The follow-ups that stay inside one aggregate are candidates to move into public aggregate methods; the ones that cross a boundary (audit, the posting job) stay events with handlers.
+- **No runtime rule engine.** Rules are classes declared in code, one line per step. A settings-driven engine would hide the rules from review and from tests.
+- **Events.** The aggregate records events in its mutators. The Unit of Work publishes them before the commit for reactions in the same transaction, and after the commit for effects outside it.
 
 ### Application chains
 

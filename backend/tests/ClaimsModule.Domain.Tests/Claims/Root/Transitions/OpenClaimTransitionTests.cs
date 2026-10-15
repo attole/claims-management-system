@@ -64,6 +64,33 @@ public sealed class OpenClaimTransitionTests
     }
 
     [Fact]
+    [Trait("Rule", HasNoUnacknowledgedPolicyWarning.Code)]
+    public void Execute_FromDraftWithAnUnacknowledgedPolicyPeriodWarning_ReturnsTheFinding()
+    {
+        var claim = TestClaims.WithLoss(TestClaims.OutsidePolicyPeriod);
+        var input = new OpenClaimInput(TestClaims.Handler, TestClaims.Actor, TestClaims.Later);
+
+        var outcome = new OpenClaimTransition().Execute(claim, input);
+
+        outcome.Blocking.Should().ContainSingle().Which.Code.Should().Be(HasNoUnacknowledgedPolicyWarning.Code);
+        claim.State.Should().BeOfType<ClaimDraftState>();
+    }
+
+    [Fact]
+    [Trait("Rule", HasNoUnacknowledgedPolicyWarning.Code)]
+    public void Execute_FromDraftWhenThePolicyPeriodWarningIsAcknowledged_OpensIt()
+    {
+        var claim = TestClaims.WithLoss(TestClaims.OutsidePolicyPeriod);
+        TestClaims.AcknowledgeIssue(claim, IsLossDateWithinPolicyPeriod.Code);
+        var input = new OpenClaimInput(TestClaims.Handler, TestClaims.Actor, TestClaims.Later);
+
+        var outcome = new OpenClaimTransition().Execute(claim, input);
+
+        outcome.IsSuccess.Should().BeTrue();
+        claim.State.Should().BeOfType<ClaimOpenState>();
+    }
+
+    [Fact]
     [Trait("Rule", "S:ST-UnderInvestigation-Open")]
     public void Execute_FromUnderInvestigationByAHandler_OpensIt()
     {

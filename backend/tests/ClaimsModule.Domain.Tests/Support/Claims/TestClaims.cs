@@ -21,21 +21,44 @@ public static class TestClaims
     public const UserRole Handler = UserRole.Handler;
     public const UserRole Supervisor = UserRole.Supervisor;
     public const UserRole Manager = UserRole.Manager;
+    public static readonly Guid Policy = Guid.Parse("77777777-7777-7777-7777-777777777777");
+    public static readonly DateTimeOffset OutsidePolicyPeriod = new(2025, 12, 31, 8, 0, 0, TimeSpan.Zero);
     public const string Description = "Water damage in the kitchen after a burst pipe";
 
     public static Claim Empty()
     {
-        var input = new CreateClaimInput(Organisation, ClaimNumber.From("CLM-2026-0000001"), Actor, Start);
-
-        var claim = new CreateClaimOperation().Execute(input).Value;
+        var claim = WithoutPolicy();
+        new LinkPolicyOperation().Execute(claim, new LinkPolicyInput(Policy, Actor, Start));
         Evaluate(claim);
 
         return claim;
     }
 
+    public static Claim WithoutPolicy()
+    {
+        var input = new CreateClaimInput(Organisation, ClaimNumber.From("CLM-2026-0000001"), Actor, Start);
+
+        return new CreateClaimOperation().Execute(input).Value;
+    }
+
+    public static Claim WithPolicyWarning()
+    {
+        var claim = WithoutPolicy();
+        Evaluate(claim);
+
+        return claim;
+    }
+
+    public static ClaimReferenceSnapshot Reference()
+    {
+        var period = new PolicyPeriod(new DateOnly(2026, 1, 1), new DateOnly(2026, 12, 31), DateOnly.MinValue);
+
+        return new ClaimReferenceSnapshot(["WATER"], period);
+    }
+
     public static void Evaluate(Claim claim)
     {
-        var input = new EvaluateIssuesInput(Start, Actor);
+        var input = new EvaluateIssuesInput(Start, Actor, Reference());
         new EvaluateIssuesFlow().Execute(claim, input);
     }
 
@@ -101,6 +124,14 @@ public static class TestClaims
         var issue = claim.Issues.Single(candidate => candidate.IsCurrent && candidate.Finding.Code == code);
         var input = new WaiveIssueInput(issue.Id, Actor, Start);
         new WaiveIssueOperation().Execute(claim, input);
+        Evaluate(claim);
+    }
+
+    public static void AcknowledgeIssue(Claim claim, string code)
+    {
+        var issue = claim.Issues.Single(candidate => candidate.IsCurrent && candidate.Finding.Code == code);
+        var input = new AcknowledgeIssueInput(issue.Id, Actor, Start);
+        new AcknowledgeIssueOperation().Execute(claim, input);
         Evaluate(claim);
     }
 

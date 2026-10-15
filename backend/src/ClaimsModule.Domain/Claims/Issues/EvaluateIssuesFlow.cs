@@ -7,7 +7,8 @@ using ClaimsModule.Domain.Core.Operations;
 
 namespace ClaimsModule.Domain.Claims.Issues;
 
-public sealed record EvaluateIssuesInput(DateTimeOffset Now, Guid ActorId) : ClaimBaseOperationInput(Now, ActorId);
+public sealed record EvaluateIssuesInput(DateTimeOffset Now, Guid ActorId, ClaimReferenceSnapshot Reference)
+    : ClaimBaseOperationInput(Now, ActorId);
 
 public sealed class EvaluateIssuesFlow : Flow<Claim, EvaluateIssuesInput, Success, IssueFinding>
 {
@@ -17,6 +18,9 @@ public sealed class EvaluateIssuesFlow : Flow<Claim, EvaluateIssuesInput, Succes
         Require(input => new IsLossDateNotInFuture(input.Now));
         Require(new IsDescriptionLongEnough());
         Require(new HasClaimant());
+        Require(input => new IsCauseCodeActive(input.Reference.ActiveCauseCodes));
+        Require(new HasLinkedPolicy());
+        Require(input => new IsLossDateWithinPolicyPeriod(input.Reference.PolicyPeriod));
     }
 
     protected override FlowDecision WhenBlocked => FlowDecision.Continue;

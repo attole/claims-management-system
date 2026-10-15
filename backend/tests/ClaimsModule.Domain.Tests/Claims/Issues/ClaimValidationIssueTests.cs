@@ -26,7 +26,7 @@ public sealed class ClaimValidationIssueTests
         var loss = TestClaims.Loss(TestClaims.Start.AddDays(-1), TestClaims.Description);
         var update = new UpdateLossDetailsInput(loss, TestClaims.Actor, TestClaims.Later);
         new UpdateLossDetailsOperation().Execute(claim, update);
-        var input = new EvaluateIssuesInput(TestClaims.Later, TestClaims.Actor);
+        var input = new EvaluateIssuesInput(TestClaims.Later, TestClaims.Actor, TestClaims.Reference());
 
         new EvaluateIssuesFlow().Execute(claim, input);
 
@@ -61,7 +61,7 @@ public sealed class ClaimValidationIssueTests
         var loss = TestClaims.Loss(TestClaims.Start.AddDays(-1), TestClaims.Description);
         var fix = new UpdateLossDetailsInput(loss, _otherActor, TestClaims.Later.AddHours(1));
         new UpdateLossDetailsOperation().Execute(claim, fix);
-        var input = new EvaluateIssuesInput(TestClaims.Later.AddHours(1), _otherActor);
+        var input = new EvaluateIssuesInput(TestClaims.Later.AddHours(1), _otherActor, TestClaims.Reference());
 
         new EvaluateIssuesFlow().Execute(claim, input);
 

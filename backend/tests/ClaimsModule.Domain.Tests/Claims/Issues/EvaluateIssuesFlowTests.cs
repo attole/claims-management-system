@@ -14,6 +14,7 @@ public sealed class EvaluateIssuesFlowTests
     [
         IsLossDatePresent.Code,
         IsDescriptionLongEnough.Code,
+        IsCauseCodeActive.Code,
         HasClaimant.Code,
     ];
 
@@ -21,26 +22,26 @@ public sealed class EvaluateIssuesFlowTests
     public void Execute_WhenFindingsBlock_SucceedsAndReportsThem()
     {
         var claim = TestClaims.Empty();
-        var input = new EvaluateIssuesInput(TestClaims.Later, TestClaims.Actor);
+        var input = new EvaluateIssuesInput(TestClaims.Later, TestClaims.Actor, TestClaims.Reference());
 
         var outcome = new EvaluateIssuesFlow().Execute(claim, input);
 
         outcome.IsSuccess.Should().BeTrue();
-        outcome.Blocking.Should().HaveCount(3);
+        outcome.Blocking.Should().HaveCount(4);
     }
 
     [Fact]
     public void Execute_WhenRunTwice_StoresNothingNew()
     {
         var claim = TestClaims.Empty();
-        var input = new EvaluateIssuesInput(TestClaims.Later, TestClaims.Actor);
+        var input = new EvaluateIssuesInput(TestClaims.Later, TestClaims.Actor, TestClaims.Reference());
         var flow = new EvaluateIssuesFlow();
         flow.Execute(claim, input);
         claim.PopEvents();
 
         flow.Execute(claim, input);
 
-        claim.Issues.Should().HaveCount(3);
+        claim.Issues.Should().HaveCount(4);
         claim.PopEvents().Should().BeEmpty();
     }
 
@@ -52,7 +53,7 @@ public sealed class EvaluateIssuesFlowTests
 
         claim.Issues.Select(issue => issue.Finding.Code).Should().BeEquivalentTo(_emptyClaimCodes);
         claim.Issues.Should().OnlyContain(issue => issue.Finding.Severity.IsBlockingOpening);
-        claim.BlockingIssues.Should().HaveCount(3);
+        claim.BlockingIssues.Should().HaveCount(4);
     }
 
     [Fact]
@@ -83,13 +84,13 @@ public sealed class EvaluateIssuesFlowTests
         var loss = TestClaims.Loss(TestClaims.Start.AddDays(-1), TestClaims.Description);
         var update = new UpdateLossDetailsInput(loss, TestClaims.Actor, TestClaims.Later);
         new UpdateLossDetailsOperation().Execute(claim, update);
-        var input = new EvaluateIssuesInput(TestClaims.Later, TestClaims.Actor);
+        var input = new EvaluateIssuesInput(TestClaims.Later, TestClaims.Actor, TestClaims.Reference());
 
         new EvaluateIssuesFlow().Execute(claim, input);
 
         claim.BlockingIssues.Select(issue => issue.Finding.Code).Should().Equal(HasClaimant.Code);
         var cleared = claim.PopEvents().OfType<ValidationIssueClearedEvent>().ToList();
-        string[] clearedCodes = [IsLossDatePresent.Code, IsDescriptionLongEnough.Code];
+        string[] clearedCodes = [IsLossDatePresent.Code, IsDescriptionLongEnough.Code, IsCauseCodeActive.Code];
         cleared.Select(issue => issue.Code).Should().BeEquivalentTo(clearedCodes);
         cleared.Should().OnlyContain(issue => issue.ActorId == TestClaims.Actor);
     }
@@ -104,14 +105,14 @@ public sealed class EvaluateIssuesFlowTests
         new SetSeverityOperation().Execute(claim, input);
 
         claim.PopEvents().OfType<ValidationIssueRaisedEvent>().Should().BeEmpty();
-        claim.Issues.Should().HaveCount(3);
+        claim.Issues.Should().HaveCount(4);
     }
 
     [Fact]
     public void ANewFinding_IsStoredByTheFlow()
     {
         var claim = TestClaims.Create(TestClaims.Claimant());
-        var input = new EvaluateIssuesInput(TestClaims.Start.AddDays(-10), TestClaims.Actor);
+        var input = new EvaluateIssuesInput(TestClaims.Start.AddDays(-10), TestClaims.Actor, TestClaims.Reference());
 
         new EvaluateIssuesFlow().Execute(claim, input);
 
@@ -150,7 +151,7 @@ public sealed class EvaluateIssuesFlowTests
         var loss = TestClaims.Loss(TestClaims.Later.AddDays(5), TestClaims.Description);
         var update = new UpdateLossDetailsInput(loss, TestClaims.Actor, TestClaims.Start);
         new UpdateLossDetailsOperation().Execute(claim, update);
-        var input = new EvaluateIssuesInput(TestClaims.Later, TestClaims.Actor);
+        var input = new EvaluateIssuesInput(TestClaims.Later, TestClaims.Actor, TestClaims.Reference());
 
         new EvaluateIssuesFlow().Execute(claim, input);
 
@@ -162,7 +163,7 @@ public sealed class EvaluateIssuesFlowTests
     public void ACompleteClaim_Passes()
     {
         var claim = TestClaims.Create(TestClaims.Claimant());
-        var input = new EvaluateIssuesInput(TestClaims.Later, TestClaims.Actor);
+        var input = new EvaluateIssuesInput(TestClaims.Later, TestClaims.Actor, TestClaims.Reference());
 
         var outcome = new EvaluateIssuesFlow().Execute(claim, input);
 
@@ -173,7 +174,7 @@ public sealed class EvaluateIssuesFlowTests
     public void Execute_WhenTheInputTimeIsBeforeTheLossDate_ReportsTheFutureLossDate()
     {
         var claim = TestClaims.WithLoss(TestClaims.Later);
-        var input = new EvaluateIssuesInput(TestClaims.Start, TestClaims.Actor);
+        var input = new EvaluateIssuesInput(TestClaims.Start, TestClaims.Actor, TestClaims.Reference());
 
         var outcome = new EvaluateIssuesFlow().Execute(claim, input);
 
@@ -184,7 +185,7 @@ public sealed class EvaluateIssuesFlowTests
     public void Execute_WhenTheInputTimeIsTheLossDate_ReportsNothing()
     {
         var claim = TestClaims.WithLoss(TestClaims.Later);
-        var input = new EvaluateIssuesInput(TestClaims.Later, TestClaims.Actor);
+        var input = new EvaluateIssuesInput(TestClaims.Later, TestClaims.Actor, TestClaims.Reference());
 
         var outcome = new EvaluateIssuesFlow().Execute(claim, input);
 
