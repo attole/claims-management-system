@@ -1,5 +1,4 @@
 using ClaimsModule.Domain.ReserveChanges.Root;
-using ClaimsModule.Domain.ReserveChanges.Root.Events;
 using ClaimsModule.Domain.ReserveChanges.Root.Operations;
 using ClaimsModule.Domain.ReserveChanges.Root.Rules;
 using ClaimsModule.Domain.Reserves.Root;
@@ -38,19 +37,6 @@ public sealed class SubmitReserveOperationTests
         outcome.Value.SubmittedBy.Should().Be(TestReserves.Submitter);
         outcome.Value.Details.ChangeSequence.Should().Be(4);
         outcome.Value.IdempotencyKey.Should().Be($"Reserve:{TestReserves.ReserveId}:Change:4");
-    }
-
-    [Fact]
-    [Trait("Rule", "S:RES-History")]
-    public void Execute_RaisesOneSubmittedEvent()
-    {
-        var input = TestReserves.SubmitInput(50_000m, TestReserves.Snapshot());
-
-        var outcome = new SubmitReserveOperation().Execute(input);
-
-        var submitted = outcome.Value.PopEvents().OfType<ReserveSubmittedEvent>().Should().ContainSingle().Subject;
-        submitted.Amount.Should().Be(50_000m);
-        submitted.ActorId.Should().Be(TestReserves.Submitter);
     }
 
     [Fact]

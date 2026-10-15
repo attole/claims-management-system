@@ -4,7 +4,7 @@ using ClaimsModule.Domain.Core.Rules;
 
 namespace ClaimsModule.Domain.ReserveChanges.Root.Rules;
 
-public sealed class IsReserveAmountNonZero(decimal amount) : IRule<NoSubject>
+internal sealed class IsReserveAmountNonZero(decimal amount) : IRule<NoSubject>
 {
     public const string Code = "RESERVE_AMOUNT_ZERO";
 

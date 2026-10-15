@@ -3,7 +3,7 @@ using ClaimsModule.Domain.Core.Rules;
 
 namespace ClaimsModule.Domain.ReserveChanges.Root.Rules;
 
-public sealed class IsClaimLimitCleared(ReserveSnapshot snapshot) : IRule<ReserveChange>
+internal sealed class IsClaimLimitCleared(ReserveSnapshot snapshot) : IRule<ReserveChange>
 {
     public const string Code = "S:BR-R-05";
     public const decimal ClaimLimit = 10_000_000m;

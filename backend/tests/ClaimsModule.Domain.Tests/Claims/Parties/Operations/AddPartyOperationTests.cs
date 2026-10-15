@@ -1,5 +1,4 @@
 using ClaimsModule.Domain.Claims.Parties;
-using ClaimsModule.Domain.Claims.Parties.Events;
 using ClaimsModule.Domain.Claims.Parties.Operations;
 using ClaimsModule.Domain.Claims.Root;
 using ClaimsModule.Domain.Claims.Root.Rules;
@@ -10,19 +9,16 @@ namespace ClaimsModule.Domain.Tests.Claims.Parties.Operations;
 public sealed class AddPartyOperationTests
 {
     [Fact]
-    public void AddParty_AddsActivePartyTouchesClaimAndRaisesEvent()
+    public void AddParty_AddsAnActiveParty()
     {
         var claim = TestClaims.Create(TestClaims.Claimant());
-        claim.PopEvents();
-        var input = new AddPartyInput(TestClaims.Witness(), TestClaims.Actor, TestClaims.Later);
+        var input = new AddPartyInput(TestClaims.Witness(), TestClaims.Actor, TestClaims.Later, TestClaims.Reference());
 
         var outcome = new AddPartyOperation().Execute(claim, input);
 
         outcome.IsSuccess.Should().BeTrue();
         outcome.Value.IsActive.Should().BeTrue();
         claim.Parties.Should().HaveCount(2);
-        claim.UpdatedAt.Should().Be(TestClaims.Later);
-        claim.PopEvents().Should().ContainSingle().Which.Should().BeOfType<PartyAddedEvent>();
     }
 
     [Fact]
@@ -30,7 +26,11 @@ public sealed class AddPartyOperationTests
     public void AddParty_AllowsSeveralPartiesOfOneRole()
     {
         var claim = TestClaims.Create(TestClaims.Claimant());
-        var input = new AddPartyInput(TestClaims.Claimant(), TestClaims.Actor, TestClaims.Later);
+        var input = new AddPartyInput(
+            TestClaims.Claimant(),
+            TestClaims.Actor,
+            TestClaims.Later,
+            TestClaims.Reference());
 
         new AddPartyOperation().Execute(claim, input);
 
@@ -42,7 +42,7 @@ public sealed class AddPartyOperationTests
     public void AddParty_WhenTheClaimIsClosed_Fails()
     {
         var claim = TestClaims.InState(new ClaimClosedState());
-        var input = new AddPartyInput(TestClaims.Witness(), TestClaims.Actor, TestClaims.Later);
+        var input = new AddPartyInput(TestClaims.Witness(), TestClaims.Actor, TestClaims.Later, TestClaims.Reference());
 
         var outcome = new AddPartyOperation().Execute(claim, input);
 

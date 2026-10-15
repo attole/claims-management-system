@@ -3,7 +3,7 @@ using ClaimsModule.Domain.Core.Base.Checks;
 
 namespace ClaimsModule.Domain.Claims.Issues.Checks;
 
-public sealed class IsDescriptionLongEnough : ICheck<Claim, IssueFinding>
+internal sealed class IsDescriptionLongEnough : ICheck<Claim, IssueFinding>
 {
     public const string Code = "S:BR-C-07";
     public const int MinimumLength = 20;

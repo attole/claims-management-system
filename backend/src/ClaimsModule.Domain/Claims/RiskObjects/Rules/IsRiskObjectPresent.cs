@@ -4,7 +4,7 @@ using ClaimsModule.Domain.Core.Rules;
 
 namespace ClaimsModule.Domain.Claims.RiskObjects.Rules;
 
-public sealed class IsRiskObjectPresent(Guid riskObjectId) : IRule<Claim>
+internal sealed class IsRiskObjectPresent(Guid riskObjectId) : IRule<Claim>
 {
     public const string Code = "RISK_OBJECT_NOT_PRESENT";
 

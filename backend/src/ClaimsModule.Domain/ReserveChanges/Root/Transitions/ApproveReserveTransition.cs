@@ -7,10 +7,9 @@ namespace ClaimsModule.Domain.ReserveChanges.Root.Transitions;
 public sealed record ApproveReserveInput(UserRole ActorRole, Guid ActorId, DateTimeOffset Now, ReserveSnapshot Snapshot)
     : ReserveChangeBaseTransitionInput(ActorRole, ActorId, Now, Snapshot);
 
-public sealed class ApproveReserveTransition : ReserveChangeBaseTransition<ApproveReserveInput>
+internal sealed class ApproveReserveTransition : ReserveChangeBaseTransition<ApproveReserveInput>
 {
-    public ApproveReserveTransition()
-        : base(new ReserveApprovedState())
+    public ApproveReserveTransition() : base(new ReserveApprovedState())
     {
         AllowedFrom(new ReservePendingApprovalState())
             .Require(input => new HasApprovalAuthority(input.ActorRole))

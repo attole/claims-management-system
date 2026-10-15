@@ -1,9 +1,6 @@
 using ClaimsModule.Domain.Claims.Issues;
 using ClaimsModule.Domain.Claims.Issues.Checks;
-using ClaimsModule.Domain.Claims.Issues.Events;
 using ClaimsModule.Domain.Claims.Loss.Operations;
-using ClaimsModule.Domain.Claims.Root;
-using ClaimsModule.Domain.Claims.Root.Operations;
 using ClaimsModule.Domain.Tests.Support.Claims;
 
 namespace ClaimsModule.Domain.Tests.Claims.Issues;
@@ -37,12 +34,12 @@ public sealed class EvaluateIssuesFlowTests
         var input = new EvaluateIssuesInput(TestClaims.Later, TestClaims.Actor, TestClaims.Reference());
         var flow = new EvaluateIssuesFlow();
         flow.Execute(claim, input);
-        claim.PopEvents();
 
-        flow.Execute(claim, input);
+        var outcome = flow.Execute(claim, input);
 
         claim.Issues.Should().HaveCount(4);
-        claim.PopEvents().Should().BeEmpty();
+        outcome.Value.Raised.Should().BeEmpty();
+        outcome.Value.Cleared.Should().BeEmpty();
     }
 
     [Fact]
@@ -57,17 +54,6 @@ public sealed class EvaluateIssuesFlowTests
     }
 
     [Fact]
-    public void ANewClaim_RaisesAnEventForEveryIssue()
-    {
-        var claim = TestClaims.Empty();
-
-        var raised = claim.PopEvents().OfType<ValidationIssueRaisedEvent>();
-
-        raised.Select(issue => issue.Code).Should().BeEquivalentTo(_emptyClaimCodes);
-        raised.Should().OnlyContain(issue => issue.ClaimId == claim.Id && issue.ActorId == TestClaims.Actor);
-    }
-
-    [Fact]
     public void ACompleteClaim_HasNoBlockingIssueAndEveryEarlierIssueIsCleared()
     {
         var claim = TestClaims.Create(TestClaims.Claimant());
@@ -77,35 +63,20 @@ public sealed class EvaluateIssuesFlowTests
     }
 
     [Fact]
-    public void AFixedProblem_ClearsItsIssueAndRaisesAClearedEvent()
+    public void AFixedProblem_ClearsItsIssue()
     {
         var claim = TestClaims.Empty();
-        claim.PopEvents();
         var loss = TestClaims.Loss(TestClaims.Start.AddDays(-1), TestClaims.Description);
-        var update = new UpdateLossDetailsInput(loss, TestClaims.Actor, TestClaims.Later);
+        var update = new UpdateLossDetailsInput(loss, TestClaims.Actor, TestClaims.Later, TestClaims.Reference());
         new UpdateLossDetailsOperation().Execute(claim, update);
         var input = new EvaluateIssuesInput(TestClaims.Later, TestClaims.Actor, TestClaims.Reference());
 
-        new EvaluateIssuesFlow().Execute(claim, input);
+        var outcome = new EvaluateIssuesFlow().Execute(claim, input);
 
         claim.BlockingIssues.Select(issue => issue.Finding.Code).Should().Equal(HasClaimant.Code);
-        var cleared = claim.PopEvents().OfType<ValidationIssueClearedEvent>().ToList();
         string[] clearedCodes = [IsLossDatePresent.Code, IsDescriptionLongEnough.Code, IsCauseCodeActive.Code];
-        cleared.Select(issue => issue.Code).Should().BeEquivalentTo(clearedCodes);
-        cleared.Should().OnlyContain(issue => issue.ActorId == TestClaims.Actor);
-    }
-
-    [Fact]
-    public void AnUnchangedClaim_RaisesNothingNewWhenAnotherFieldChanges()
-    {
-        var claim = TestClaims.Empty();
-        claim.PopEvents();
-        var input = new SetSeverityInput(ClaimSeverity.Critical, TestClaims.Actor, TestClaims.Later);
-
-        new SetSeverityOperation().Execute(claim, input);
-
-        claim.PopEvents().OfType<ValidationIssueRaisedEvent>().Should().BeEmpty();
-        claim.Issues.Should().HaveCount(4);
+        outcome.Value.Cleared.Select(issue => issue.Finding.Code).Should().BeEquivalentTo(clearedCodes);
+        outcome.Value.Raised.Should().BeEmpty();
     }
 
     [Fact]
@@ -142,21 +113,6 @@ public sealed class EvaluateIssuesFlowTests
 
         futureIssues.Should().HaveCount(2);
         futureIssues.Count(issue => issue.IsCurrent).Should().Be(1);
-    }
-
-    [Fact]
-    public void RaisingAnIssue_TouchesTheClaim()
-    {
-        var claim = TestClaims.Create(TestClaims.Claimant());
-        var loss = TestClaims.Loss(TestClaims.Later.AddDays(5), TestClaims.Description);
-        var update = new UpdateLossDetailsInput(loss, TestClaims.Actor, TestClaims.Start);
-        new UpdateLossDetailsOperation().Execute(claim, update);
-        var input = new EvaluateIssuesInput(TestClaims.Later, TestClaims.Actor, TestClaims.Reference());
-
-        new EvaluateIssuesFlow().Execute(claim, input);
-
-        claim.UpdatedAt.Should().Be(TestClaims.Later);
-        claim.Issues.Count(issue => issue.IsCurrent).Should().Be(1);
     }
 
     [Fact]

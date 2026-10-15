@@ -18,28 +18,19 @@ public sealed class FlowOutcome<TValue, TFinding>
 
     public CheckResult<TFinding> Result { get; }
 
-    public bool IsSuccess => Status != FlowStatus.Failed;
-
-    public bool HasValue => Status == FlowStatus.Succeeded;
-
-    public bool IsSkipped => Status == FlowStatus.Skipped;
+    public bool IsSuccess => Status == FlowStatus.Succeeded;
 
     public IReadOnlyList<TFinding> Blocking => Result.Blocking;
 
     public IReadOnlyList<TFinding> Advisory => Result.Advisory;
 
-    public TValue Value => HasValue
+    public TValue Value => IsSuccess
         ? _value
         : throw new InvalidOperationException("Only a succeeded outcome has a value.");
 
     public static FlowOutcome<TValue, TFinding> Success(TValue value, CheckResult<TFinding> result)
     {
         return new FlowOutcome<TValue, TFinding>(FlowStatus.Succeeded, value, result);
-    }
-
-    public static FlowOutcome<TValue, TFinding> Skipped(CheckResult<TFinding> result)
-    {
-        return new FlowOutcome<TValue, TFinding>(FlowStatus.Skipped, default!, result);
     }
 
     public static FlowOutcome<TValue, TFinding> Failure(CheckResult<TFinding> result)

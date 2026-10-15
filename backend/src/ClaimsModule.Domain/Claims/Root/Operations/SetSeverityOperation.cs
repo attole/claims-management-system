@@ -1,13 +1,17 @@
+using ClaimsModule.Domain.Claims.Issues;
 using ClaimsModule.Domain.Claims.Root.Bases;
 using ClaimsModule.Domain.Claims.Root.Rules;
 using ClaimsModule.Domain.Core.Operations;
 
 namespace ClaimsModule.Domain.Claims.Root.Operations;
 
-public sealed record SetSeverityInput(ClaimSeverity Severity, Guid ActorId, DateTimeOffset Now)
-    : ClaimBaseOperationInput(Now, ActorId);
+public sealed record SetSeverityInput(
+    ClaimSeverity Severity,
+    Guid ActorId,
+    DateTimeOffset Now,
+    ClaimReferenceSnapshot Reference) : ClaimBaseOperationInput(Now, ActorId, Reference);
 
-public sealed class SetSeverityOperation : Operation<Claim, SetSeverityInput, Success>
+internal sealed class SetSeverityOperation : Operation<Claim, SetSeverityInput, Success>
 {
     public SetSeverityOperation()
     {
@@ -16,7 +20,7 @@ public sealed class SetSeverityOperation : Operation<Claim, SetSeverityInput, Su
 
     protected override Success Apply(Claim claim, SetSeverityInput input)
     {
-        claim.SetSeverity(input.Severity, input.Now);
+        claim.Severity = input.Severity;
 
         return Success.Value;
     }

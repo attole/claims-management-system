@@ -6,11 +6,10 @@ namespace ClaimsModule.Domain.ReserveChanges.Root.Transitions;
 public sealed record MarkReservePostingFailedInput(Guid ActorId, DateTimeOffset Now)
     : ReserveChangeBasePostingTransitionInput(ActorId, Now);
 
-public sealed class MarkReservePostingFailedTransition
+internal sealed class MarkReservePostingFailedTransition
     : ReserveChangeBasePostingTransition<MarkReservePostingFailedInput>
 {
-    public MarkReservePostingFailedTransition()
-        : base(new ReservePostingFailedState())
+    public MarkReservePostingFailedTransition() : base(new ReservePostingFailedState())
     {
         AllowedFrom(new ReservePostingPendingState())
             .Require(new IsReserveChangeApproved());

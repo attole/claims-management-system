@@ -3,7 +3,7 @@ using ClaimsModule.Domain.Core.Rules;
 
 namespace ClaimsModule.Domain.Claims.Root.Rules;
 
-public sealed class IsClaimEditable : IRule<Claim>
+internal sealed class IsClaimEditable : IRule<Claim>
 {
     public const string Code = "CLAIM_NOT_EDITABLE";
 

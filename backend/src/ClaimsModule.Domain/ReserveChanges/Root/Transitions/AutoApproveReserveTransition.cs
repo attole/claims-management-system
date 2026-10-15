@@ -10,10 +10,9 @@ public sealed record AutoApproveReserveInput(
     DateTimeOffset Now,
     ReserveSnapshot Snapshot) : ReserveChangeBaseTransitionInput(ActorRole, ActorId, Now, Snapshot);
 
-public sealed class AutoApproveReserveTransition : ReserveChangeBaseTransition<AutoApproveReserveInput>
+internal sealed class AutoApproveReserveTransition : ReserveChangeBaseTransition<AutoApproveReserveInput>
 {
-    public AutoApproveReserveTransition()
-        : base(new ReserveAutoApprovedState())
+    public AutoApproveReserveTransition() : base(new ReserveAutoApprovedState())
     {
         AllowedFrom(new ReservePendingApprovalState())
             .Require(new IsWithinAutoApprovalLimit())

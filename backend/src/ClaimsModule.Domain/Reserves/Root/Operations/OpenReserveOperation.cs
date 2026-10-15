@@ -1,3 +1,4 @@
+using ClaimsModule.Domain.Common;
 using ClaimsModule.Domain.Core.Operations;
 using ClaimsModule.Domain.Reserves.Root.Bases;
 
@@ -11,11 +12,12 @@ public sealed record OpenReserveInput(
     Guid ActorId,
     DateTimeOffset Now) : ReserveBaseOperationInput(Now, ActorId);
 
-public sealed class OpenReserveOperation : CreationOperation<OpenReserveInput, Reserve>
+internal sealed class OpenReserveOperation : CreationOperation<OpenReserveInput, Reserve>
 {
     protected override Reserve Apply(OpenReserveInput input)
     {
-        return Reserve.Create(
+        return new Reserve(
+            Ids.Next(input.Now),
             input.OrganisationId,
             input.ClaimId,
             input.ComponentType,

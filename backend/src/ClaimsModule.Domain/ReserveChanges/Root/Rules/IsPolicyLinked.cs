@@ -4,7 +4,7 @@ using ClaimsModule.Domain.Core.Rules;
 
 namespace ClaimsModule.Domain.ReserveChanges.Root.Rules;
 
-public sealed class IsPolicyLinked(bool isLinked) : IRule<NoSubject>
+internal sealed class IsPolicyLinked(bool isLinked) : IRule<NoSubject>
 {
     public const string Code = "S:BR-C-06";
 

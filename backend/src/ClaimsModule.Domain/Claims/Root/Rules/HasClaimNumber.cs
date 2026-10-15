@@ -4,7 +4,7 @@ using ClaimsModule.Domain.Core.Rules;
 
 namespace ClaimsModule.Domain.Claims.Root.Rules;
 
-public sealed class HasClaimNumber(ClaimNumber claimNumber) : IRule<NoSubject>
+internal sealed class HasClaimNumber(ClaimNumber claimNumber) : IRule<NoSubject>
 {
     public const string Code = "CLAIM_NUMBER_REQUIRED";
 

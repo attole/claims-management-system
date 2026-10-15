@@ -12,12 +12,15 @@ public sealed class RemoveRiskObjectOperationTests
     public void RemoveRiskObject_HidesItFromTheClaim()
     {
         var claim = TestClaims.Create(TestClaims.Claimant());
-        var input = new RemoveRiskObjectInput(claim.RiskObjects[0].Id, TestClaims.Actor, TestClaims.Later);
+        var input = new RemoveRiskObjectInput(
+            claim.RiskObjects[0].Id,
+            TestClaims.Actor,
+            TestClaims.Later,
+            TestClaims.Reference());
 
         new RemoveRiskObjectOperation().Execute(claim, input);
 
         claim.RiskObjects.Should().BeEmpty();
-        claim.UpdatedAt.Should().Be(TestClaims.Later);
     }
 
     [Fact]
@@ -26,8 +29,16 @@ public sealed class RemoveRiskObjectOperationTests
     {
         var claim = TestClaims.Create(TestClaims.Claimant());
         var riskObject = claim.RiskObjects[0];
-        var input = new RemoveRiskObjectInput(riskObject.Id, TestClaims.Actor, TestClaims.Later);
-        var laterInput = new RemoveRiskObjectInput(riskObject.Id, TestClaims.Actor, TestClaims.Later.AddHours(1));
+        var input = new RemoveRiskObjectInput(
+            riskObject.Id,
+            TestClaims.Actor,
+            TestClaims.Later,
+            TestClaims.Reference());
+        var laterInput = new RemoveRiskObjectInput(
+            riskObject.Id,
+            TestClaims.Actor,
+            TestClaims.Later.AddHours(1),
+            TestClaims.Reference());
         new RemoveRiskObjectOperation().Execute(claim, input);
 
         var outcome = new RemoveRiskObjectOperation().Execute(claim, laterInput);
@@ -41,7 +52,11 @@ public sealed class RemoveRiskObjectOperationTests
     public void RemoveRiskObject_UnknownRiskObject_Fails()
     {
         var claim = TestClaims.Create(TestClaims.Claimant());
-        var input = new RemoveRiskObjectInput(Guid.NewGuid(), TestClaims.Actor, TestClaims.Later);
+        var input = new RemoveRiskObjectInput(
+            Guid.NewGuid(),
+            TestClaims.Actor,
+            TestClaims.Later,
+            TestClaims.Reference());
 
         var outcome = new RemoveRiskObjectOperation().Execute(claim, input);
 
@@ -53,7 +68,11 @@ public sealed class RemoveRiskObjectOperationTests
     public void RemoveRiskObject_WhenTheClaimIsClosed_Fails()
     {
         var claim = TestClaims.InState(new ClaimClosedState());
-        var input = new RemoveRiskObjectInput(claim.RiskObjects[0].Id, TestClaims.Actor, TestClaims.Later);
+        var input = new RemoveRiskObjectInput(
+            claim.RiskObjects[0].Id,
+            TestClaims.Actor,
+            TestClaims.Later,
+            TestClaims.Reference());
 
         var outcome = new RemoveRiskObjectOperation().Execute(claim, input);
 

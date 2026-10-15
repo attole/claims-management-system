@@ -75,8 +75,8 @@ Where the specification and the assessment disagree, the specification is used a
 
 Clean Architecture with five projects, dependencies pointing inward: `API` -> `Application` -> `Domain`. `Persistence` and `Infrastructure` implement interfaces that `Application` defines. The Domain has no project references and no packages.
 
-- **Domain:** state, rules, single steps and events, plus the generic engine that runs them.
-- **Application:** the use cases. It loads data, builds the input, computes the snapshot of values the rules need, runs the steps in order, chains follow-ups, saves through the Unit of Work and maps findings to responses.
+- **Domain:** aggregates with public behaviour methods, and behind them the single steps, rules and events, plus the generic engine that runs the steps.
+- **Application:** the use cases. It loads data, builds the input and the snapshot of values the rules need, calls one aggregate method, reads its outcome, saves through the Unit of Work, dispatches events and maps findings to responses.
 - **Persistence:** EF Core mapping, with a save interceptor for audit, soft-delete and tenant fields.
 - **Infrastructure:** Hangfire jobs and outside adapters.
 - **API:** controllers and startup.
@@ -87,12 +87,14 @@ The Application and Persistence designs are written when those layers are built;
 
 The Domain says what is true and what may change. The Application says what happens, in which order and in which transaction.
 
-- The Domain holds state, rules, single steps and events.
-- The Domain never loads or saves, reads no clock, reads no other aggregate and never chains steps.
-- The Application loads, builds the input, computes the snapshot, runs the steps in order, reads each outcome and saves.
+- The Domain holds state, rules, single steps, aggregate methods and events.
+- The public face of an aggregate is its methods. A method runs one step and the follow-ups that stay inside the same aggregate.
+- The steps, rules and checks are internal to the Domain.
+- The Domain never loads or saves, reads no clock, reads no other aggregate and never chains across aggregates.
+- The Application loads, builds the input, computes the snapshot, calls one aggregate method, reads its outcome, saves and dispatches events.
 - A true-or-false statement about state and request is a rule.
 - A change to one aggregate's state is a step.
-- A "then do X", a second aggregate, a load, a save, a clock, a user identity or a job belongs to the Application.
+- A second aggregate, a load, a save, a clock, a user identity or a job belongs to the Application.
 - A value that needs data from outside the aggregate is computed by the Application into the snapshot on the input.
 
 ### Snapshots
@@ -113,7 +115,7 @@ A snapshot is a read-only record of facts the Application computes by query and 
 ### Domain model
 
 - **Aggregates:** the claim is a root with children (parties, risk objects, loss, issues, state changes). A reserve and a reserve change are two roots. Aggregates refer to each other by id only.
-- **One door in:** children have private setters and `internal` mutators; every change goes through a step that calls a root method, which keeps the invariants and raises a domain event.
+- **One door in:** children have private setters and `internal` mutators; the root's fields have `internal` setters and its child lists are reachable inside the Domain only. Every change goes through a public aggregate method, which runs a step and, on success, touches the root and raises the event.
 - **Entity data in one record,** replaced whole, so an edit cannot half-apply and EF maps it as a complex property.
 - **No null:** a value that may be missing is a record with an `Empty` instance and an `IsSet` flag, because EF cannot map a struct to a nullable column.
 - **Ids and time:** ids are sequential GUIDs made in the Domain; the time of a run is on the input, stamped once by the Application.
@@ -144,7 +146,7 @@ The engine lives in `Domain/Core`. Each folder is a layer that uses only the lay
 **Flows and operations.**
 - A flow selects its checks, evaluates them, applies the decision on a blocked run (stop, skip or continue) and then applies.
 - An operation is a flow for one business action. It declares its rules once and takes its data and the time of the run in an input record.
-- The operation changes the subject only in its apply step, through the subject's `internal` methods.
+- The operation changes the subject only in its apply step, through the subject's `internal` members. It does not touch the root's update time and raises no event; the aggregate method does both after reading the outcome.
 - Creation is an operation without a subject, whose rules check the input.
 
 **Transitions.**
@@ -296,25 +298,29 @@ The engine lives in `Domain/Core`. Each folder is a layer that uses only the lay
 
 ### Design trade-offs
 
-- **Behaviour in step objects.** Operations, transitions and rules are separate objects around passive aggregates (command and specification objects). The cost is an indirection that a reader used to methods on entities may question; the gain is one pattern for every change, all findings at once, and rules traced by code. The aggregates may later front the steps with public methods, with the steps internal.
+- **Aggregate methods over step objects.** An aggregate exposes public behaviour methods. Behind each is an internal operation or transition (command and specification objects) that holds its rules. The cost is one more hop; the gain is one pattern for every change, all findings at once, rules traced by code, and one door in, because the steps are internal.
 - **Facts passed in, not read.** Snapshots follow the "pass the needed values to the aggregate" approach. The alternative is a Domain interface that Persistence implements for reading. Passing values keeps the Domain free of infrastructure and testable with plain records; the cost is that fact definitions live in the Application.
 - **Two reserve aggregates.** A reserve change is its own root so that engine transitions can move it, and several changes can be pending on one reserve at once. The invariants that span them (non-negative balance, claim limit) are checked against a snapshot at submit and again at approval.
 - **No stored balance.** A reserve's balance is the sum of its approved changes, as the specification describes. Storing a figure would need a second step to keep it in sync.
-- **The Domain runs single steps.** Follow-ups are chained outside the steps, so a step has no hidden effects. The follow-ups that stay inside one aggregate are candidates to move into public aggregate methods; the ones that cross a boundary (audit, the posting job) stay events with handlers.
+- **Steps are single; aggregates compose them.** A step has no hidden effects and no hooks. An aggregate method composes the follow-ups of its own aggregate (a reopen then the Open move, a claim change then the issue evaluation, a submit then the auto-approve attempt, a refusal then the posting cancel). The effects that cross a boundary (audit, the posting job) stay events with handlers.
 - **No runtime rule engine.** Rules are classes declared in code, one line per step. A settings-driven engine would hide the rules from review and from tests.
-- **Events.** The aggregate records events in its mutators. The Unit of Work publishes them before the commit for reactions in the same transaction, and after the commit for effects outside it.
+- **Events.** The aggregate's public methods record events after a successful step (the issue evaluation flow records its own). The Unit of Work publishes them before the commit for reactions in the same transaction, and after the commit for effects outside it.
 
-### Application chains
+### Aggregate follow-ups and events
 
-The Domain runs one step at a time. The Application chains steps in one Unit of Work and reads each outcome before the next. The chains are:
+These follow-ups run inside the aggregate method, in the same call:
 
-- Any claim change, then `EvaluateIssuesFlow`.
+- Any claim change, then `EvaluateIssuesFlow`, using the reference snapshot carried on the input (every claim input has it through `ClaimBaseOperationInput`).
 - A reopen, then the Open move from Reopened.
-- A reserve submit, then the auto-approve move. A refusal only leaves the change pending.
-- An approval or auto-approval, then the posting job after the commit.
+- A reserve submit, then the auto-approve attempt. A refusal only leaves the change pending.
 - A reject or retract, then the posting cancel move.
 
-A handler that skips a step fails silently, so every chain has an Application test.
+These cross a boundary and stay with the Application, driven by the events the aggregate records:
+
+- An approval or auto-approval, then the posting job after the commit.
+- Every domain event, then its audit entry.
+
+Each aggregate method has Domain tests; each event reaction has an Application test.
 
 ## Known risks
 

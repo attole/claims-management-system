@@ -28,6 +28,7 @@ public static class TestReserves
             amount,
             "Initial estimate",
             Submitter,
+            TestClaims.Handler,
             snapshot,
             TestClaims.Start);
     }

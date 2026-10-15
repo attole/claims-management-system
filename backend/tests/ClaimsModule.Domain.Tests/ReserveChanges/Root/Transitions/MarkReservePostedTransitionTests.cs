@@ -1,6 +1,5 @@
 using ClaimsModule.Domain.Core.Transitions;
 using ClaimsModule.Domain.ReserveChanges.Root;
-using ClaimsModule.Domain.ReserveChanges.Root.Events;
 using ClaimsModule.Domain.ReserveChanges.Root.Rules;
 using ClaimsModule.Domain.ReserveChanges.Root.Transitions;
 using ClaimsModule.Domain.Tests.Support.Claims;
@@ -21,21 +20,6 @@ public sealed class MarkReservePostedTransitionTests
 
         outcome.Value.Should().BeOfType<ReservePostingPostedState>();
         reserve.PostingDetails.JobId.Should().Be("job-1");
-    }
-
-    [Fact]
-    [Trait("Rule", "S:JOB-GL")]
-    public void Execute_FromPending_RaisesOnePostingStateChangedEvent()
-    {
-        var reserve = TestReserves.SubmitAutoApproved(5_000m);
-        var input = CreateInput("job-1");
-
-        new MarkReservePostedTransition().Execute(reserve, input);
-
-        var changed = reserve.PopEvents().OfType<ReservePostingStateChangedEvent>().Should().ContainSingle().Subject;
-        changed.From.Should().Be(nameof(ReservePostingStateKind.Pending));
-        changed.To.Should().Be(nameof(ReservePostingStateKind.Posted));
-        changed.JobId.Should().Be("job-1");
     }
 
     [Fact]

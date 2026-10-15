@@ -9,16 +9,15 @@ public sealed class LinkPolicyOperationTests
 {
     [Fact]
     [Trait("Rule", "S:BR-C-06")]
-    public void Execute_WithAPolicyId_LinksThePolicyAndTouchesTheClaim()
+    public void Execute_WithAPolicyId_LinksThePolicy()
     {
         var claim = TestClaims.WithoutPolicy();
-        var input = new LinkPolicyInput(TestClaims.Policy, TestClaims.Actor, TestClaims.Later);
+        var input = new LinkPolicyInput(TestClaims.Policy, TestClaims.Actor, TestClaims.Later, TestClaims.Reference());
 
         var outcome = new LinkPolicyOperation().Execute(claim, input);
 
         outcome.IsSuccess.Should().BeTrue();
         claim.PolicyId.Should().Be(TestClaims.Policy);
-        claim.UpdatedAt.Should().Be(TestClaims.Later);
     }
 
     [Fact]
@@ -26,7 +25,7 @@ public sealed class LinkPolicyOperationTests
     public void Execute_WithoutAPolicyId_ReturnsTheFindingAndKeepsTheClaim()
     {
         var claim = TestClaims.WithoutPolicy();
-        var input = new LinkPolicyInput(Guid.Empty, TestClaims.Actor, TestClaims.Later);
+        var input = new LinkPolicyInput(Guid.Empty, TestClaims.Actor, TestClaims.Later, TestClaims.Reference());
 
         var outcome = new LinkPolicyOperation().Execute(claim, input);
 
@@ -39,7 +38,7 @@ public sealed class LinkPolicyOperationTests
     public void Execute_OnAClosedClaim_ReturnsTheFinding()
     {
         var claim = TestClaims.InState(new ClaimClosedState());
-        var input = new LinkPolicyInput(TestClaims.Policy, TestClaims.Actor, TestClaims.Later);
+        var input = new LinkPolicyInput(TestClaims.Policy, TestClaims.Actor, TestClaims.Later, TestClaims.Reference());
 
         var outcome = new LinkPolicyOperation().Execute(claim, input);
 

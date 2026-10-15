@@ -1,13 +1,17 @@
+using ClaimsModule.Domain.Claims.Issues;
 using ClaimsModule.Domain.Claims.Root.Bases;
 using ClaimsModule.Domain.Claims.Root.Rules;
 using ClaimsModule.Domain.Core.Operations;
 
 namespace ClaimsModule.Domain.Claims.Root.Operations;
 
-public sealed record AssignHandlerInput(Guid HandlerId, Guid ActorId, DateTimeOffset Now)
-    : ClaimBaseOperationInput(Now, ActorId);
+public sealed record AssignHandlerInput(
+    Guid HandlerId,
+    Guid ActorId,
+    DateTimeOffset Now,
+    ClaimReferenceSnapshot Reference) : ClaimBaseOperationInput(Now, ActorId, Reference);
 
-public sealed class AssignHandlerOperation : Operation<Claim, AssignHandlerInput, Success>
+internal sealed class AssignHandlerOperation : Operation<Claim, AssignHandlerInput, Success>
 {
     public AssignHandlerOperation()
     {
@@ -16,7 +20,7 @@ public sealed class AssignHandlerOperation : Operation<Claim, AssignHandlerInput
 
     protected override Success Apply(Claim claim, AssignHandlerInput input)
     {
-        claim.AssignHandler(input.HandlerId, input.Now);
+        claim.AssignedHandlerId = input.HandlerId;
 
         return Success.Value;
     }

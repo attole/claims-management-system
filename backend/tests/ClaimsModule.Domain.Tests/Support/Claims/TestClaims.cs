@@ -28,7 +28,7 @@ public static class TestClaims
     public static Claim Empty()
     {
         var claim = WithoutPolicy();
-        new LinkPolicyOperation().Execute(claim, new LinkPolicyInput(Policy, Actor, Start));
+        new LinkPolicyOperation().Execute(claim, new LinkPolicyInput(Policy, Actor, Start, Reference()));
         Evaluate(claim);
 
         return claim;
@@ -36,7 +36,7 @@ public static class TestClaims
 
     public static Claim WithoutPolicy()
     {
-        var input = new CreateClaimInput(Organisation, ClaimNumber.From("CLM-2026-0000001"), Actor, Start);
+        var input = new CreateClaimInput(Organisation, ClaimNumber.From("CLM-2026-0000001"), Actor, Start, Reference());
 
         return new CreateClaimOperation().Execute(input).Value;
     }
@@ -68,12 +68,12 @@ public static class TestClaims
         var riskObject = new RiskObjectDetails(AssetType.Property, "Kitchen");
 
         SetLoss(claim, Loss(Start.AddDays(-3), Description));
-        new AddRiskObjectOperation().Execute(claim, new AddRiskObjectInput(riskObject, Actor, Start));
+        new AddRiskObjectOperation().Execute(claim, new AddRiskObjectInput(riskObject, Actor, Start, Reference()));
         Evaluate(claim);
 
         foreach (var party in parties)
         {
-            new AddPartyOperation().Execute(claim, new AddPartyInput(party, Actor, Start));
+            new AddPartyOperation().Execute(claim, new AddPartyInput(party, Actor, Start, Reference()));
             Evaluate(claim);
         }
 
@@ -85,7 +85,7 @@ public static class TestClaims
     public static Claim WithLimitOverride()
     {
         var claim = Empty();
-        var input = new SetLimitOverrideInput(true, Manager, Actor, Start);
+        var input = new SetLimitOverrideInput(true, Manager, Actor, Start, Reference());
         new SetLimitOverrideOperation().Execute(claim, input);
 
         return claim;
@@ -109,7 +109,7 @@ public static class TestClaims
 
     public static void MoveTo(Claim claim, ClaimState state)
     {
-        var input = new SampleMoveClaimInput(Handler, Actor, Start);
+        var input = new SampleMoveClaimInput(Handler, Actor, Start, Reference());
         new SampleMoveClaimTransition(state).Execute(claim, input);
         claim.PopEvents();
     }
@@ -122,7 +122,7 @@ public static class TestClaims
     public static void WaiveIssue(Claim claim, string code)
     {
         var issue = claim.Issues.Single(candidate => candidate.IsCurrent && candidate.Finding.Code == code);
-        var input = new WaiveIssueInput(issue.Id, Actor, Start);
+        var input = new WaiveIssueInput(issue.Id, Actor, Start, Reference());
         new WaiveIssueOperation().Execute(claim, input);
         Evaluate(claim);
     }
@@ -130,7 +130,7 @@ public static class TestClaims
     public static void AcknowledgeIssue(Claim claim, string code)
     {
         var issue = claim.Issues.Single(candidate => candidate.IsCurrent && candidate.Finding.Code == code);
-        var input = new AcknowledgeIssueInput(issue.Id, Actor, Start);
+        var input = new AcknowledgeIssueInput(issue.Id, Actor, Start, Reference());
         new AcknowledgeIssueOperation().Execute(claim, input);
         Evaluate(claim);
     }
@@ -155,7 +155,7 @@ public static class TestClaims
 
     public static void SetLoss(Claim claim, LossDetails loss)
     {
-        new UpdateLossDetailsOperation().Execute(claim, new UpdateLossDetailsInput(loss, Actor, Start));
+        new UpdateLossDetailsOperation().Execute(claim, new UpdateLossDetailsInput(loss, Actor, Start, Reference()));
         Evaluate(claim);
     }
 

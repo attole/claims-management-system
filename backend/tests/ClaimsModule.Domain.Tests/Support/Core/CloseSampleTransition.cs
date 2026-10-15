@@ -8,8 +8,7 @@ public sealed class CloseSampleTransition : SampleTransition
 {
     public const string TextRequired = "TEXT_REQUIRED";
 
-    public CloseSampleTransition()
-        : base(new ClosedSampleState())
+    public CloseSampleTransition() : base(new ClosedSampleState())
     {
         AllowedFrom(new OpenSampleState())
             .Require(input => new DelegateRule(_ => string.IsNullOrWhiteSpace(input.Text)

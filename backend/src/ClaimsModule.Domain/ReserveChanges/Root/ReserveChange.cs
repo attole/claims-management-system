@@ -1,7 +1,12 @@
 using ClaimsModule.Domain.Common;
 using ClaimsModule.Domain.Common.Capabilities;
 using ClaimsModule.Domain.Common.Entities;
+using ClaimsModule.Domain.Core.Base.Flows;
+using ClaimsModule.Domain.Core.Rules;
+using ClaimsModule.Domain.ReserveChanges.Root.Bases;
 using ClaimsModule.Domain.ReserveChanges.Root.Events;
+using ClaimsModule.Domain.ReserveChanges.Root.Operations;
+using ClaimsModule.Domain.ReserveChanges.Root.Transitions;
 
 namespace ClaimsModule.Domain.ReserveChanges.Root;
 
@@ -18,7 +23,7 @@ public sealed class ReserveChange : AggregateRoot,
         PostingState = new ReservePostingPendingState();
     }
 
-    private ReserveChange(
+    internal ReserveChange(
         Guid id,
         Guid organisationId,
         ReserveChangeDetails details,
@@ -37,15 +42,15 @@ public sealed class ReserveChange : AggregateRoot,
 
     public ReserveChangeDetails Details { get; private set; }
 
-    public ReserveApprovalState ApprovalState { get; private set; }
+    public ReserveApprovalState ApprovalState { get; internal set; }
 
-    public ReservePostingState PostingState { get; private set; }
+    public ReservePostingState PostingState { get; internal set; }
 
-    public ReservePostingDetails PostingDetails { get; private set; } = ReservePostingDetails.Empty;
+    public ReservePostingDetails PostingDetails { get; internal set; } = ReservePostingDetails.Empty;
 
-    public ReserveBalances Balances { get; private set; } = ReserveBalances.Empty;
+    public ReserveBalances Balances { get; internal set; } = ReserveBalances.Empty;
 
-    public ReserveReview Review { get; private set; } = ReserveReview.Empty;
+    public ReserveReview Review { get; internal set; } = ReserveReview.Empty;
 
     public Guid SubmittedBy { get; private set; } = Guid.Empty;
 
@@ -69,82 +74,156 @@ public sealed class ReserveChange : AggregateRoot,
 
     ReservePostingState IStateful<ReservePostingState>.State => PostingState;
 
-    internal static ReserveChange Submit(
-        Guid organisationId,
-        ReserveChangeDetails details,
-        Guid actorId,
-        DateTimeOffset now)
+    public static FlowOutcome<ReserveChange, DomainFinding> Submit(SubmitReserveInput input)
     {
-        var reserve = new ReserveChange(Ids.Next(now), organisationId, details, actorId, now);
-        var submitted = new ReserveSubmittedEvent(
-            Ids.Next(now),
-            now,
-            actorId,
-            reserve.Id,
-            details.ReserveId,
-            details.ClaimId,
-            details.Amount);
-        reserve.Raise(submitted);
+        var outcome = new SubmitReserveOperation().Execute(input);
 
-        return reserve;
-    }
-
-    internal void ChangeApprovalState(
-        ReserveApprovalState approval,
-        string reason,
-        Guid actorId,
-        decimal approvedBalance,
-        DateTimeOffset now)
-    {
-        var from = ApprovalState;
-        Review = new ReserveReview(actorId, now, reason);
-        ApprovalState = approval;
-
-        if (approval.IsApproved)
+        if (!outcome.IsSuccess)
         {
-            Balances = new ReserveBalances(approvedBalance, approvedBalance + Details.Amount);
+            return outcome;
         }
 
-        Touch(now);
-        var changed = new ReserveApprovalStateChangedEvent(
-            Ids.Next(now),
-            now,
-            actorId,
-            Id,
-            Details.ReserveId,
-            Details.ClaimId,
-            from.Name,
-            approval.Name,
-            reason);
-        Raise(changed);
+        var reserve = outcome.Value;
+        var submitted = new ReserveSubmittedEvent(
+            Ids.Next(input.Now),
+            input.Now,
+            input.ActorId,
+            reserve.Id,
+            reserve.Details.ReserveId,
+            reserve.Details.ClaimId,
+            reserve.Details.Amount);
+        reserve.Raise(submitted);
+        reserve.AutoApprove(input);
+
+        return outcome;
     }
 
-    internal void ChangePostingState(
-        ReservePostingState posting,
-        ReservePostingDetails details,
-        Guid actorId,
-        DateTimeOffset now)
+    public FlowOutcome<ReserveApprovalState, DomainFinding> Approve(ApproveReserveInput input)
+    {
+        var from = ApprovalState;
+        var outcome = new ApproveReserveTransition().Execute(this, input);
+
+        if (outcome.IsSuccess)
+        {
+            RecordApproval(from, input);
+        }
+
+        return outcome;
+    }
+
+    public FlowOutcome<ReserveApprovalState, DomainFinding> Reject(RejectReserveInput input)
+    {
+        var from = ApprovalState;
+        var outcome = new RejectReserveTransition().Execute(this, input);
+
+        if (outcome.IsSuccess)
+        {
+            RecordApproval(from, input);
+            CancelPosting(input);
+        }
+
+        return outcome;
+    }
+
+    public FlowOutcome<ReserveApprovalState, DomainFinding> Retract(RetractReserveInput input)
+    {
+        var from = ApprovalState;
+        var outcome = new RetractReserveTransition().Execute(this, input);
+
+        if (outcome.IsSuccess)
+        {
+            RecordApproval(from, input);
+            CancelPosting(input);
+        }
+
+        return outcome;
+    }
+
+    public FlowOutcome<ReservePostingState, DomainFinding> MarkPosted(MarkReservePostedInput input)
     {
         var from = PostingState;
-        PostingState = posting;
-        PostingDetails = details;
-        Touch(now);
-        var changed = new ReservePostingStateChangedEvent(
-            Ids.Next(now),
-            now,
-            actorId,
-            Id,
-            Details.ReserveId,
-            Details.ClaimId,
-            from.Name,
-            posting.Name,
-            details.JobId,
-            details.FailureReason);
-        Raise(changed);
+        var outcome = new MarkReservePostedTransition().Execute(this, input);
+
+        if (outcome.IsSuccess)
+        {
+            RecordPosting(from, input);
+        }
+
+        return outcome;
+    }
+
+    public FlowOutcome<ReservePostingState, DomainFinding> MarkPostingFailed(MarkReservePostingFailedInput input)
+    {
+        var from = PostingState;
+        var outcome = new MarkReservePostingFailedTransition().Execute(this, input);
+
+        if (outcome.IsSuccess)
+        {
+            RecordPosting(from, input);
+        }
+
+        return outcome;
     }
 
     private void Touch(DateTimeOffset now)
     {
         UpdatedAt = now;
+    }
+
+    private void AutoApprove(SubmitReserveInput input)
+    {
+        var autoApprove = new AutoApproveReserveInput(input.ActorRole, input.ActorId, input.Now, input.Snapshot);
+        var from = ApprovalState;
+        var outcome = new AutoApproveReserveTransition().Execute(this, autoApprove);
+
+        if (outcome.IsSuccess)
+        {
+            RecordApproval(from, autoApprove);
+        }
+    }
+
+    private void CancelPosting(ReserveChangeBaseTransitionInput input)
+    {
+        var cancel = new CancelReservePostingInput(input.ActorId, input.Now);
+        var from = PostingState;
+        var outcome = new CancelReservePostingTransition().Execute(this, cancel);
+
+        if (outcome.IsSuccess)
+        {
+            RecordPosting(from, cancel);
+        }
+    }
+
+    private void RecordApproval(ReserveApprovalState from, ReserveChangeBaseTransitionInput input)
+    {
+        var changed = new ReserveApprovalStateChangedEvent(
+            Ids.Next(input.Now),
+            input.Now,
+            input.ActorId,
+            Id,
+            Details.ReserveId,
+            Details.ClaimId,
+            from.Name,
+            ApprovalState.Name,
+            input.Reason);
+        Touch(input.Now);
+        Raise(changed);
+    }
+
+    private void RecordPosting(ReservePostingState from, ReserveChangeBasePostingTransitionInput input)
+    {
+        var changed = new ReservePostingStateChangedEvent(
+            Ids.Next(input.Now),
+            input.Now,
+            input.ActorId,
+            Id,
+            Details.ReserveId,
+            Details.ClaimId,
+            from.Name,
+            PostingState.Name,
+            PostingDetails.JobId,
+            PostingDetails.FailureReason);
+        Touch(input.Now);
+        Raise(changed);
     }
 }

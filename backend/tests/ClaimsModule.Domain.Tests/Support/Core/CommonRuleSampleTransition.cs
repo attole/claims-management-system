@@ -6,8 +6,7 @@ public sealed class CommonRuleSampleTransition : SampleTransition
 {
     public const string CommonDenied = "COMMON_DENIED";
 
-    public CommonRuleSampleTransition()
-        : base(new ClosedSampleState())
+    public CommonRuleSampleTransition() : base(new ClosedSampleState())
     {
         AllowedFrom(new DraftSampleState());
         AllowedFrom(new OpenSampleState());

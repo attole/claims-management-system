@@ -4,7 +4,7 @@ using ClaimsModule.Domain.Core.Rules;
 
 namespace ClaimsModule.Domain.Claims.Root.Rules;
 
-public sealed class HasOrganisation(Guid organisationId) : IRule<NoSubject>
+internal sealed class HasOrganisation(Guid organisationId) : IRule<NoSubject>
 {
     public const string Code = "CLAIM_ORGANISATION_REQUIRED";
 

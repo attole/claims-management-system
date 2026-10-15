@@ -6,10 +6,13 @@ using ClaimsModule.Domain.Core.Operations;
 
 namespace ClaimsModule.Domain.Claims.Issues.Operations;
 
-public sealed record AcknowledgeIssueInput(Guid IssueId, Guid ActorId, DateTimeOffset Now)
-    : ClaimBaseOperationInput(Now, ActorId);
+public sealed record AcknowledgeIssueInput(
+    Guid IssueId,
+    Guid ActorId,
+    DateTimeOffset Now,
+    ClaimReferenceSnapshot Reference) : ClaimBaseOperationInput(Now, ActorId, Reference);
 
-public sealed class AcknowledgeIssueOperation : Operation<Claim, AcknowledgeIssueInput, Success>
+internal sealed class AcknowledgeIssueOperation : Operation<Claim, AcknowledgeIssueInput, ClaimValidationIssue>
 {
     public AcknowledgeIssueOperation()
     {
@@ -17,10 +20,11 @@ public sealed class AcknowledgeIssueOperation : Operation<Claim, AcknowledgeIssu
         Require(input => new IsIssueAcknowledgeable(input.IssueId));
     }
 
-    protected override Success Apply(Claim claim, AcknowledgeIssueInput input)
+    protected override ClaimValidationIssue Apply(Claim claim, AcknowledgeIssueInput input)
     {
-        claim.AcknowledgeIssue(input.IssueId, input.ActorId, input.Now);
+        var issue = claim.IssueList.Single(candidate => candidate.Id == input.IssueId);
+        issue.Acknowledge(input.ActorId, input.Now);
 
-        return Success.Value;
+        return issue;
     }
 }

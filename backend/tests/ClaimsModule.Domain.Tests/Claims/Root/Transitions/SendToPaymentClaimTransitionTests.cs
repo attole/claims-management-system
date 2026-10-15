@@ -88,6 +88,11 @@ public sealed class SendToPaymentClaimTransitionTests
     {
         var reserves = TestClaims.Reserves();
 
-        return new SendToPaymentClaimInput(TestClaims.Handler, TestClaims.Actor, TestClaims.Later, reserves);
+        return new SendToPaymentClaimInput(
+            TestClaims.Handler,
+            TestClaims.Actor,
+            TestClaims.Later,
+            reserves,
+            TestClaims.Reference());
     }
 }

@@ -11,19 +11,22 @@ public sealed class UpdateNotesOperationTests
     public void UpdateNotes_ReplacesTheNotes()
     {
         var claim = TestClaims.Create(TestClaims.Claimant());
-        var input = new UpdateNotesInput("called the insured", TestClaims.Actor, TestClaims.Later);
+        var input = new UpdateNotesInput(
+            "called the insured",
+            TestClaims.Actor,
+            TestClaims.Later,
+            TestClaims.Reference());
 
         new UpdateNotesOperation().Execute(claim, input);
 
         claim.Notes.Should().Be("called the insured");
-        claim.UpdatedAt.Should().Be(TestClaims.Later);
     }
 
     [Fact]
     public void UpdateNotes_WhenTheClaimIsClosed_ReplacesTheNotes()
     {
         var claim = TestClaims.InState(new ClaimClosedState());
-        var input = new UpdateNotesInput("late call", TestClaims.Actor, TestClaims.Later);
+        var input = new UpdateNotesInput("late call", TestClaims.Actor, TestClaims.Later, TestClaims.Reference());
 
         var outcome = new UpdateNotesOperation().Execute(claim, input);
 
@@ -36,7 +39,7 @@ public sealed class UpdateNotesOperationTests
     public void UpdateNotes_WhenTheClaimIsWithdrawn_Fails()
     {
         var claim = TestClaims.InState(new ClaimWithdrawnState());
-        var input = new UpdateNotesInput("late call", TestClaims.Actor, TestClaims.Later);
+        var input = new UpdateNotesInput("late call", TestClaims.Actor, TestClaims.Later, TestClaims.Reference());
 
         var outcome = new UpdateNotesOperation().Execute(claim, input);
 

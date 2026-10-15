@@ -3,7 +3,7 @@ using ClaimsModule.Domain.Core.Base.Checks;
 
 namespace ClaimsModule.Domain.Claims.Issues.Checks;
 
-public sealed class IsLossDatePresent : ICheck<Claim, IssueFinding>
+internal sealed class IsLossDatePresent : ICheck<Claim, IssueFinding>
 {
     public const string Code = "S:V-LossDate-Required";
 

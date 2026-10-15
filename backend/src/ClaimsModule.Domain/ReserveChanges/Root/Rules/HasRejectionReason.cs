@@ -3,7 +3,7 @@ using ClaimsModule.Domain.Core.Rules;
 
 namespace ClaimsModule.Domain.ReserveChanges.Root.Rules;
 
-public sealed class HasRejectionReason(string reason) : IRule<ReserveChange>
+internal sealed class HasRejectionReason(string reason) : IRule<ReserveChange>
 {
     public const string Code = "RESERVE_REJECTION_REASON_REQUIRED";
 

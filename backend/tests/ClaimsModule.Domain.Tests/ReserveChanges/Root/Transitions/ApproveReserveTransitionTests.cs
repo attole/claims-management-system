@@ -1,6 +1,5 @@
 using ClaimsModule.Domain.Core.Transitions;
 using ClaimsModule.Domain.ReserveChanges.Root;
-using ClaimsModule.Domain.ReserveChanges.Root.Events;
 using ClaimsModule.Domain.ReserveChanges.Root.Rules;
 using ClaimsModule.Domain.ReserveChanges.Root.Transitions;
 using ClaimsModule.Domain.Tests.Support.Claims;
@@ -24,21 +23,6 @@ public sealed class ApproveReserveTransitionTests
         reserve.Balances.PreviousBalance.Should().Be(0m);
         reserve.Balances.NewBalance.Should().Be(50_000m);
         reserve.Review.ReviewedBy.Should().Be(TestReserves.Approver);
-    }
-
-    [Fact]
-    [Trait("Rule", "S:RES-History")]
-    public void Execute_FromPending_RaisesOneApprovalStateChangedEvent()
-    {
-        var reserve = TestReserves.Submit(50_000m);
-        var input = CreateInput(TestReserves.Snapshot());
-
-        new ApproveReserveTransition().Execute(reserve, input);
-
-        var changed = reserve.PopEvents().OfType<ReserveApprovalStateChangedEvent>().Should().ContainSingle().Subject;
-        changed.From.Should().Be(nameof(ReserveApprovalStateKind.PendingApproval));
-        changed.To.Should().Be(nameof(ReserveApprovalStateKind.Approved));
-        changed.ActorId.Should().Be(TestReserves.Approver);
     }
 
     [Fact]

@@ -24,7 +24,7 @@ public sealed class ClaimValidationIssueTests
     {
         var claim = TestClaims.Empty();
         var loss = TestClaims.Loss(TestClaims.Start.AddDays(-1), TestClaims.Description);
-        var update = new UpdateLossDetailsInput(loss, TestClaims.Actor, TestClaims.Later);
+        var update = new UpdateLossDetailsInput(loss, TestClaims.Actor, TestClaims.Later, TestClaims.Reference());
         new UpdateLossDetailsOperation().Execute(claim, update);
         var input = new EvaluateIssuesInput(TestClaims.Later, TestClaims.Actor, TestClaims.Reference());
 
@@ -42,7 +42,7 @@ public sealed class ClaimValidationIssueTests
     {
         var claim = TestClaims.Empty();
         var issue = claim.Issues[0];
-        var input = new WaiveIssueInput(issue.Id, TestClaims.Actor, TestClaims.Later);
+        var input = new WaiveIssueInput(issue.Id, TestClaims.Actor, TestClaims.Later, TestClaims.Reference());
 
         new WaiveIssueOperation().Execute(claim, input);
 
@@ -56,10 +56,10 @@ public sealed class ClaimValidationIssueTests
     {
         var claim = TestClaims.Empty();
         var issue = claim.Issues.Single(candidate => candidate.Finding.Code == IsLossDatePresent.Code);
-        var waive = new WaiveIssueInput(issue.Id, TestClaims.Actor, TestClaims.Later);
+        var waive = new WaiveIssueInput(issue.Id, TestClaims.Actor, TestClaims.Later, TestClaims.Reference());
         new WaiveIssueOperation().Execute(claim, waive);
         var loss = TestClaims.Loss(TestClaims.Start.AddDays(-1), TestClaims.Description);
-        var fix = new UpdateLossDetailsInput(loss, _otherActor, TestClaims.Later.AddHours(1));
+        var fix = new UpdateLossDetailsInput(loss, _otherActor, TestClaims.Later.AddHours(1), TestClaims.Reference());
         new UpdateLossDetailsOperation().Execute(claim, fix);
         var input = new EvaluateIssuesInput(TestClaims.Later.AddHours(1), _otherActor, TestClaims.Reference());
 

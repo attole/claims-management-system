@@ -1,6 +1,8 @@
-using ClaimsModule.Domain.Common;
 using ClaimsModule.Domain.Common.Capabilities;
 using ClaimsModule.Domain.Common.Entities;
+using ClaimsModule.Domain.Core.Base.Flows;
+using ClaimsModule.Domain.Core.Rules;
+using ClaimsModule.Domain.Reserves.Root.Operations;
 
 namespace ClaimsModule.Domain.Reserves.Root;
 
@@ -11,7 +13,7 @@ public sealed class Reserve : AggregateRoot, IAuditable, ISoftDeletable, ITenant
         ComponentType = new ReserveIndemnityComponentType();
     }
 
-    private Reserve(
+    internal Reserve(
         Guid id,
         Guid organisationId,
         Guid claimId,
@@ -50,13 +52,8 @@ public sealed class Reserve : AggregateRoot, IAuditable, ISoftDeletable, ITenant
 
     public Guid OrganisationId { get; private set; } = Guid.Empty;
 
-    internal static Reserve Create(
-        Guid organisationId,
-        Guid claimId,
-        ReserveComponentType componentType,
-        string notes,
-        DateTimeOffset now)
+    public static FlowOutcome<Reserve, DomainFinding> Create(OpenReserveInput input)
     {
-        return new Reserve(Ids.Next(now), organisationId, claimId, componentType, notes, now);
+        return new OpenReserveOperation().Execute(input);
     }
 }

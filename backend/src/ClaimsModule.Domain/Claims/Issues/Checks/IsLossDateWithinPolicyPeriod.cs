@@ -3,7 +3,7 @@ using ClaimsModule.Domain.Core.Base.Checks;
 
 namespace ClaimsModule.Domain.Claims.Issues.Checks;
 
-public sealed class IsLossDateWithinPolicyPeriod(PolicyPeriod period) : ICheck<Claim, IssueFinding>
+internal sealed class IsLossDateWithinPolicyPeriod(PolicyPeriod period) : ICheck<Claim, IssueFinding>
 {
     public const string Code = "S:BR-C-02";
 

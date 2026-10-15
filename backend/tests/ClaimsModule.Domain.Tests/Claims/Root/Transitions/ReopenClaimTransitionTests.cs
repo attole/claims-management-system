@@ -1,5 +1,4 @@
 using ClaimsModule.Domain.Claims.Root;
-using ClaimsModule.Domain.Claims.Root.Events;
 using ClaimsModule.Domain.Claims.Root.Rules;
 using ClaimsModule.Domain.Claims.Root.Transitions;
 using ClaimsModule.Domain.Claims.StateChanges;
@@ -19,7 +18,11 @@ public sealed class ReopenClaimTransitionTests
     public void Execute_ByASupervisorWithAReason_MovesToReopened()
     {
         var claim = TestClaims.InState(new ClaimClosedState());
-        var input = new ReopenClaimInput(TestClaims.Supervisor, TestClaims.Actor, TestClaims.Later)
+        var input = new ReopenClaimInput(
+            TestClaims.Supervisor,
+            TestClaims.Actor,
+            TestClaims.Later,
+            TestClaims.Reference())
         {
             Reason = _reason,
         };
@@ -35,7 +38,11 @@ public sealed class ReopenClaimTransitionTests
     public void Execute_ByASupervisorWithAReason_RecordsTheReasonOnTheStateChange()
     {
         var claim = TestClaims.InState(new ClaimClosedState());
-        var input = new ReopenClaimInput(TestClaims.Supervisor, TestClaims.Actor, TestClaims.Later)
+        var input = new ReopenClaimInput(
+            TestClaims.Supervisor,
+            TestClaims.Actor,
+            TestClaims.Later,
+            TestClaims.Reference())
         {
             Reason = _reason,
         };
@@ -48,27 +55,11 @@ public sealed class ReopenClaimTransitionTests
     }
 
     [Fact]
-    [Trait("Rule", "S:BR-ST-04")]
-    public void Execute_ByASupervisorWithAReason_RaisesOneStateChangedEvent()
-    {
-        var claim = TestClaims.InState(new ClaimClosedState());
-        var input = new ReopenClaimInput(TestClaims.Supervisor, TestClaims.Actor, TestClaims.Later)
-        {
-            Reason = _reason,
-        };
-
-        new ReopenClaimTransition().Execute(claim, input);
-
-        var events = claim.PopEvents().OfType<ClaimStateChangedEvent>().ToList();
-        events.Select(changed => changed.To).Should().Equal("Reopened");
-    }
-
-    [Fact]
     [Trait("Rule", HasPermittedRole.Code)]
     public void Execute_ByAHandler_ReturnsTheRoleFinding()
     {
         var claim = TestClaims.InState(new ClaimClosedState());
-        var input = new ReopenClaimInput(TestClaims.Handler, TestClaims.Actor, TestClaims.Later)
+        var input = new ReopenClaimInput(TestClaims.Handler, TestClaims.Actor, TestClaims.Later, TestClaims.Reference())
         {
             Reason = _reason,
         };
@@ -84,7 +75,11 @@ public sealed class ReopenClaimTransitionTests
     public void Execute_WithoutAReason_ReturnsTheReasonFinding()
     {
         var claim = TestClaims.InState(new ClaimClosedState());
-        var input = new ReopenClaimInput(TestClaims.Supervisor, TestClaims.Actor, TestClaims.Later);
+        var input = new ReopenClaimInput(
+            TestClaims.Supervisor,
+            TestClaims.Actor,
+            TestClaims.Later,
+            TestClaims.Reference());
 
         var outcome = new ReopenClaimTransition().Execute(claim, input);
 
@@ -97,7 +92,11 @@ public sealed class ReopenClaimTransitionTests
     public void Execute_ByAHandlerWithoutAReason_ReturnsBothFindings()
     {
         var claim = TestClaims.InState(new ClaimClosedState());
-        var input = new ReopenClaimInput(TestClaims.Handler, TestClaims.Actor, TestClaims.Later);
+        var input = new ReopenClaimInput(
+            TestClaims.Handler,
+            TestClaims.Actor,
+            TestClaims.Later,
+            TestClaims.Reference());
 
         var outcome = new ReopenClaimTransition().Execute(claim, input);
 
@@ -110,7 +109,11 @@ public sealed class ReopenClaimTransitionTests
     public void Execute_FromOpen_ReturnsNotPermitted()
     {
         var claim = TestClaims.InState(new ClaimOpenState());
-        var input = new ReopenClaimInput(TestClaims.Supervisor, TestClaims.Actor, TestClaims.Later)
+        var input = new ReopenClaimInput(
+            TestClaims.Supervisor,
+            TestClaims.Actor,
+            TestClaims.Later,
+            TestClaims.Reference())
         {
             Reason = _reason,
         };

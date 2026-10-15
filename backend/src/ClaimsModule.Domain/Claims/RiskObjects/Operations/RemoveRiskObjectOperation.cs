@@ -1,3 +1,4 @@
+using ClaimsModule.Domain.Claims.Issues;
 using ClaimsModule.Domain.Claims.RiskObjects.Rules;
 using ClaimsModule.Domain.Claims.Root;
 using ClaimsModule.Domain.Claims.Root.Bases;
@@ -6,10 +7,13 @@ using ClaimsModule.Domain.Core.Operations;
 
 namespace ClaimsModule.Domain.Claims.RiskObjects.Operations;
 
-public sealed record RemoveRiskObjectInput(Guid RiskObjectId, Guid ActorId, DateTimeOffset Now)
-    : ClaimBaseOperationInput(Now, ActorId);
+public sealed record RemoveRiskObjectInput(
+    Guid RiskObjectId,
+    Guid ActorId,
+    DateTimeOffset Now,
+    ClaimReferenceSnapshot Reference) : ClaimBaseOperationInput(Now, ActorId, Reference);
 
-public sealed class RemoveRiskObjectOperation : Operation<Claim, RemoveRiskObjectInput, Success>
+internal sealed class RemoveRiskObjectOperation : Operation<Claim, RemoveRiskObjectInput, ClaimRiskObject>
 {
     public RemoveRiskObjectOperation()
     {
@@ -17,10 +21,12 @@ public sealed class RemoveRiskObjectOperation : Operation<Claim, RemoveRiskObjec
         Require(input => new IsRiskObjectPresent(input.RiskObjectId));
     }
 
-    protected override Success Apply(Claim claim, RemoveRiskObjectInput input)
+    protected override ClaimRiskObject Apply(Claim claim, RemoveRiskObjectInput input)
     {
-        claim.RemoveRiskObject(input.RiskObjectId, input.Now);
+        var riskObject = claim.RiskObjectList
+            .Single(candidate => candidate.Id == input.RiskObjectId && !candidate.IsDeleted);
+        riskObject.Remove(input.Now);
 
-        return Success.Value;
+        return riskObject;
     }
 }

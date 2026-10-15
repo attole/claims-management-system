@@ -3,7 +3,7 @@ using ClaimsModule.Domain.Core.Rules;
 
 namespace ClaimsModule.Domain.ReserveChanges.Root.Rules;
 
-public sealed class IsReserveChangeRefused : IRule<ReserveChange>
+internal sealed class IsReserveChangeRefused : IRule<ReserveChange>
 {
     public const string Code = "RESERVE_CHANGE_NOT_REFUSED";
 

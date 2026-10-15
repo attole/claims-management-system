@@ -34,31 +34,6 @@ public sealed class FlowTests
     }
 
     [Fact]
-    public void ABlockingRule_CanSkipTheFlowWithoutAnError()
-    {
-        var subject = new SampleSubject();
-        var flow = new SampleFlow(FlowDecision.Skip, [SampleRules.Fail("BLOCK")]);
-
-        var outcome = flow.Execute(subject, _input);
-
-        outcome.IsSkipped.Should().BeTrue();
-        outcome.IsSuccess.Should().BeTrue();
-        outcome.Blocking.Select(finding => finding.Code).Should().Equal("BLOCK");
-        subject.Log.Should().BeEmpty();
-    }
-
-    [Fact]
-    public void Value_WhenTheFlowWasSkipped_Throws()
-    {
-        var flow = new SampleFlow(FlowDecision.Skip, [SampleRules.Fail("BLOCK")]);
-        var outcome = flow.Execute(new SampleSubject(), _input);
-
-        Func<string> act = () => outcome.Value;
-
-        act.Should().Throw<InvalidOperationException>();
-    }
-
-    [Fact]
     public void ABlockingRule_CanContinueAndStillApply()
     {
         var subject = new SampleSubject();

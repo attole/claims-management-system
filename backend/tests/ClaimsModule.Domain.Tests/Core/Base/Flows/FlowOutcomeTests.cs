@@ -21,21 +21,19 @@ public sealed class FlowOutcomeTests
         var outcome = FlowOutcome<string, DomainFinding>.Success("done", checkResult);
 
         outcome.IsSuccess.Should().BeTrue();
-        outcome.HasValue.Should().BeTrue();
         outcome.Value.Should().Be("done");
         outcome.Blocking.Should().Equal(blocking);
         outcome.Advisory.Should().Equal(advisory);
     }
 
     [Fact]
-    public void Failure_CarriesTheFindingsAndHasNoValue()
+    public void Failure_CarriesTheFindings()
     {
         var finding = new RuleFinding("E", "e");
 
         var outcome = FlowOutcome<string, DomainFinding>.Failure(CheckResult<DomainFinding>.Found(finding));
 
         outcome.IsSuccess.Should().BeFalse();
-        outcome.HasValue.Should().BeFalse();
         outcome.Blocking.Should().Equal(finding);
     }
 
@@ -44,26 +42,6 @@ public sealed class FlowOutcomeTests
     {
         var finding = new RuleFinding("E", "e");
         var outcome = FlowOutcome<string, DomainFinding>.Failure(CheckResult<DomainFinding>.Found(finding));
-
-        Func<string> act = () => outcome.Value;
-
-        act.Should().Throw<InvalidOperationException>();
-    }
-
-    [Fact]
-    public void Skipped_IsASuccessWithoutAValue()
-    {
-        var outcome = FlowOutcome<string, DomainFinding>.Skipped(CheckResult<DomainFinding>.Pass);
-
-        outcome.IsSuccess.Should().BeTrue();
-        outcome.IsSkipped.Should().BeTrue();
-        outcome.HasValue.Should().BeFalse();
-    }
-
-    [Fact]
-    public void Value_WhenTheOutcomeWasSkipped_Throws()
-    {
-        var outcome = FlowOutcome<string, DomainFinding>.Skipped(CheckResult<DomainFinding>.Pass);
 
         Func<string> act = () => outcome.Value;
 

@@ -218,7 +218,7 @@ Layout
 - **Line length:** 120 characters maximum, backend and frontend code. Markdown has its own rule ('Output formatting').
 - **LINQ:** method syntax only. A chain of two or more LINQ calls, or any line that would pass the limit, puts each call on its own line starting with `.`, indented one level; a single LINQ call after a member or method call stays on its line (`claim.Parties.Select(party => party.Id)`).
 - **Parameters and arguments:** keep them on one line when the line fits the line length. When the line would pass the limit, put one item per line, indented one level. This is a length rule only: how many arguments a call has, or whether they are calls themselves, never forces a wrap. The same applies to constructor injection and object initializers. Never nest a wrapped call inside another call: put the inner creation or call into a named variable first (`var input = new AddPartyInput(...);` then `Execute(claim, input)`), and keep long literal text out of the call as a constant.
-- **Records and constructors:** a positional record keeps its base list on the declaration line when it fits (`public sealed record WaiveIssueInput(...) : ClaimBaseOperationInput(Now, ActorId);`) and moves it to the next line, indented one level, when it does not. A constructor initializer (`: base(id)`, `: this(...)`) is always on its own line below the signature.
+- **Records and constructors:** a positional record keeps its base list on the declaration line when it fits (`public sealed record WaiveIssueInput(...) : ClaimBaseOperationInput(Now, ActorId);`) and moves it to the next line, indented one level, when it does not. A constructor initializer (`: base(id)`, `: this(...)`) stays on the signature line when the line fits the line length (`public OpenClaimTransition() : base(new ClaimOpenState())`); when it would pass the limit, or the parameters are wrapped, it moves to its own line below the signature, indented one level.
 - **Blank lines:** one blank line between members; none after an opening brace or before a closing brace; one before the final `return` unless it is the first statement of its block. Inside a body, a blank line separates the steps of a test (arrange, act, assert) and the computed statement from its `return`.
 - **Wrapped lists:** a wrapped list (arguments, initializer, collection expression, enum members) puts one item per line and keeps a trailing comma after the last item where the language allows it.
 - **Ternaries:** a ternary that does not fit on one line puts `?` and `:` on their own lines, indented one level; the true branch comes first, and in a check the passing branch is the true branch.
@@ -245,12 +245,13 @@ Enforcement
 
 Each kind of class has one shape, so the next one is written the same way.
 
-- **Check or rule:** constants `Code` (public), `Message` and `Field` (private); one `Check` method that names the statement in a `bool` that is true when the check passes (`bool hasClaimant = ...;`, `bool isNotLastClaimant = !...;`) and returns `statement ? Pass : Found(finding)`. A rule from the input takes its value through a primary-constructor parameter.
-- **Operation:** an input record declared first in the file, the operation class second. The constructor only calls `Require`. `Apply` makes one call on the subject's `internal` method and returns its value or `Success.Value`; it holds no condition.
+- **Check or rule:** an `internal` class with constants `Code` (public), `Message` and `Field` (private); one `Check` method that names the statement in a `bool` that is true when the check passes (`bool hasClaimant = ...;`, `bool isNotLastClaimant = !...;`) and returns `statement ? Pass : Found(finding)`. A rule from the input takes its value through a primary-constructor parameter.
+- **Operation:** an input record declared first in the file, the `internal` operation class second. The constructor only calls `Require`. `Apply` changes the subject through its `internal` members and returns the child it added, removed or changed (so the aggregate method can build its event from it), or `Success.Value` when the root changed one of its own fields; it holds no condition, does not touch the root and raises no event.
 - **Flow over a whole entity:** an input record declared first in the same file, the flow with its checks in the constructor, a `protected override` decision property, and an `Apply` that builds a few named queries and then loops over them.
-- **Transition:** derives from the aggregate's transition base (`ClaimBaseTransition<TInput>`). The constructor names the target and declares each `AllowedFrom(...)` with its rules; the aggregate's base seals `Apply`, which changes the state and returns the new one. Nothing is overridden.
+- **Transition:** an `internal` class deriving from the aggregate's transition base (`ClaimBaseTransition<TInput>`). The constructor names the target and declares each `AllowedFrom(...)` with its rules; the aggregate's base seals `Apply`, which changes the state and returns the new one. Nothing is overridden.
 - **Entity (child):** constructors (private for EF, then `internal` with `id`, parent id, organisation id, details and `now`), properties, then `internal` mutators that change fields and set `UpdatedAt = now`.
-- **Aggregate root:** `internal` methods that change a child or a field, call `Touch(now)`, and `Raise` the event; the only `private` method is `Touch`.
+- **Aggregate root:** fields with `internal` setters and child lists reachable through `internal` accessors, so a step changes them; the root keeps `Touch(now)` and the follow-up helpers as its `private` methods. The issue evaluation flow keeps two `internal` mutators (`RaiseIssue`, `ClearIssue`) because one evaluation changes many issues.
+- **Aggregate method:** a `public` method that takes the step's input record only (a snapshot the follow-ups need rides on that input, like `Reference` on every claim input), runs the `internal` step and, on success, calls `Touch(now)` and raises the events that step owns, then runs the follow-ups of its own aggregate, and returns the step's outcome. It holds no rule; it composes steps.
 - **Details record:** the identifying values positional, the optional ones `{ get; init; }` with an explicit empty default.
 - **Closed set:** one file named after the base type holding the marker enum, the abstract record, and the sealed variants with `() : Base(Kind.Value)`; a variant with behavior overrides the base member in a body.
 - **Event:** a positional record named `<Thing><PastVerb>Event`, `(EventId, OccurredAt, ActorId, <ids and facts>) : DomainEvent(EventId, OccurredAt, ActorId)`, one parameter per line.
@@ -362,21 +363,23 @@ The Domain says what is true and what may change. The Application says what happ
 
 - The Domain holds state: aggregates, children, value records and closed sets, with plain facts about their values.
 - The Domain holds rules: each is a statement about one subject and the request, a class with a `Code`.
-- The Domain holds single steps: an operation, a creation or a transition runs its rules, changes one aggregate through its `internal` methods and raises events.
-- The Domain never loads or saves, reads no clock, reads no other aggregate, returns no HTTP type and never chains steps.
-- The Application holds the use case: it loads, builds the input, computes the snapshot, runs the steps in order, reads each outcome, chains follow-ups, saves and maps findings.
-- The Application holds no statement about state; it only orders steps.
+- The Domain holds single steps: an operation, a creation or a transition runs its rules, changes one aggregate through its `internal` members; the aggregate method touches it and raises the events.
+- The public face of an aggregate is its methods: each runs one step and the follow-ups that stay inside the same aggregate.
+- Steps, rules and checks are `internal` to the Domain.
+- The Domain never loads or saves, reads no clock, reads no other aggregate, returns no HTTP type and never chains across aggregates.
+- The Application holds the use case: it loads, builds the input and the snapshot, calls one aggregate method, reads its outcome, saves, dispatches events and maps findings.
+- The Application holds no statement about state.
 - A true-or-false statement about state and request is a rule.
 - A change to one aggregate's state is a step.
-- A "then do X", a second aggregate, a load, a save, a clock, a user identity or a job is Application.
+- A second aggregate, a load, a save, a clock, a user identity or a job is Application.
 - A value that needs data from outside the aggregate is computed by the Application into the snapshot on the input.
-- Every chain in `docs/ARCHITECTURE.md` 'Application chains' has an Application test.
+- An effect that crosses a boundary (audit, a job) is a domain event with an Application handler.
 
 ### Domain modeling
 
 - **No invented rules:** a check that no source states (a bound on an amount, a length) is not added; ask for the source first. Every rule and check exposes its code as a `Code` constant: the source-qualified rule ID when a document states the rule (`S:BR-C-01`), or a plain upper-snake code for a rule that guards the system's own contract (`CLAIM_NUMBER_REQUIRED`); the constants are the only list. The class keeps `Message` and `Field` as private constants, so the failing line reads `CheckResult<DomainFinding>.Found(new RuleFinding(Code, Message, Field))`.
 - **Time:** the Domain reads no clock. The time is `Now` on the input (every input derives from `OperationInput`), stamped once by the Application. Entity mutators and `Ids.Next` take `now` as a parameter. A calendar day derived from a timestamp is its UTC day.
-- **Entities:** a child keeps its editable data in one immutable details record, replaced whole with `with`. Capability interfaces are get-only, setters are private, mutators are `internal`, and nothing outside the aggregate changes a child.
+- **Entities:** a child keeps its editable data in one immutable details record, replaced whole with `with`. Capability interfaces are get-only; a child's setters are private and its mutators `internal`; the root's fields set by steps have `internal` setters; nothing outside the Domain changes any of it.
 - **EF friendliness:** every entity has a private parameterless constructor with empty placeholders, built by a test. A value that may be absent is a sealed record with a static `Empty` and an `IsSet` flag. List and search queries use projections or read models, never filtered Domain entities.
 - **Creation:** a claim is created by `CreateClaimOperation` as a minimal valid Draft; parties, risk objects and loss details are added by the same operations as later edits.
 
@@ -396,7 +399,7 @@ The Domain has top-level folders `Core/` (the engine), `Common/` (entity and eve
 - A step declares its rules once in the constructor with `Require`: a ready instance, or a rule from the input (`input => new IsNotLastClaimant(input.PartyId)`).
 - A check with another finding type runs in a flow of its own.
 - "Not allowed in that state" is a rule that reads the state, never a conditional in an operation.
-- `Apply` is the only place the subject changes; it uses the subject's `internal` methods and returns a value or `Success`.
+- `Apply` is the only place the subject changes; it uses the subject's `internal` members and returns a value or `Success`.
 - A transition is configured by its target, allowed sources and rules only; its hooks are sealed.
 - A new kind of process derives from `Flow`.
 - A `DomainFinding` blocks by default; `AsWarning()` makes it advisory.
@@ -405,8 +408,8 @@ The Domain has top-level folders `Core/` (the engine), `Common/` (entity and eve
 
 Names follow 'Naming' and folders 'Domain folders'.
 
-- **A new entity in an aggregate:** a private parameterless constructor, a `Details` record, private setters and `internal` mutators taking `now`; a root method that calls the mutator, touches the root and raises the event; an operation; every precondition of the action as a rule; a stored completeness problem as a check in `Issues/Checks/`; tests in the mirrored folders and an entry in `EntityConstructionTests`.
-- **A new aggregate:** a top-level folder shaped like `Claims/`, a base input in `Root/` (and a base transition once it has a lifecycle), a creation operation calling an `internal` factory, the capability interfaces it needs, and other aggregates referenced by id only.
+- **A new entity in an aggregate:** a private parameterless constructor, a `Details` record, private setters and `internal` mutators taking `now`; an `internal` operation that adds or changes it and a public method on the root that runs the operation, then touches the root and raises the event; every precondition of the action as a rule; a stored completeness problem as a check in `Issues/Checks/`; tests in the mirrored folders and an entry in `EntityConstructionTests`.
+- **A new aggregate:** a top-level folder shaped like `Claims/`, a base input in `Root/` (and a base transition once it has a lifecycle), a creation operation calling an `internal` factory behind a public static `Create`, the capability interfaces it needs, and other aggregates referenced by id only.
 - **State:** a lifecycle is a closed set held in a get-only `State` property that only an `internal` root method sets. A move is a class deriving from the aggregate's transition base (`ClaimBaseTransition<TInput>`), with its own small input record deriving from the aggregate's transition input (`ClaimBaseTransitionInput`: the actor, the actor's role and an optional reason): the target, each `AllowedFrom(...)` with the rules that apply only from those states. A change beyond the move is a separate operation that the Application runs in the same Unit of Work; data that belongs to the move travels on the transition input. The base sets the state, appends the history row and raises the state-changed event; nothing else. Who may perform a move is a rule on that transition (`HasPermittedRole`), not a check in the Application. `OpenClaimTransition` is the reference.
 - **Tests for a transition:** a declared source, an undeclared source, and the rules of each allowed-sources declaration.
 

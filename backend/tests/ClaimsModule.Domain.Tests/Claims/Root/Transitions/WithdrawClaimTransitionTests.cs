@@ -1,5 +1,4 @@
 using ClaimsModule.Domain.Claims.Root;
-using ClaimsModule.Domain.Claims.Root.Events;
 using ClaimsModule.Domain.Claims.Root.Transitions;
 using ClaimsModule.Domain.Claims.StateChanges;
 using ClaimsModule.Domain.Claims.StateChanges.Rules;
@@ -17,7 +16,11 @@ public sealed class WithdrawClaimTransitionTests
     public void Execute_FromOpenWithAReason_WithdrawsTheClaimAndRecordsTheReason()
     {
         var claim = TestClaims.InState(new ClaimOpenState());
-        var input = new WithdrawClaimInput(TestClaims.Handler, TestClaims.Actor, TestClaims.Later) { Reason = _reason };
+        var input = new WithdrawClaimInput(
+            TestClaims.Handler,
+            TestClaims.Actor,
+            TestClaims.Later,
+            TestClaims.Reference()) { Reason = _reason };
 
         var outcome = new WithdrawClaimTransition().Execute(claim, input);
 
@@ -27,24 +30,15 @@ public sealed class WithdrawClaimTransitionTests
     }
 
     [Fact]
-    [Trait("Rule", "S:ST-Open-Withdrawn")]
-    public void Execute_FromOpenWithAReason_RaisesTheReasonOnTheEvent()
-    {
-        var claim = TestClaims.InState(new ClaimOpenState());
-        var input = new WithdrawClaimInput(TestClaims.Handler, TestClaims.Actor, TestClaims.Later) { Reason = _reason };
-
-        new WithdrawClaimTransition().Execute(claim, input);
-
-        var changed = claim.PopEvents().OfType<ClaimStateChangedEvent>().Should().ContainSingle().Subject;
-        changed.Reason.Should().Be(_reason);
-    }
-
-    [Fact]
     [Trait("Rule", "S:ST-UnderInvestigation-Withdrawn")]
     public void Execute_FromUnderInvestigationWithAReason_WithdrawsTheClaim()
     {
         var claim = TestClaims.InState(new ClaimUnderInvestigationState());
-        var input = new WithdrawClaimInput(TestClaims.Handler, TestClaims.Actor, TestClaims.Later) { Reason = _reason };
+        var input = new WithdrawClaimInput(
+            TestClaims.Handler,
+            TestClaims.Actor,
+            TestClaims.Later,
+            TestClaims.Reference()) { Reason = _reason };
 
         var outcome = new WithdrawClaimTransition().Execute(claim, input);
 
@@ -56,7 +50,11 @@ public sealed class WithdrawClaimTransitionTests
     public void Execute_WithoutAReason_ReturnsTheFindingAndKeepsTheState()
     {
         var claim = TestClaims.InState(new ClaimOpenState());
-        var input = new WithdrawClaimInput(TestClaims.Handler, TestClaims.Actor, TestClaims.Later);
+        var input = new WithdrawClaimInput(
+            TestClaims.Handler,
+            TestClaims.Actor,
+            TestClaims.Later,
+            TestClaims.Reference());
 
         var outcome = new WithdrawClaimTransition().Execute(claim, input);
 
@@ -69,7 +67,11 @@ public sealed class WithdrawClaimTransitionTests
     public void Execute_WithOnlyACode_ReturnsTheFinding()
     {
         var claim = TestClaims.InState(new ClaimOpenState());
-        var input = new WithdrawClaimInput(TestClaims.Handler, TestClaims.Actor, TestClaims.Later)
+        var input = new WithdrawClaimInput(
+            TestClaims.Handler,
+            TestClaims.Actor,
+            TestClaims.Later,
+            TestClaims.Reference())
         {
             Reason = new StateChangeReason("CUSTOMER_REQUEST", string.Empty),
         };
@@ -84,7 +86,11 @@ public sealed class WithdrawClaimTransitionTests
     public void Execute_FromADraft_ReturnsNotPermitted()
     {
         var claim = TestClaims.Create(TestClaims.Claimant());
-        var input = new WithdrawClaimInput(TestClaims.Handler, TestClaims.Actor, TestClaims.Later) { Reason = _reason };
+        var input = new WithdrawClaimInput(
+            TestClaims.Handler,
+            TestClaims.Actor,
+            TestClaims.Later,
+            TestClaims.Reference()) { Reason = _reason };
 
         var outcome = new WithdrawClaimTransition().Execute(claim, input);
 

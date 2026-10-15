@@ -34,7 +34,7 @@ public sealed class IsRiskObjectPresentTests
     {
         var claim = TestClaims.Create(TestClaims.Claimant());
         var riskObjectId = claim.RiskObjects[0].Id;
-        var input = new RemoveRiskObjectInput(riskObjectId, TestClaims.Actor, TestClaims.Later);
+        var input = new RemoveRiskObjectInput(riskObjectId, TestClaims.Actor, TestClaims.Later, TestClaims.Reference());
         new RemoveRiskObjectOperation().Execute(claim, input);
 
         var result = new IsRiskObjectPresent(riskObjectId).Check(claim);

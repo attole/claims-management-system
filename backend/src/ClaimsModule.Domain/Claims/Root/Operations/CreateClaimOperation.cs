@@ -1,13 +1,19 @@
+using ClaimsModule.Domain.Claims.Issues;
 using ClaimsModule.Domain.Claims.Root.Bases;
 using ClaimsModule.Domain.Claims.Root.Rules;
+using ClaimsModule.Domain.Common;
 using ClaimsModule.Domain.Core.Operations;
 
 namespace ClaimsModule.Domain.Claims.Root.Operations;
 
-public sealed record CreateClaimInput(Guid OrganisationId, ClaimNumber ClaimNumber, Guid ActorId, DateTimeOffset Now)
-    : ClaimBaseOperationInput(Now, ActorId);
+public sealed record CreateClaimInput(
+    Guid OrganisationId,
+    ClaimNumber ClaimNumber,
+    Guid ActorId,
+    DateTimeOffset Now,
+    ClaimReferenceSnapshot Reference) : ClaimBaseOperationInput(Now, ActorId, Reference);
 
-public sealed class CreateClaimOperation : CreationOperation<CreateClaimInput, Claim>
+internal sealed class CreateClaimOperation : CreationOperation<CreateClaimInput, Claim>
 {
     public CreateClaimOperation()
     {
@@ -17,6 +23,6 @@ public sealed class CreateClaimOperation : CreationOperation<CreateClaimInput, C
 
     protected override Claim Apply(CreateClaimInput input)
     {
-        return Claim.Create(input.OrganisationId, input.ClaimNumber, input.ActorId, input.Now);
+        return new Claim(Ids.Next(input.Now), input.OrganisationId, input.ClaimNumber, input.Now);
     }
 }

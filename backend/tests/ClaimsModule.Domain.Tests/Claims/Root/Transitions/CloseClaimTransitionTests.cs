@@ -175,6 +175,11 @@ public sealed class CloseClaimTransitionTests
 
     private static CloseClaimInput CreateInput(ClaimReserveSnapshot reserves)
     {
-        return new CloseClaimInput(TestClaims.Handler, TestClaims.Actor, TestClaims.Later, reserves);
+        return new CloseClaimInput(
+            TestClaims.Handler,
+            TestClaims.Actor,
+            TestClaims.Later,
+            reserves,
+            TestClaims.Reference());
     }
 }

@@ -14,9 +14,11 @@ public abstract class Flow<TSubject, TInput, TValue, TFinding>
         var evaluated = SelectChecks(subject).Select(set => set.Evaluate(subject, input));
         var result = CheckResult<TFinding>.Combine(evaluated);
 
-        if (IsEndingRun(result, WhenBlocked))
+        bool isStopped = result.IsBlocked && WhenBlocked == FlowDecision.Stop;
+
+        if (isStopped)
         {
-            return EndRun(result, WhenBlocked);
+            return FlowOutcome<TValue, TFinding>.Failure(result);
         }
 
         var value = Apply(subject, input, result);
@@ -39,17 +41,5 @@ public abstract class Flow<TSubject, TInput, TValue, TFinding>
     protected virtual IReadOnlyList<CheckSet<TSubject, TInput, TFinding>> SelectChecks(TSubject subject)
     {
         return [_checks];
-    }
-
-    private static bool IsEndingRun(CheckResult<TFinding> result, FlowDecision decision)
-    {
-        return result.IsBlocked && decision != FlowDecision.Continue;
-    }
-
-    private static FlowOutcome<TValue, TFinding> EndRun(CheckResult<TFinding> result, FlowDecision decision)
-    {
-        return decision == FlowDecision.Skip
-            ? FlowOutcome<TValue, TFinding>.Skipped(result)
-            : FlowOutcome<TValue, TFinding>.Failure(result);
     }
 }

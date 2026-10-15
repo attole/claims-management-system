@@ -3,7 +3,7 @@ using ClaimsModule.Domain.Core.Rules;
 
 namespace ClaimsModule.Domain.Claims.Root.Rules;
 
-public sealed class HasPolicyId(Guid policyId) : IRule<Claim>
+internal sealed class HasPolicyId(Guid policyId) : IRule<Claim>
 {
     public const string Code = "POLICY_ID_REQUIRED";
 

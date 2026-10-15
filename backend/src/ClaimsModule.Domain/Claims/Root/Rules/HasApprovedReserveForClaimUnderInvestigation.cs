@@ -3,7 +3,7 @@ using ClaimsModule.Domain.Core.Rules;
 
 namespace ClaimsModule.Domain.Claims.Root.Rules;
 
-public sealed class HasApprovedReserveForClaimUnderInvestigation(ClaimReserveSnapshot reserves) : IRule<Claim>
+internal sealed class HasApprovedReserveForClaimUnderInvestigation(ClaimReserveSnapshot reserves) : IRule<Claim>
 {
     public const string Code = "S:ST-UnderInvestigation-PendingPayment";
 

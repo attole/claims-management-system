@@ -4,7 +4,7 @@ using ClaimsModule.Domain.Core.Rules;
 
 namespace ClaimsModule.Domain.Claims.Issues.Rules;
 
-public sealed class IsIssueAcknowledgeable(Guid issueId) : IRule<Claim>
+internal sealed class IsIssueAcknowledgeable(Guid issueId) : IRule<Claim>
 {
     public const string Code = "ISSUE_NOT_ACKNOWLEDGEABLE";
 

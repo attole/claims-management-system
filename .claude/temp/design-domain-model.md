@@ -13,14 +13,13 @@ OPEN
 
 PROVISIONAL
 
-- Pack 9 (aggregate methods in front of the engine), outline agreed, choices pending: the aggregates get public behaviour methods; operations, transitions, rules and checks become internal with InternalsVisibleTo for the tests; the intra-aggregate follow-ups (reopen then Open, a claim change then issue evaluation, submit then auto-approve, refuse then cancel posting) move into those methods; audit and the posting job stay events with handlers.
-- Pack 9 choices to settle: the method signature (recommended: take the existing input record, keep the `Input` names); issue evaluation inside every claim method (every claim input then carries the reference snapshot) or one `Evaluate` method called by an Application pipeline behavior; a composite returns the primary step's outcome; one pack per aggregate, the claim first.
-- Events plan for the Application: pre-commit handlers for the reopen follow-up, the auto-approve attempt, the posting cancel and the audit entries; a post-commit handler for the posting job.
+- Application pack: event handlers for the audit entries and the posting job, the snapshot queries with their definitions, and the command handlers that call one aggregate method each.
 
 DECISIONS
 
 - Settled architecture, interpretations and schema departures live in docs/ARCHITECTURE.md; code shapes and conventions live in .claude/CLAUDE.md.
-- The Domain never chains steps today (user decision); the chains are listed in docs/ARCHITECTURE.md 'Application chains'. The question of moving the intra-aggregate ones into aggregate methods is open (pack 9).
+- Aggregates expose public methods that run a step and the follow-ups of their own aggregate; steps, rules and checks are internal (pack 9, user decision). Only boundary-crossing effects are events with handlers (docs/ARCHITECTURE.md 'Aggregate follow-ups and events').
+- The reference snapshot is the last positional parameter of every claim input (it lives on `ClaimBaseOperationInput`), so an aggregate method takes only its input; the claim evaluates issues after a successful step. The snapshot stays its own record, one property on the input, not a second abstraction.
 - Snapshots are the way facts from outside an aggregate reach a rule; the trade-offs and the alternative are in docs/ARCHITECTURE.md 'Design trade-offs'.
 - Flows have no hooks beyond the blocked decision; a transition answers an undeclared source straight from `Execute`.
 - A reserve change is created pending and moved by transitions; the starting state is never decided by a helper.
@@ -35,5 +34,6 @@ ANALOGUE
 
 NEXT
 
+- Move Reserve and ReserveChange to the same shape as Claim (steps change state; the public method touches and raises). Claim is done; the reserve aggregates still use `internal` mutators that touch and raise.
 - The audit entries and the reference-data lookups belong to the Application pack.
 - Then the Application, Persistence, Infrastructure and API packs, each starting from notes-layer-application.md and notes-layer-persistence.md.

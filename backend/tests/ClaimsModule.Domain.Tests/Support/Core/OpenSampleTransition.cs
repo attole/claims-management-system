@@ -6,8 +6,7 @@ public sealed class OpenSampleTransition : SampleTransition
 {
     public const string ReopenDenied = "REOPEN_DENIED";
 
-    public OpenSampleTransition()
-        : base(new OpenSampleState())
+    public OpenSampleTransition() : base(new OpenSampleState())
     {
         AllowedFrom(new DraftSampleState());
         AllowedFrom(new ClosedSampleState())

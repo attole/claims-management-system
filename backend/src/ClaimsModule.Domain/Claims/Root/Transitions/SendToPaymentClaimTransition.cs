@@ -1,3 +1,4 @@
+using ClaimsModule.Domain.Claims.Issues;
 using ClaimsModule.Domain.Claims.Root.Bases;
 using ClaimsModule.Domain.Claims.Root.Rules;
 using ClaimsModule.Domain.Common.Roles;
@@ -8,15 +9,15 @@ public sealed record SendToPaymentClaimInput(
     UserRole ActorRole,
     Guid ActorId,
     DateTimeOffset Now,
-    ClaimReserveSnapshot Reserves) : ClaimBaseTransitionInput(ActorRole, ActorId, Now)
+    ClaimReserveSnapshot Reserves,
+    ClaimReferenceSnapshot Reference) : ClaimBaseTransitionInput(ActorRole, ActorId, Now, Reference)
 {
     public bool IsLiabilityConfirmed { get; init; } = false;
 }
 
-public sealed class SendToPaymentClaimTransition : ClaimBaseTransition<SendToPaymentClaimInput>
+internal sealed class SendToPaymentClaimTransition : ClaimBaseTransition<SendToPaymentClaimInput>
 {
-    public SendToPaymentClaimTransition()
-        : base(new ClaimPendingPaymentState())
+    public SendToPaymentClaimTransition() : base(new ClaimPendingPaymentState())
     {
         AllowedFrom(new ClaimOpenState())
             .Require(input => new HasApprovedReserveForOpenClaim(input.Reserves));

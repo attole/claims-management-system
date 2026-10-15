@@ -10,8 +10,7 @@ public sealed class LossEvent : Entity, IAuditable, ISoftDeletable, ITenantOwned
         Details = LossDetails.Empty;
     }
 
-    internal LossEvent(Guid id, Guid claimId, Guid organisationId, LossDetails details, DateTimeOffset now)
-        : base(id)
+    internal LossEvent(Guid id, Guid claimId, Guid organisationId, LossDetails details, DateTimeOffset now) : base(id)
     {
         ClaimId = claimId;
         OrganisationId = organisationId;

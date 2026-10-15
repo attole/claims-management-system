@@ -13,12 +13,11 @@ public sealed class UpdateLossDetailsOperationTests
     {
         var claim = TestClaims.Create(TestClaims.Claimant());
         var details = new LossDetails(new LossDate(TestClaims.Start.AddDays(-1)), "Fire", "FIRE");
-        var input = new UpdateLossDetailsInput(details, TestClaims.Actor, TestClaims.Later);
+        var input = new UpdateLossDetailsInput(details, TestClaims.Actor, TestClaims.Later, TestClaims.Reference());
 
         new UpdateLossDetailsOperation().Execute(claim, input);
 
         claim.LossEvent.Details.Should().Be(details);
-        claim.UpdatedAt.Should().Be(TestClaims.Later);
     }
 
     [Fact]
@@ -27,7 +26,7 @@ public sealed class UpdateLossDetailsOperationTests
     {
         var claim = TestClaims.InState(new ClaimClosedState());
         var loss = TestClaims.Loss(TestClaims.Start.AddDays(-1), TestClaims.Description);
-        var input = new UpdateLossDetailsInput(loss, TestClaims.Actor, TestClaims.Later);
+        var input = new UpdateLossDetailsInput(loss, TestClaims.Actor, TestClaims.Later, TestClaims.Reference());
 
         var outcome = new UpdateLossDetailsOperation().Execute(claim, input);
 

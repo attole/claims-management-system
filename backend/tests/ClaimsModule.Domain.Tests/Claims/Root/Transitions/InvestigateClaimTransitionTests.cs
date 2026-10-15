@@ -13,7 +13,11 @@ public sealed class InvestigateClaimTransitionTests
     public void Execute_ByAHandler_MovesAnOpenClaimUnderInvestigation()
     {
         var claim = TestClaims.InState(new ClaimOpenState());
-        var input = new InvestigateClaimInput(TestClaims.Handler, TestClaims.Actor, TestClaims.Later);
+        var input = new InvestigateClaimInput(
+            TestClaims.Handler,
+            TestClaims.Actor,
+            TestClaims.Later,
+            TestClaims.Reference());
 
         var outcome = new InvestigateClaimTransition().Execute(claim, input);
 
@@ -26,7 +30,11 @@ public sealed class InvestigateClaimTransitionTests
     public void Execute_ByASupervisor_MovesAnOpenClaimUnderInvestigation()
     {
         var claim = TestClaims.InState(new ClaimOpenState());
-        var input = new InvestigateClaimInput(TestClaims.Supervisor, TestClaims.Actor, TestClaims.Later);
+        var input = new InvestigateClaimInput(
+            TestClaims.Supervisor,
+            TestClaims.Actor,
+            TestClaims.Later,
+            TestClaims.Reference());
 
         var outcome = new InvestigateClaimTransition().Execute(claim, input);
 
@@ -38,7 +46,11 @@ public sealed class InvestigateClaimTransitionTests
     public void Execute_ByAManager_ReturnsTheRoleFinding()
     {
         var claim = TestClaims.InState(new ClaimOpenState());
-        var input = new InvestigateClaimInput(TestClaims.Manager, TestClaims.Actor, TestClaims.Later);
+        var input = new InvestigateClaimInput(
+            TestClaims.Manager,
+            TestClaims.Actor,
+            TestClaims.Later,
+            TestClaims.Reference());
 
         var outcome = new InvestigateClaimTransition().Execute(claim, input);
 
@@ -50,7 +62,11 @@ public sealed class InvestigateClaimTransitionTests
     public void Execute_FromADraft_ReturnsNotPermitted()
     {
         var claim = TestClaims.Create(TestClaims.Claimant());
-        var input = new InvestigateClaimInput(TestClaims.Handler, TestClaims.Actor, TestClaims.Later);
+        var input = new InvestigateClaimInput(
+            TestClaims.Handler,
+            TestClaims.Actor,
+            TestClaims.Later,
+            TestClaims.Reference());
 
         var outcome = new InvestigateClaimTransition().Execute(claim, input);
 

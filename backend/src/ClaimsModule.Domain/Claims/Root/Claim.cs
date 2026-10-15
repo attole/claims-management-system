@@ -1,14 +1,24 @@
 using ClaimsModule.Domain.Claims.Issues;
 using ClaimsModule.Domain.Claims.Issues.Events;
+using ClaimsModule.Domain.Claims.Issues.Operations;
 using ClaimsModule.Domain.Claims.Loss;
+using ClaimsModule.Domain.Claims.Loss.Operations;
 using ClaimsModule.Domain.Claims.Parties;
 using ClaimsModule.Domain.Claims.Parties.Events;
+using ClaimsModule.Domain.Claims.Parties.Operations;
 using ClaimsModule.Domain.Claims.RiskObjects;
+using ClaimsModule.Domain.Claims.RiskObjects.Operations;
+using ClaimsModule.Domain.Claims.Root.Bases;
 using ClaimsModule.Domain.Claims.Root.Events;
+using ClaimsModule.Domain.Claims.Root.Operations;
+using ClaimsModule.Domain.Claims.Root.Transitions;
 using ClaimsModule.Domain.Claims.StateChanges;
 using ClaimsModule.Domain.Common;
 using ClaimsModule.Domain.Common.Capabilities;
 using ClaimsModule.Domain.Common.Entities;
+using ClaimsModule.Domain.Core.Base.Flows;
+using ClaimsModule.Domain.Core.Operations;
+using ClaimsModule.Domain.Core.Rules;
 
 namespace ClaimsModule.Domain.Claims.Root;
 
@@ -27,8 +37,7 @@ public sealed class Claim : AggregateRoot, IAuditable, ISoftDeletable, ITenantOw
         LossEvent = new LossEvent(Guid.Empty, Guid.Empty, Guid.Empty, LossDetails.Empty, DateTimeOffset.MinValue);
     }
 
-    private Claim(Guid id, Guid organisationId, ClaimNumber claimNumber, DateTimeOffset now)
-        : base(id)
+    internal Claim(Guid id, Guid organisationId, ClaimNumber claimNumber, DateTimeOffset now) : base(id)
     {
         OrganisationId = organisationId;
         ClaimNumber = claimNumber;
@@ -42,19 +51,19 @@ public sealed class Claim : AggregateRoot, IAuditable, ISoftDeletable, ITenantOw
 
     public ClaimNumber ClaimNumber { get; private set; }
 
-    public ClaimState State { get; private set; }
+    public ClaimState State { get; internal set; }
 
-    public ClaimSeverity Severity { get; private set; }
+    public ClaimSeverity Severity { get; internal set; }
 
     public DateTimeOffset ReportedDate { get; private set; } = DateTimeOffset.MinValue;
 
-    public Guid PolicyId { get; private set; } = Guid.Empty;
+    public Guid PolicyId { get; internal set; } = Guid.Empty;
 
-    public Guid AssignedHandlerId { get; private set; } = Guid.Empty;
+    public Guid AssignedHandlerId { get; internal set; } = Guid.Empty;
 
-    public string Notes { get; private set; } = string.Empty;
+    public string Notes { get; internal set; } = string.Empty;
 
-    public bool HasAggregateLimitOverride { get; private set; } = false;
+    public bool HasAggregateLimitOverride { get; internal set; } = false;
 
     public LossEvent LossEvent { get; private set; }
 
@@ -74,6 +83,14 @@ public sealed class Claim : AggregateRoot, IAuditable, ISoftDeletable, ITenantOw
 
     public int ActiveClaimantCount => _parties.Count(party => party.IsActiveClaimant);
 
+    internal List<ClaimParty> PartyList => _parties;
+
+    internal List<ClaimRiskObject> RiskObjectList => _riskObjects;
+
+    internal List<ClaimValidationIssue> IssueList => _issues;
+
+    internal List<ClaimStateChange> StateChangeList => _stateChanges;
+
     public DateTimeOffset CreatedAt { get; private set; } = DateTimeOffset.MinValue;
 
     public DateTimeOffset UpdatedAt { get; private set; } = DateTimeOffset.MinValue;
@@ -88,129 +105,315 @@ public sealed class Claim : AggregateRoot, IAuditable, ISoftDeletable, ITenantOw
 
     public Guid OrganisationId { get; private set; } = Guid.Empty;
 
-    internal static Claim Create(Guid organisationId, ClaimNumber claimNumber, Guid actorId, DateTimeOffset now)
+    public static FlowOutcome<Claim, DomainFinding> Create(CreateClaimInput input)
     {
-        var claim = new Claim(Ids.Next(now), organisationId, claimNumber, now);
-        claim.Raise(new ClaimCreatedEvent(Ids.Next(now), now, actorId, claim.Id, claimNumber.Value));
+        var outcome = new CreateClaimOperation().Execute(input);
 
-        return claim;
+        if (!outcome.IsSuccess)
+        {
+            return outcome;
+        }
+
+        var claim = outcome.Value;
+        var created = new ClaimCreatedEvent(
+            Ids.Next(input.Now),
+            input.Now,
+            input.ActorId,
+            claim.Id,
+            input.ClaimNumber.Value);
+        claim.Raise(created);
+
+        return claim.Settle(outcome, input);
     }
 
-    internal ClaimParty AddParty(PartyDetails details, Guid actorId, DateTimeOffset now)
+    public FlowOutcome<ClaimParty, DomainFinding> AddParty(AddPartyInput input)
     {
-        var party = new ClaimParty(Ids.Next(now), Id, OrganisationId, details, now);
-        _parties.Add(party);
-        Touch(now);
-        Raise(new PartyAddedEvent(Ids.Next(now), now, actorId, Id, party.Id, party.Details.Role.Name));
+        var outcome = new AddPartyOperation().Execute(this, input);
 
-        return party;
+        if (outcome.IsSuccess)
+        {
+            var party = outcome.Value;
+            var added = new PartyAddedEvent(
+                Ids.Next(input.Now),
+                input.Now,
+                input.ActorId,
+                Id,
+                party.Id,
+                party.Details.Role.Name);
+            Raise(added);
+        }
+
+        return Settle(outcome, input);
     }
 
-    internal void RemoveParty(Guid partyId, Guid actorId, DateTimeOffset now)
+    public FlowOutcome<ClaimParty, DomainFinding> RemoveParty(RemovePartyInput input)
     {
-        var party = _parties.Single(candidate => candidate.Id == partyId && candidate.IsActive);
-        party.Remove(now);
-        Touch(now);
-        Raise(new PartyRemovedEvent(Ids.Next(now), now, actorId, Id, party.Id, party.Details.Role.Name));
+        var outcome = new RemovePartyOperation().Execute(this, input);
+
+        if (outcome.IsSuccess)
+        {
+            var party = outcome.Value;
+            var removed = new PartyRemovedEvent(
+                Ids.Next(input.Now),
+                input.Now,
+                input.ActorId,
+                Id,
+                party.Id,
+                party.Details.Role.Name);
+            Raise(removed);
+        }
+
+        return Settle(outcome, input);
     }
 
-    internal ClaimRiskObject AddRiskObject(RiskObjectDetails details, DateTimeOffset now)
+    public FlowOutcome<ClaimRiskObject, DomainFinding> AddRiskObject(AddRiskObjectInput input)
     {
-        var riskObject = new ClaimRiskObject(Ids.Next(now), Id, OrganisationId, details, now);
-        _riskObjects.Add(riskObject);
-        Touch(now);
+        var outcome = new AddRiskObjectOperation().Execute(this, input);
 
-        return riskObject;
+        return Settle(outcome, input);
     }
 
-    internal void RemoveRiskObject(Guid riskObjectId, DateTimeOffset now)
+    public FlowOutcome<ClaimRiskObject, DomainFinding> RemoveRiskObject(RemoveRiskObjectInput input)
     {
-        var riskObject = _riskObjects
-            .Single(candidate => candidate.Id == riskObjectId && !candidate.IsDeleted);
-        riskObject.Remove(now);
-        Touch(now);
+        var outcome = new RemoveRiskObjectOperation().Execute(this, input);
+
+        return Settle(outcome, input);
     }
 
-    internal void UpdateLossDetails(LossDetails details, DateTimeOffset now)
+    public FlowOutcome<LossEvent, DomainFinding> UpdateLossDetails(UpdateLossDetailsInput input)
     {
-        LossEvent.Update(details, now);
-        Touch(now);
+        var outcome = new UpdateLossDetailsOperation().Execute(this, input);
+
+        return Settle(outcome, input);
     }
 
-    internal void AssignHandler(Guid handlerId, DateTimeOffset now)
+    public FlowOutcome<Success, DomainFinding> AssignHandler(AssignHandlerInput input)
     {
-        AssignedHandlerId = handlerId;
-        Touch(now);
+        var outcome = new AssignHandlerOperation().Execute(this, input);
+
+        return Settle(outcome, input);
     }
 
-    internal void SetSeverity(ClaimSeverity severity, DateTimeOffset now)
+    public FlowOutcome<Success, DomainFinding> SetSeverity(SetSeverityInput input)
     {
-        Severity = severity;
-        Touch(now);
+        var outcome = new SetSeverityOperation().Execute(this, input);
+
+        return Settle(outcome, input);
     }
 
-    internal void UpdateNotes(string notes, DateTimeOffset now)
+    public FlowOutcome<Success, DomainFinding> UpdateNotes(UpdateNotesInput input)
     {
-        Notes = notes;
-        Touch(now);
+        var outcome = new UpdateNotesOperation().Execute(this, input);
+
+        return Settle(outcome, input);
     }
 
-    internal void ChangeState(ClaimState state, StateChangeReason reason, string note, Guid actorId, DateTimeOffset now)
+    public FlowOutcome<Success, DomainFinding> LinkPolicy(LinkPolicyInput input)
     {
-        var from = State;
-        _stateChanges.Add(new ClaimStateChange(Ids.Next(now), Id, OrganisationId, from, state, reason, note, now));
-        State = state;
-        Touch(now);
-        Raise(new ClaimStateChangedEvent(Ids.Next(now), now, actorId, Id, from.Name, state.Name, reason));
+        var outcome = new LinkPolicyOperation().Execute(this, input);
+
+        return Settle(outcome, input);
     }
 
-    internal void LinkPolicy(Guid policyId, DateTimeOffset now)
+    public FlowOutcome<Success, DomainFinding> SetLimitOverride(SetLimitOverrideInput input)
     {
-        PolicyId = policyId;
-        Touch(now);
+        var outcome = new SetLimitOverrideOperation().Execute(this, input);
+
+        return Settle(outcome, input);
     }
 
-    internal void SetLimitOverride(bool hasOverride, DateTimeOffset now)
+    public FlowOutcome<ClaimValidationIssue, DomainFinding> WaiveIssue(WaiveIssueInput input)
     {
-        HasAggregateLimitOverride = hasOverride;
-        Touch(now);
+        var outcome = new WaiveIssueOperation().Execute(this, input);
+
+        if (outcome.IsSuccess)
+        {
+            var issue = outcome.Value;
+            var waived = new ValidationIssueWaivedEvent(
+                Ids.Next(input.Now),
+                input.Now,
+                input.ActorId,
+                Id,
+                issue.Id,
+                issue.Finding.Code);
+            Raise(waived);
+        }
+
+        return Settle(outcome, input);
     }
 
-    internal void WaiveIssue(Guid issueId, Guid actorId, DateTimeOffset now)
+    public FlowOutcome<ClaimValidationIssue, DomainFinding> AcknowledgeIssue(AcknowledgeIssueInput input)
     {
-        var issue = _issues.Single(candidate => candidate.Id == issueId);
-        issue.Waive(actorId, now);
-        Touch(now);
-        Raise(new ValidationIssueWaivedEvent(Ids.Next(now), now, actorId, Id, issue.Id, issue.Finding.Code));
+        var outcome = new AcknowledgeIssueOperation().Execute(this, input);
+
+        if (outcome.IsSuccess)
+        {
+            var issue = outcome.Value;
+            var acknowledged = new ValidationIssueAcknowledgedEvent(
+                Ids.Next(input.Now),
+                input.Now,
+                input.ActorId,
+                Id,
+                issue.Id,
+                issue.Finding.Code);
+            Raise(acknowledged);
+        }
+
+        return Settle(outcome, input);
     }
 
-    internal void AcknowledgeIssue(Guid issueId, Guid actorId, DateTimeOffset now)
+    public FlowOutcome<IssueChanges, IssueFinding> EvaluateIssues(EvaluateIssuesInput input)
     {
-        var issue = _issues.Single(candidate => candidate.Id == issueId);
-        issue.Acknowledge(actorId, now);
-        Touch(now);
-        Raise(new ValidationIssueAcknowledgedEvent(Ids.Next(now), now, actorId, Id, issue.Id, issue.Finding.Code));
+        var outcome = new EvaluateIssuesFlow().Execute(this, input);
+        RecordIssueChanges(outcome.Value, input);
+
+        return outcome;
     }
 
-    internal void ClearIssue(ClaimValidationIssue issue, Guid actorId, DateTimeOffset now)
+    public FlowOutcome<ClaimState, DomainFinding> Open(OpenClaimInput input)
     {
-        issue.Clear(actorId, now);
-        Touch(now);
-        Raise(new ValidationIssueClearedEvent(Ids.Next(now), now, actorId, Id, issue.Id, issue.Finding.Code));
+        var outcome = new OpenClaimTransition().Execute(this, input);
+
+        if (outcome.IsSuccess)
+        {
+            RecordMove(input);
+        }
+
+        return Settle(outcome, input);
     }
 
-    internal void RaiseIssue(IssueFinding finding, Guid actorId, DateTimeOffset now)
+    public FlowOutcome<ClaimState, DomainFinding> Investigate(InvestigateClaimInput input)
     {
-        var issue = new ClaimValidationIssue(Ids.Next(now), Id, OrganisationId, finding, now);
-        _issues.Add(issue);
-        Touch(now);
-        var eventId = Ids.Next(now);
-        string severity = finding.Severity.Name;
-        Raise(new ValidationIssueRaisedEvent(eventId, now, actorId, Id, issue.Id, finding.Code, severity));
+        var outcome = new InvestigateClaimTransition().Execute(this, input);
+
+        if (outcome.IsSuccess)
+        {
+            RecordMove(input);
+        }
+
+        return Settle(outcome, input);
+    }
+
+    public FlowOutcome<ClaimState, DomainFinding> Withdraw(WithdrawClaimInput input)
+    {
+        var outcome = new WithdrawClaimTransition().Execute(this, input);
+
+        if (outcome.IsSuccess)
+        {
+            RecordMove(input);
+        }
+
+        return Settle(outcome, input);
+    }
+
+    public FlowOutcome<ClaimState, DomainFinding> SendToPayment(SendToPaymentClaimInput input)
+    {
+        var outcome = new SendToPaymentClaimTransition().Execute(this, input);
+
+        if (outcome.IsSuccess)
+        {
+            RecordMove(input);
+        }
+
+        return Settle(outcome, input);
+    }
+
+    public FlowOutcome<ClaimState, DomainFinding> Close(CloseClaimInput input)
+    {
+        var outcome = new CloseClaimTransition().Execute(this, input);
+
+        if (outcome.IsSuccess)
+        {
+            RecordMove(input);
+        }
+
+        return Settle(outcome, input);
+    }
+
+    public FlowOutcome<ClaimState, DomainFinding> Reopen(ReopenClaimInput input)
+    {
+        var outcome = new ReopenClaimTransition().Execute(this, input);
+
+        if (outcome.IsSuccess)
+        {
+            RecordMove(input);
+            var open = new OpenClaimInput(input.ActorRole, input.ActorId, input.Now, input.Reference);
+            var opened = new OpenClaimTransition().Execute(this, open);
+
+            if (opened.IsSuccess)
+            {
+                RecordMove(open);
+            }
+        }
+
+        return Settle(outcome, input);
     }
 
     private void Touch(DateTimeOffset now)
     {
         UpdatedAt = now;
+    }
+
+    private void RecordMove(ClaimBaseTransitionInput input)
+    {
+        var change = _stateChanges[^1];
+        var moved = new ClaimStateChangedEvent(
+            Ids.Next(input.Now),
+            input.Now,
+            input.ActorId,
+            Id,
+            change.From.Name,
+            change.To.Name,
+            input.Reason);
+        Raise(moved);
+    }
+
+    private FlowOutcome<TValue, DomainFinding> Settle<TValue>(
+        FlowOutcome<TValue, DomainFinding> outcome,
+        ClaimBaseOperationInput input)
+    {
+        if (outcome.IsSuccess)
+        {
+            var evaluation = new EvaluateIssuesInput(input.Now, input.ActorId, input.Reference);
+            Touch(input.Now);
+            EvaluateIssues(evaluation);
+        }
+
+        return outcome;
+    }
+
+    private void RecordIssueChanges(IssueChanges changes, EvaluateIssuesInput input)
+    {
+        bool hasChanges = changes.Cleared.Count + changes.Raised.Count > 0;
+
+        if (hasChanges)
+        {
+            Touch(input.Now);
+        }
+
+        foreach (var issue in changes.Cleared)
+        {
+            var cleared = new ValidationIssueClearedEvent(
+                Ids.Next(input.Now),
+                input.Now,
+                input.ActorId,
+                Id,
+                issue.Id,
+                issue.Finding.Code);
+            Raise(cleared);
+        }
+
+        foreach (var issue in changes.Raised)
+        {
+            var raised = new ValidationIssueRaisedEvent(
+                Ids.Next(input.Now),
+                input.Now,
+                input.ActorId,
+                Id,
+                issue.Id,
+                issue.Finding.Code,
+                issue.Finding.Severity.Name);
+            Raise(raised);
+        }
     }
 }

@@ -10,16 +10,15 @@ public sealed class AddRiskObjectOperationTests
 {
     [Fact]
     [Trait("Rule", "S:RISK-AssetTypes")]
-    public void AddRiskObject_AddsItAndTouchesTheClaim()
+    public void AddRiskObject_AddsIt()
     {
         var claim = TestClaims.Create(TestClaims.Claimant());
 
         var van = new RiskObjectDetails(AssetType.Vehicle, "Van");
-        var input = new AddRiskObjectInput(van, TestClaims.Actor, TestClaims.Later);
+        var input = new AddRiskObjectInput(van, TestClaims.Actor, TestClaims.Later, TestClaims.Reference());
         new AddRiskObjectOperation().Execute(claim, input);
 
         claim.RiskObjects.Should().HaveCount(2);
-        claim.UpdatedAt.Should().Be(TestClaims.Later);
     }
 
     [Fact]
@@ -28,7 +27,7 @@ public sealed class AddRiskObjectOperationTests
     {
         var claim = TestClaims.InState(new ClaimClosedState());
         var van = new RiskObjectDetails(AssetType.Vehicle, "Van");
-        var input = new AddRiskObjectInput(van, TestClaims.Actor, TestClaims.Later);
+        var input = new AddRiskObjectInput(van, TestClaims.Actor, TestClaims.Later, TestClaims.Reference());
 
         var outcome = new AddRiskObjectOperation().Execute(claim, input);
 

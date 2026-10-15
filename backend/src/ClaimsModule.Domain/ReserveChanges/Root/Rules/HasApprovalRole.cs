@@ -4,7 +4,7 @@ using ClaimsModule.Domain.Core.Rules;
 
 namespace ClaimsModule.Domain.ReserveChanges.Root.Rules;
 
-public sealed class HasApprovalRole(UserRole actorRole) : IRule<ReserveChange>
+internal sealed class HasApprovalRole(UserRole actorRole) : IRule<ReserveChange>
 {
     public const string Code = "RESERVE_APPROVER_ROLE_REQUIRED";
 

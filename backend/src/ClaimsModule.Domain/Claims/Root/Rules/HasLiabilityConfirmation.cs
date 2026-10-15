@@ -3,7 +3,7 @@ using ClaimsModule.Domain.Core.Rules;
 
 namespace ClaimsModule.Domain.Claims.Root.Rules;
 
-public sealed class HasLiabilityConfirmation(bool isConfirmed) : IRule<Claim>
+internal sealed class HasLiabilityConfirmation(bool isConfirmed) : IRule<Claim>
 {
     public const string Code = "LIABILITY_CONFIRMATION_REQUIRED";
 

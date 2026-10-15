@@ -2,15 +2,15 @@ using ClaimsModule.Domain.Claims.Issues.Checks;
 using ClaimsModule.Domain.Claims.Root;
 using ClaimsModule.Domain.Claims.Root.Bases;
 using ClaimsModule.Domain.Core.Base.Checks;
+using ClaimsModule.Domain.Common;
 using ClaimsModule.Domain.Core.Base.Flows;
-using ClaimsModule.Domain.Core.Operations;
 
 namespace ClaimsModule.Domain.Claims.Issues;
 
 public sealed record EvaluateIssuesInput(DateTimeOffset Now, Guid ActorId, ClaimReferenceSnapshot Reference)
-    : ClaimBaseOperationInput(Now, ActorId);
+    : ClaimBaseOperationInput(Now, ActorId, Reference);
 
-public sealed class EvaluateIssuesFlow : Flow<Claim, EvaluateIssuesInput, Success, IssueFinding>
+internal sealed class EvaluateIssuesFlow : Flow<Claim, EvaluateIssuesInput, IssueChanges, IssueFinding>
 {
     public EvaluateIssuesFlow()
     {
@@ -25,7 +25,7 @@ public sealed class EvaluateIssuesFlow : Flow<Claim, EvaluateIssuesInput, Succes
 
     protected override FlowDecision WhenBlocked => FlowDecision.Continue;
 
-    protected override Success Apply(Claim claim, EvaluateIssuesInput input, CheckResult<IssueFinding> result)
+    protected override IssueChanges Apply(Claim claim, EvaluateIssuesInput input, CheckResult<IssueFinding> result)
     {
         var findingCodes = result.Findings
             .Select(finding => finding.Code)
@@ -46,14 +46,19 @@ public sealed class EvaluateIssuesFlow : Flow<Claim, EvaluateIssuesInput, Succes
 
         foreach (var issue in resolved)
         {
-            claim.ClearIssue(issue, input.ActorId, input.Now);
+            issue.Clear(input.ActorId, input.Now);
         }
 
-        foreach (var finding in added)
-        {
-            claim.RaiseIssue(finding, input.ActorId, input.Now);
-        }
+        var raised = added
+            .Select(finding => new ClaimValidationIssue(
+                Ids.Next(input.Now),
+                claim.Id,
+                claim.OrganisationId,
+                finding,
+                input.Now))
+            .ToList();
+        claim.IssueList.AddRange(raised);
 
-        return Success.Value;
+        return new IssueChanges(raised, resolved);
     }
 }

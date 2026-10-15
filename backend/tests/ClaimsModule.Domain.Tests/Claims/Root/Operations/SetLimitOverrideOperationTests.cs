@@ -11,13 +11,17 @@ public sealed class SetLimitOverrideOperationTests
     public void Execute_ByAManager_SetsTheFlag()
     {
         var claim = TestClaims.Empty();
-        var input = new SetLimitOverrideInput(true, TestClaims.Manager, TestClaims.Actor, TestClaims.Later);
+        var input = new SetLimitOverrideInput(
+            true,
+            TestClaims.Manager,
+            TestClaims.Actor,
+            TestClaims.Later,
+            TestClaims.Reference());
 
         var outcome = new SetLimitOverrideOperation().Execute(claim, input);
 
         outcome.IsSuccess.Should().BeTrue();
         claim.HasAggregateLimitOverride.Should().BeTrue();
-        claim.UpdatedAt.Should().Be(TestClaims.Later);
     }
 
     [Fact]
@@ -25,7 +29,12 @@ public sealed class SetLimitOverrideOperationTests
     public void Execute_ByAManagerWithFalse_ClearsTheFlag()
     {
         var claim = TestClaims.WithLimitOverride();
-        var input = new SetLimitOverrideInput(false, TestClaims.Manager, TestClaims.Actor, TestClaims.Later);
+        var input = new SetLimitOverrideInput(
+            false,
+            TestClaims.Manager,
+            TestClaims.Actor,
+            TestClaims.Later,
+            TestClaims.Reference());
 
         new SetLimitOverrideOperation().Execute(claim, input);
 
@@ -40,7 +49,7 @@ public sealed class SetLimitOverrideOperationTests
     {
         var claim = TestClaims.Empty();
         var role = roleIndex == 0 ? TestClaims.Handler : TestClaims.Supervisor;
-        var input = new SetLimitOverrideInput(true, role, TestClaims.Actor, TestClaims.Later);
+        var input = new SetLimitOverrideInput(true, role, TestClaims.Actor, TestClaims.Later, TestClaims.Reference());
 
         var outcome = new SetLimitOverrideOperation().Execute(claim, input);
 

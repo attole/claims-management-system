@@ -1,13 +1,14 @@
+using ClaimsModule.Domain.Claims.Issues;
 using ClaimsModule.Domain.Claims.Root.Bases;
 using ClaimsModule.Domain.Claims.Root.Rules;
 using ClaimsModule.Domain.Core.Operations;
 
 namespace ClaimsModule.Domain.Claims.Root.Operations;
 
-public sealed record LinkPolicyInput(Guid PolicyId, Guid ActorId, DateTimeOffset Now)
-    : ClaimBaseOperationInput(Now, ActorId);
+public sealed record LinkPolicyInput(Guid PolicyId, Guid ActorId, DateTimeOffset Now, ClaimReferenceSnapshot Reference)
+    : ClaimBaseOperationInput(Now, ActorId, Reference);
 
-public sealed class LinkPolicyOperation : Operation<Claim, LinkPolicyInput, Success>
+internal sealed class LinkPolicyOperation : Operation<Claim, LinkPolicyInput, Success>
 {
     public LinkPolicyOperation()
     {
@@ -17,7 +18,7 @@ public sealed class LinkPolicyOperation : Operation<Claim, LinkPolicyInput, Succ
 
     protected override Success Apply(Claim claim, LinkPolicyInput input)
     {
-        claim.LinkPolicy(input.PolicyId, input.Now);
+        claim.PolicyId = input.PolicyId;
 
         return Success.Value;
     }

@@ -1,13 +1,14 @@
+using ClaimsModule.Domain.Claims.Issues;
 using ClaimsModule.Domain.Claims.Root.Bases;
 using ClaimsModule.Domain.Claims.Root.Rules;
 using ClaimsModule.Domain.Core.Operations;
 
 namespace ClaimsModule.Domain.Claims.Root.Operations;
 
-public sealed record UpdateNotesInput(string Notes, Guid ActorId, DateTimeOffset Now)
-    : ClaimBaseOperationInput(Now, ActorId);
+public sealed record UpdateNotesInput(string Notes, Guid ActorId, DateTimeOffset Now, ClaimReferenceSnapshot Reference)
+    : ClaimBaseOperationInput(Now, ActorId, Reference);
 
-public sealed class UpdateNotesOperation : Operation<Claim, UpdateNotesInput, Success>
+internal sealed class UpdateNotesOperation : Operation<Claim, UpdateNotesInput, Success>
 {
     public UpdateNotesOperation()
     {
@@ -16,7 +17,7 @@ public sealed class UpdateNotesOperation : Operation<Claim, UpdateNotesInput, Su
 
     protected override Success Apply(Claim claim, UpdateNotesInput input)
     {
-        claim.UpdateNotes(input.Notes, input.Now);
+        claim.Notes = input.Notes;
 
         return Success.Value;
     }

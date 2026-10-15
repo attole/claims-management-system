@@ -1,3 +1,4 @@
+using ClaimsModule.Domain.Claims.Issues;
 using ClaimsModule.Domain.Claims.Root.Bases;
 using ClaimsModule.Domain.Claims.Root.Rules;
 using ClaimsModule.Domain.Common.Roles;
@@ -8,12 +9,12 @@ public sealed record CloseClaimInput(
     UserRole ActorRole,
     Guid ActorId,
     DateTimeOffset Now,
-    ClaimReserveSnapshot Reserves) : ClaimBaseTransitionInput(ActorRole, ActorId, Now);
+    ClaimReserveSnapshot Reserves,
+    ClaimReferenceSnapshot Reference) : ClaimBaseTransitionInput(ActorRole, ActorId, Now, Reference);
 
-public sealed class CloseClaimTransition : ClaimBaseTransition<CloseClaimInput>
+internal sealed class CloseClaimTransition : ClaimBaseTransition<CloseClaimInput>
 {
-    public CloseClaimTransition()
-        : base(new ClaimClosedState())
+    public CloseClaimTransition() : base(new ClaimClosedState())
     {
         AllowedFrom(new ClaimOpenState(), new ClaimUnderInvestigationState(), new ClaimPendingPaymentState())
             .Require(input => new HasNoPendingReserveChange(input.Reserves))

@@ -4,7 +4,7 @@ using ClaimsModule.Domain.Core.Rules;
 
 namespace ClaimsModule.Domain.Claims.Parties.Rules;
 
-public sealed class IsPartyActive(Guid partyId) : IRule<Claim>
+internal sealed class IsPartyActive(Guid partyId) : IRule<Claim>
 {
     public const string Code = "PARTY_NOT_ACTIVE";
 

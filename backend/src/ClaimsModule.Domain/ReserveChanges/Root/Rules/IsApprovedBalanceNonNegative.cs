@@ -3,7 +3,7 @@ using ClaimsModule.Domain.Core.Rules;
 
 namespace ClaimsModule.Domain.ReserveChanges.Root.Rules;
 
-public sealed class IsApprovedBalanceNonNegative(ReserveSnapshot snapshot) : IRule<ReserveChange>
+internal sealed class IsApprovedBalanceNonNegative(ReserveSnapshot snapshot) : IRule<ReserveChange>
 {
     public const string Code = "S:BR-R-01";
 

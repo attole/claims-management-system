@@ -4,7 +4,7 @@ using ClaimsModule.Domain.Core.Rules;
 
 namespace ClaimsModule.Domain.Claims.Root.Rules;
 
-public sealed class HasNoUnacknowledgedPolicyWarning : IRule<Claim>
+internal sealed class HasNoUnacknowledgedPolicyWarning : IRule<Claim>
 {
     public const string Code = "S:BR-C-02";
 

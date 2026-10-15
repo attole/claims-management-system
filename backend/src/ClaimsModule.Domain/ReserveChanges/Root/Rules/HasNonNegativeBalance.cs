@@ -4,7 +4,7 @@ using ClaimsModule.Domain.Core.Rules;
 
 namespace ClaimsModule.Domain.ReserveChanges.Root.Rules;
 
-public sealed class HasNonNegativeBalance(ReserveSnapshot snapshot, decimal amount) : IRule<NoSubject>
+internal sealed class HasNonNegativeBalance(ReserveSnapshot snapshot, decimal amount) : IRule<NoSubject>
 {
     public const string Code = "S:BR-R-01";
 

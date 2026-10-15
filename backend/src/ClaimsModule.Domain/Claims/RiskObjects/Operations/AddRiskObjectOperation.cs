@@ -1,14 +1,19 @@
+using ClaimsModule.Domain.Claims.Issues;
 using ClaimsModule.Domain.Claims.Root;
 using ClaimsModule.Domain.Claims.Root.Bases;
 using ClaimsModule.Domain.Claims.Root.Rules;
+using ClaimsModule.Domain.Common;
 using ClaimsModule.Domain.Core.Operations;
 
 namespace ClaimsModule.Domain.Claims.RiskObjects.Operations;
 
-public sealed record AddRiskObjectInput(RiskObjectDetails Details, Guid ActorId, DateTimeOffset Now)
-    : ClaimBaseOperationInput(Now, ActorId);
+public sealed record AddRiskObjectInput(
+    RiskObjectDetails Details,
+    Guid ActorId,
+    DateTimeOffset Now,
+    ClaimReferenceSnapshot Reference) : ClaimBaseOperationInput(Now, ActorId, Reference);
 
-public sealed class AddRiskObjectOperation : Operation<Claim, AddRiskObjectInput, ClaimRiskObject>
+internal sealed class AddRiskObjectOperation : Operation<Claim, AddRiskObjectInput, ClaimRiskObject>
 {
     public AddRiskObjectOperation()
     {
@@ -17,6 +22,14 @@ public sealed class AddRiskObjectOperation : Operation<Claim, AddRiskObjectInput
 
     protected override ClaimRiskObject Apply(Claim claim, AddRiskObjectInput input)
     {
-        return claim.AddRiskObject(input.Details, input.Now);
+        var riskObject = new ClaimRiskObject(
+            Ids.Next(input.Now),
+            claim.Id,
+            claim.OrganisationId,
+            input.Details,
+            input.Now);
+        claim.RiskObjectList.Add(riskObject);
+
+        return riskObject;
     }
 }

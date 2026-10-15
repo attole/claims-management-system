@@ -34,7 +34,7 @@ public sealed class IsIssueWaivableTests
     {
         var claim = TestClaims.Empty();
         var issueId = claim.Issues[0].Id;
-        var input = new WaiveIssueInput(issueId, TestClaims.Actor, TestClaims.Later);
+        var input = new WaiveIssueInput(issueId, TestClaims.Actor, TestClaims.Later, TestClaims.Reference());
         new WaiveIssueOperation().Execute(claim, input);
 
         var result = new IsIssueWaivable(issueId).Check(claim);

@@ -1,3 +1,4 @@
+using ClaimsModule.Domain.Claims.Issues;
 using ClaimsModule.Domain.Claims.Root;
 using ClaimsModule.Domain.Claims.Root.Bases;
 using ClaimsModule.Domain.Claims.Root.Rules;
@@ -5,20 +6,23 @@ using ClaimsModule.Domain.Core.Operations;
 
 namespace ClaimsModule.Domain.Claims.Loss.Operations;
 
-public sealed record UpdateLossDetailsInput(LossDetails Loss, Guid ActorId, DateTimeOffset Now)
-    : ClaimBaseOperationInput(Now, ActorId);
+public sealed record UpdateLossDetailsInput(
+    LossDetails Loss,
+    Guid ActorId,
+    DateTimeOffset Now,
+    ClaimReferenceSnapshot Reference) : ClaimBaseOperationInput(Now, ActorId, Reference);
 
-public sealed class UpdateLossDetailsOperation : Operation<Claim, UpdateLossDetailsInput, Success>
+internal sealed class UpdateLossDetailsOperation : Operation<Claim, UpdateLossDetailsInput, LossEvent>
 {
     public UpdateLossDetailsOperation()
     {
         Require(new IsClaimEditable());
     }
 
-    protected override Success Apply(Claim claim, UpdateLossDetailsInput input)
+    protected override LossEvent Apply(Claim claim, UpdateLossDetailsInput input)
     {
-        claim.UpdateLossDetails(input.Loss, input.Now);
+        claim.LossEvent.Update(input.Loss, input.Now);
 
-        return Success.Value;
+        return claim.LossEvent;
     }
 }

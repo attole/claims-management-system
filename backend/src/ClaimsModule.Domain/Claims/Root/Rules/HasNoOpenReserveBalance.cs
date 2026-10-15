@@ -3,7 +3,7 @@ using ClaimsModule.Domain.Core.Rules;
 
 namespace ClaimsModule.Domain.Claims.Root.Rules;
 
-public sealed class HasNoOpenReserveBalance(ClaimReserveSnapshot reserves) : IRule<Claim>
+internal sealed class HasNoOpenReserveBalance(ClaimReserveSnapshot reserves) : IRule<Claim>
 {
     public const string Code = "S:CC-04";
 

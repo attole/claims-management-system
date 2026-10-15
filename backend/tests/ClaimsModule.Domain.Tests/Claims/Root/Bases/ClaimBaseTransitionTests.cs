@@ -9,32 +9,19 @@ namespace ClaimsModule.Domain.Tests.Claims.Root.Bases;
 public sealed class ClaimBaseTransitionTests
 {
     [Fact]
-    public void Execute_FromADeclaredSource_MovesTheClaimAndTouchesIt()
+    public void Execute_FromADeclaredSource_MovesTheClaim()
     {
         var claim = TestClaims.Create(TestClaims.Claimant());
-        var input = new SampleClaimTransitionInput(TestClaims.Handler, TestClaims.Actor, TestClaims.Later);
+        var input = new SampleClaimTransitionInput(
+            TestClaims.Handler,
+            TestClaims.Actor,
+            TestClaims.Later,
+            TestClaims.Reference());
 
         var outcome = new SampleClaimTransition().Execute(claim, input);
 
         outcome.IsSuccess.Should().BeTrue();
         claim.State.Should().BeOfType<ClaimOpenState>();
-        claim.UpdatedAt.Should().Be(TestClaims.Later);
-    }
-
-    [Fact]
-    public void Execute_RaisesOneStateChangedEventWithTheActorAndBothStates()
-    {
-        var claim = TestClaims.Create(TestClaims.Claimant());
-        claim.PopEvents();
-        var input = new SampleClaimTransitionInput(TestClaims.Handler, TestClaims.Actor, TestClaims.Later);
-
-        new SampleClaimTransition().Execute(claim, input);
-
-        var changed = claim.PopEvents().OfType<ClaimStateChangedEvent>().Should().ContainSingle().Subject;
-        changed.ClaimId.Should().Be(claim.Id);
-        changed.ActorId.Should().Be(TestClaims.Actor);
-        changed.From.Should().Be("Draft");
-        changed.To.Should().Be("Open");
     }
 
     [Fact]
@@ -43,7 +30,11 @@ public sealed class ClaimBaseTransitionTests
     public void Execute_FromAnUndeclaredSource_RaisesNoStateChangedEvent()
     {
         var claim = TestClaims.Create(TestClaims.Claimant());
-        var input = new SampleClaimTransitionInput(TestClaims.Handler, TestClaims.Actor, TestClaims.Later);
+        var input = new SampleClaimTransitionInput(
+            TestClaims.Handler,
+            TestClaims.Actor,
+            TestClaims.Later,
+            TestClaims.Reference());
         new SampleClaimTransition().Execute(claim, input);
         claim.PopEvents();
 
@@ -57,7 +48,11 @@ public sealed class ClaimBaseTransitionTests
     {
         var claim = TestClaims.Create(TestClaims.Claimant());
         claim.PopEvents();
-        var input = new SampleClaimTransitionInput(TestClaims.Handler, TestClaims.Actor, TestClaims.Later);
+        var input = new SampleClaimTransitionInput(
+            TestClaims.Handler,
+            TestClaims.Actor,
+            TestClaims.Later,
+            TestClaims.Reference());
 
         var outcome = new BlockedSampleClaimTransition().Execute(claim, input);
 
@@ -72,7 +67,11 @@ public sealed class ClaimBaseTransitionTests
     public void Execute_FromAnUndeclaredSource_ReturnsTheFindingAndKeepsTheState()
     {
         var claim = TestClaims.Create(TestClaims.Claimant());
-        var input = new SampleClaimTransitionInput(TestClaims.Handler, TestClaims.Actor, TestClaims.Later);
+        var input = new SampleClaimTransitionInput(
+            TestClaims.Handler,
+            TestClaims.Actor,
+            TestClaims.Later,
+            TestClaims.Reference());
         new SampleClaimTransition().Execute(claim, input);
 
         var outcome = new SampleClaimTransition().Execute(claim, input);
@@ -85,7 +84,11 @@ public sealed class ClaimBaseTransitionTests
     public void Execute_AddsOneStateChangeWithTheActorAndTheReason()
     {
         var claim = TestClaims.Create(TestClaims.Claimant());
-        var input = new SampleClaimTransitionInput(TestClaims.Handler, TestClaims.Actor, TestClaims.Later)
+        var input = new SampleClaimTransitionInput(
+            TestClaims.Handler,
+            TestClaims.Actor,
+            TestClaims.Later,
+            TestClaims.Reference())
         {
             Reason = new StateChangeReason("CODE", "text"),
         };

@@ -1,6 +1,5 @@
 using ClaimsModule.Domain.Claims.Loss;
 using ClaimsModule.Domain.Claims.Root;
-using ClaimsModule.Domain.Claims.Root.Events;
 using ClaimsModule.Domain.Claims.Root.Operations;
 using ClaimsModule.Domain.Claims.Root.Rules;
 using ClaimsModule.Domain.Tests.Support.Claims;
@@ -34,21 +33,16 @@ public sealed class CreateClaimOperationTests
     }
 
     [Fact]
-    public void Execute_RaisesClaimCreated()
-    {
-        var claim = TestClaims.Empty();
-
-        var created = claim.PopEvents().OfType<ClaimCreatedEvent>();
-
-        created.Should().ContainSingle().Which.ClaimId.Should().Be(claim.Id);
-    }
-
-    [Fact]
     [Trait("Rule", HasOrganisation.Code)]
     public void Execute_WithoutOrganisation_Fails()
     {
         var number = ClaimNumber.From("CLM-2026-0000001");
-        var input = new CreateClaimInput(Guid.Empty, number, TestClaims.Actor, TestClaims.Start);
+        var input = new CreateClaimInput(
+            Guid.Empty,
+            number,
+            TestClaims.Actor,
+            TestClaims.Start,
+            TestClaims.Reference());
 
         var outcome = new CreateClaimOperation().Execute(input);
 
@@ -60,7 +54,12 @@ public sealed class CreateClaimOperationTests
     public void Execute_WithoutAClaimNumber_Fails()
     {
         var organisation = TestClaims.Organisation;
-        var input = new CreateClaimInput(organisation, ClaimNumber.Empty, TestClaims.Actor, TestClaims.Start);
+        var input = new CreateClaimInput(
+            organisation,
+            ClaimNumber.Empty,
+            TestClaims.Actor,
+            TestClaims.Start,
+            TestClaims.Reference());
 
         var outcome = new CreateClaimOperation().Execute(input);
 
@@ -70,7 +69,12 @@ public sealed class CreateClaimOperationTests
     [Fact]
     public void Execute_ReportsEveryMissingValueAtOnce()
     {
-        var input = new CreateClaimInput(Guid.Empty, ClaimNumber.Empty, TestClaims.Actor, TestClaims.Start);
+        var input = new CreateClaimInput(
+            Guid.Empty,
+            ClaimNumber.Empty,
+            TestClaims.Actor,
+            TestClaims.Start,
+            TestClaims.Reference());
 
         var outcome = new CreateClaimOperation().Execute(input);
 
@@ -83,7 +87,12 @@ public sealed class CreateClaimOperationTests
     {
         var number = ClaimNumber.From("CLM-2026-0000001");
 
-        Func<CreateClaimInput> act = () => new CreateClaimInput(Guid.NewGuid(), number, TestClaims.Actor, default);
+        Func<CreateClaimInput> act = () => new CreateClaimInput(
+            Guid.NewGuid(),
+            number,
+            TestClaims.Actor,
+            default,
+            TestClaims.Reference());
 
         act.Should().Throw<ArgumentException>();
     }

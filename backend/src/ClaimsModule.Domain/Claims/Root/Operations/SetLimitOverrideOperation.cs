@@ -1,3 +1,4 @@
+using ClaimsModule.Domain.Claims.Issues;
 using ClaimsModule.Domain.Claims.Root.Bases;
 using ClaimsModule.Domain.Claims.Root.Rules;
 using ClaimsModule.Domain.Common.Roles;
@@ -5,10 +6,14 @@ using ClaimsModule.Domain.Core.Operations;
 
 namespace ClaimsModule.Domain.Claims.Root.Operations;
 
-public sealed record SetLimitOverrideInput(bool HasOverride, UserRole ActorRole, Guid ActorId, DateTimeOffset Now)
-    : ClaimBaseOperationInput(Now, ActorId);
+public sealed record SetLimitOverrideInput(
+    bool HasOverride,
+    UserRole ActorRole,
+    Guid ActorId,
+    DateTimeOffset Now,
+    ClaimReferenceSnapshot Reference) : ClaimBaseOperationInput(Now, ActorId, Reference);
 
-public sealed class SetLimitOverrideOperation : Operation<Claim, SetLimitOverrideInput, Success>
+internal sealed class SetLimitOverrideOperation : Operation<Claim, SetLimitOverrideInput, Success>
 {
     public SetLimitOverrideOperation()
     {
@@ -17,7 +22,7 @@ public sealed class SetLimitOverrideOperation : Operation<Claim, SetLimitOverrid
 
     protected override Success Apply(Claim claim, SetLimitOverrideInput input)
     {
-        claim.SetLimitOverride(input.HasOverride, input.Now);
+        claim.HasAggregateLimitOverride = input.HasOverride;
 
         return Success.Value;
     }

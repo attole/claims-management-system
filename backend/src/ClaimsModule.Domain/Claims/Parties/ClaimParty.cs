@@ -10,8 +10,7 @@ public sealed class ClaimParty : Entity, IAuditable, ISoftDeletable, ITenantOwne
         Details = new PartyDetails(new PartyWitnessRole(), new PartyPersonType());
     }
 
-    internal ClaimParty(Guid id, Guid claimId, Guid organisationId, PartyDetails details, DateTimeOffset now)
-        : base(id)
+    internal ClaimParty(Guid id, Guid claimId, Guid organisationId, PartyDetails details, DateTimeOffset now) : base(id)
     {
         ClaimId = claimId;
         OrganisationId = organisationId;

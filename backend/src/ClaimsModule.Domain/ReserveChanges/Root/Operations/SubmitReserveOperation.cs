@@ -1,3 +1,5 @@
+using ClaimsModule.Domain.Common;
+using ClaimsModule.Domain.Common.Roles;
 using ClaimsModule.Domain.Core.Operations;
 using ClaimsModule.Domain.ReserveChanges.Root.Bases;
 using ClaimsModule.Domain.ReserveChanges.Root.Rules;
@@ -12,10 +14,11 @@ public sealed record SubmitReserveInput(
     decimal Amount,
     string ChangeReason,
     Guid ActorId,
+    UserRole ActorRole,
     ReserveSnapshot Snapshot,
     DateTimeOffset Now) : ReserveChangeBaseOperationInput(Now, ActorId);
 
-public sealed class SubmitReserveOperation : CreationOperation<SubmitReserveInput, ReserveChange>
+internal sealed class SubmitReserveOperation : CreationOperation<SubmitReserveInput, ReserveChange>
 {
     public SubmitReserveOperation()
     {
@@ -35,6 +38,6 @@ public sealed class SubmitReserveOperation : CreationOperation<SubmitReserveInpu
             input.ChangeReason,
             input.Snapshot.NextChangeSequence);
 
-        return ReserveChange.Submit(input.OrganisationId, details, input.ActorId, input.Now);
+        return new ReserveChange(Ids.Next(input.Now), input.OrganisationId, details, input.ActorId, input.Now);
     }
 }

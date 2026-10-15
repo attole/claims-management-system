@@ -4,7 +4,7 @@ using ClaimsModule.Domain.Core.Rules;
 
 namespace ClaimsModule.Domain.Claims.Root.Rules;
 
-public sealed class HasPermittedRole(UserRole actorRole, params UserRole[] permittedRoles) : IRule<Claim>
+internal sealed class HasPermittedRole(UserRole actorRole, params UserRole[] permittedRoles) : IRule<Claim>
 {
     public const string Code = "ACTOR_ROLE_NOT_PERMITTED";
 

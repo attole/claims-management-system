@@ -6,10 +6,10 @@ using ClaimsModule.Domain.Core.Operations;
 
 namespace ClaimsModule.Domain.Claims.Issues.Operations;
 
-public sealed record WaiveIssueInput(Guid IssueId, Guid ActorId, DateTimeOffset Now)
-    : ClaimBaseOperationInput(Now, ActorId);
+public sealed record WaiveIssueInput(Guid IssueId, Guid ActorId, DateTimeOffset Now, ClaimReferenceSnapshot Reference)
+    : ClaimBaseOperationInput(Now, ActorId, Reference);
 
-public sealed class WaiveIssueOperation : Operation<Claim, WaiveIssueInput, Success>
+internal sealed class WaiveIssueOperation : Operation<Claim, WaiveIssueInput, ClaimValidationIssue>
 {
     public WaiveIssueOperation()
     {
@@ -17,10 +17,11 @@ public sealed class WaiveIssueOperation : Operation<Claim, WaiveIssueInput, Succ
         Require(input => new IsIssueWaivable(input.IssueId));
     }
 
-    protected override Success Apply(Claim claim, WaiveIssueInput input)
+    protected override ClaimValidationIssue Apply(Claim claim, WaiveIssueInput input)
     {
-        claim.WaiveIssue(input.IssueId, input.ActorId, input.Now);
+        var issue = claim.IssueList.Single(candidate => candidate.Id == input.IssueId);
+        issue.Waive(input.ActorId, input.Now);
 
-        return Success.Value;
+        return issue;
     }
 }

@@ -8,8 +8,7 @@ public sealed record EstimatedLossAmount
         IsSet = isSet;
     }
 
-    public EstimatedLossAmount(decimal value)
-        : this(value, true)
+    public EstimatedLossAmount(decimal value) : this(value, true)
     {
     }
 

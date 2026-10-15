@@ -1,6 +1,5 @@
 using ClaimsModule.Domain.Claims.Issues;
 using ClaimsModule.Domain.Claims.Issues.Checks;
-using ClaimsModule.Domain.Claims.Issues.Events;
 using ClaimsModule.Domain.Claims.Issues.Operations;
 using ClaimsModule.Domain.Claims.Issues.Rules;
 using ClaimsModule.Domain.Claims.Root;
@@ -17,7 +16,7 @@ public sealed class AcknowledgeIssueOperationTests
     {
         var claim = TestClaims.WithLoss(TestClaims.OutsidePolicyPeriod);
         var issue = claim.Issues.Single(candidate => candidate.Finding.Code == IsLossDateWithinPolicyPeriod.Code);
-        var input = new AcknowledgeIssueInput(issue.Id, TestClaims.Actor, TestClaims.Later);
+        var input = new AcknowledgeIssueInput(issue.Id, TestClaims.Actor, TestClaims.Later, TestClaims.Reference());
 
         var outcome = new AcknowledgeIssueOperation().Execute(claim, input);
 
@@ -31,7 +30,7 @@ public sealed class AcknowledgeIssueOperationTests
     {
         var claim = TestClaims.WithPolicyWarning();
         var issue = claim.Issues.Single(candidate => candidate.Finding.Code == HasLinkedPolicy.Code);
-        var input = new AcknowledgeIssueInput(issue.Id, TestClaims.Actor, TestClaims.Later);
+        var input = new AcknowledgeIssueInput(issue.Id, TestClaims.Actor, TestClaims.Later, TestClaims.Reference());
 
         var outcome = new AcknowledgeIssueOperation().Execute(claim, input);
 
@@ -42,27 +41,12 @@ public sealed class AcknowledgeIssueOperationTests
     }
 
     [Fact]
-    [Trait("Rule", HasLinkedPolicy.Code)]
-    public void Execute_ForAnUnresolvedWarning_RaisesOneAcknowledgedEvent()
-    {
-        var claim = TestClaims.WithPolicyWarning();
-        claim.PopEvents();
-        var issue = claim.Issues.Single(candidate => candidate.Finding.Code == HasLinkedPolicy.Code);
-        var input = new AcknowledgeIssueInput(issue.Id, TestClaims.Actor, TestClaims.Later);
-
-        new AcknowledgeIssueOperation().Execute(claim, input);
-
-        var events = claim.PopEvents().OfType<ValidationIssueAcknowledgedEvent>().ToList();
-        events.Should().ContainSingle().Which.Code.Should().Be(HasLinkedPolicy.Code);
-    }
-
-    [Fact]
     [Trait("Rule", IsIssueAcknowledgeable.Code)]
     public void Execute_ForACriticalIssue_ReturnsTheFindingAndKeepsTheIssue()
     {
         var claim = TestClaims.WithPolicyWarning();
         var issue = claim.Issues.Single(candidate => candidate.Finding.Code == IsLossDatePresent.Code);
-        var input = new AcknowledgeIssueInput(issue.Id, TestClaims.Actor, TestClaims.Later);
+        var input = new AcknowledgeIssueInput(issue.Id, TestClaims.Actor, TestClaims.Later, TestClaims.Reference());
 
         var outcome = new AcknowledgeIssueOperation().Execute(claim, input);
 
@@ -76,7 +60,7 @@ public sealed class AcknowledgeIssueOperationTests
     {
         var claim = TestClaims.WithPolicyWarning();
         var issue = claim.Issues.Single(candidate => candidate.Finding.Code == HasLinkedPolicy.Code);
-        var input = new AcknowledgeIssueInput(issue.Id, TestClaims.Actor, TestClaims.Later);
+        var input = new AcknowledgeIssueInput(issue.Id, TestClaims.Actor, TestClaims.Later, TestClaims.Reference());
         new AcknowledgeIssueOperation().Execute(claim, input);
 
         var outcome = new AcknowledgeIssueOperation().Execute(claim, input);
@@ -89,7 +73,11 @@ public sealed class AcknowledgeIssueOperationTests
     public void Execute_OnAClosedClaim_ReturnsTheFinding()
     {
         var claim = TestClaims.InState(new ClaimClosedState());
-        var input = new AcknowledgeIssueInput(Guid.NewGuid(), TestClaims.Actor, TestClaims.Later);
+        var input = new AcknowledgeIssueInput(
+            Guid.NewGuid(),
+            TestClaims.Actor,
+            TestClaims.Later,
+            TestClaims.Reference());
 
         var outcome = new AcknowledgeIssueOperation().Execute(claim, input);
 

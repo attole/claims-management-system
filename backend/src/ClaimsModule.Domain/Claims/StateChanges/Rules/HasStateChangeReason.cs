@@ -4,7 +4,7 @@ using ClaimsModule.Domain.Core.Rules;
 
 namespace ClaimsModule.Domain.Claims.StateChanges.Rules;
 
-public sealed class HasStateChangeReason(StateChangeReason reason) : IRule<Claim>
+internal sealed class HasStateChangeReason(StateChangeReason reason) : IRule<Claim>
 {
     public const string Code = "STATE_CHANGE_REASON_REQUIRED";
 

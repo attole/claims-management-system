@@ -9,8 +9,7 @@ public sealed record ReserveBalances
         IsSet = isSet;
     }
 
-    public ReserveBalances(decimal previousBalance, decimal newBalance)
-        : this(previousBalance, newBalance, true)
+    public ReserveBalances(decimal previousBalance, decimal newBalance) : this(previousBalance, newBalance, true)
     {
     }
 
