@@ -1,54 +1,41 @@
+using ClaimsModule.Domain.Claims.Loss.Flows;
+using ClaimsModule.Domain.Claims.Loss.Inputs;
 using ClaimsModule.Domain.Common.Capabilities;
 using ClaimsModule.Domain.Common.Entities;
+using ClaimsModule.Domain.Core.Flows;
 
 namespace ClaimsModule.Domain.Claims.Loss;
 
-public sealed class ClaimLossEvent : Entity, IAuditable, ISoftDeletable, ITenantOwned
+public sealed class ClaimLossEvent : Entity, ISoftDeletable
 {
     private ClaimLossEvent()
     {
         Details = LossDetails.Empty;
     }
 
-    internal ClaimLossEvent(
-        Guid id,
-        Guid claimId,
-        Guid organisationId,
-        LossDetails details,
-        DateTimeOffset now)
+    internal ClaimLossEvent(Guid id, Guid claimId, Guid organisationId, LossDetails details, DateTimeOffset reportDate)
         : base(id)
     {
         ClaimId = claimId;
         OrganisationId = organisationId;
-        ReportDate = now;
-        CreatedAt = now;
-        UpdatedAt = now;
+        ReportDate = reportDate;
         Details = details;
     }
 
     public Guid ClaimId { get; private set; } = Guid.Empty;
 
-    public LossDetails Details { get; private set; }
+    public LossDetails Details { get; internal set; }
 
     public DateTimeOffset ReportDate { get; private set; } = DateTimeOffset.MinValue;
 
-    public DateTimeOffset CreatedAt { get; private set; } = DateTimeOffset.MinValue;
-
-    public DateTimeOffset UpdatedAt { get; private set; } = DateTimeOffset.MinValue;
-
-    public Guid UserCreated { get; private set; } = Guid.Empty;
-
-    public Guid UserModified { get; private set; } = Guid.Empty;
+    public DateOnly ReportDay => DateOnly.FromDateTime(ReportDate.UtcDateTime);
 
     public bool IsDeleted { get; private set; } = false;
 
     public DateTimeOffset DeletedAt { get; private set; } = DateTimeOffset.MinValue;
 
-    public Guid OrganisationId { get; private set; } = Guid.Empty;
-
-    internal void Update(LossDetails details, DateTimeOffset now)
+    internal Outcome<ClaimLossEvent> Update(LossDetailsInput input)
     {
-        Details = details;
-        UpdatedAt = now;
+        return UpdateLossDetailsOperation.Run(this, input);
     }
 }

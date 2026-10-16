@@ -9,6 +9,6 @@ internal sealed class SharedRuleSampleTransition : SampleTransition<SharedRuleSa
     public SharedRuleSampleTransition() : base(new ClosedSampleState())
     {
         AllowedFrom(new DraftSampleState(), new OpenSampleState())
-            .Require(SampleRules.Fail(SharedDenied));
+            .Require(SampleRules.Critical(SharedDenied));
     }
 }

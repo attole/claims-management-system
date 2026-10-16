@@ -7,7 +7,7 @@ internal sealed class MixedSampleOperation : SampleOperation<MixedSampleOperatio
 
     public MixedSampleOperation()
     {
-        Require(SampleRules.Warn(Warned));
-        Require(SampleRules.Fail(Failed));
+        Require(SampleRules.Warning(Warned));
+        Require(SampleRules.Critical(Failed));
     }
 }

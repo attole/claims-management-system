@@ -1,12 +1,9 @@
-using ClaimsModule.Domain.Common.Events;
 using ClaimsModule.Domain.Tests.Support.Common;
 
 namespace ClaimsModule.Domain.Tests.Common.Entities;
 
 public sealed class EntityTests
 {
-    private static readonly DateTimeOffset _now = new(2026, 10, 12, 8, 0, 0, TimeSpan.Zero);
-
     [Fact]
     public void Equals_SameIdAndType_IsTrue()
     {
@@ -46,7 +43,7 @@ public sealed class EntityTests
     public void PopEvents_ReturnsRaisedEventsAndClearsThem()
     {
         var entity = new SampleEntity(Guid.NewGuid());
-        var domainEvent = new SampleEvent(new EventStamp(Guid.NewGuid(), _now, Guid.Empty));
+        var domainEvent = new SampleEvent();
         entity.Add(domainEvent);
 
         var result = entity.PopEvents();

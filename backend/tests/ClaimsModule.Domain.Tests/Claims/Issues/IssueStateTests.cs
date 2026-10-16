@@ -23,4 +23,16 @@ public sealed class IssueStateTests
     {
         _states.Select(state => state.Marker).Should().BeEquivalentTo(Enum.GetValues<IssueStateKind>());
     }
+
+    [Fact]
+    public void IssueStates_OnlyTheClearedOneIsNotCurrent()
+    {
+        _states.Where(state => !state.IsCurrent).Should().ContainSingle().Which.Should().Be(new IssueClearedState());
+    }
+
+    [Fact]
+    public void IssueStates_OnlyTheWaivedOneIsWaived()
+    {
+        _states.Where(state => state.IsWaived).Should().ContainSingle().Which.Should().Be(new IssueWaivedState());
+    }
 }

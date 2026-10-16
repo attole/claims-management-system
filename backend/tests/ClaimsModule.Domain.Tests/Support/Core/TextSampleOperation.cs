@@ -7,6 +7,6 @@ internal sealed class TextSampleOperation : SampleOperation<TextSampleOperation>
 
     public TextSampleOperation()
     {
-        Require(input => input.Text == BadText ? SampleRules.Fail(BadInput) : SampleRules.Pass());
+        Require(input => input.Text == BadText ? SampleRules.Critical(BadInput) : SampleRules.Pass());
     }
 }

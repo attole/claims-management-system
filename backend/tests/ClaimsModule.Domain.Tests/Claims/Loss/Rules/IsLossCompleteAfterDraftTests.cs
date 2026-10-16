@@ -1,8 +1,6 @@
+using ClaimsModule.Domain.Claims;
 using ClaimsModule.Domain.Claims.Loss;
-using ClaimsModule.Domain.Claims.Loss.Checks;
-using ClaimsModule.Domain.Claims.Loss.Inputs;
 using ClaimsModule.Domain.Claims.Loss.Rules;
-using ClaimsModule.Domain.Claims.Root;
 using ClaimsModule.Domain.Tests.Support.Claims;
 
 namespace ClaimsModule.Domain.Tests.Claims.Loss.Rules;
@@ -14,9 +12,8 @@ public sealed class IsLossCompleteAfterDraftTests
     public void Check_ForADraft_PassesWhateverTheLoss()
     {
         var claim = TestClaims.Create(TestClaims.Claimant());
-        var rule = CreateRule(LossDetails.Empty, ClaimStateKind.Draft);
 
-        var result = rule.Check(claim.LossEvent);
+        var result = CreateRule(LossDetails.Empty).Check(claim);
 
         result.Findings.Should().BeEmpty();
     }
@@ -25,52 +22,61 @@ public sealed class IsLossCompleteAfterDraftTests
     [Trait("Rule", IsLossCompleteAfterDraft.Code)]
     public void Check_AfterDraftWithACompleteLoss_Passes()
     {
-        var claim = TestClaims.Create(TestClaims.Claimant());
+        var claim = TestClaims.InState<ClaimOpenState>();
         var loss = TestClaims.Loss(TestClaims.Start.AddDays(-1), TestClaims.Description);
-        var rule = CreateRule(loss, ClaimStateKind.Open);
 
-        var result = rule.Check(claim.LossEvent);
+        var result = CreateRule(loss).Check(claim);
 
         result.Findings.Should().BeEmpty();
     }
 
     [Fact]
     [Trait("Rule", IsLossCompleteAfterDraft.Code)]
-    public void Check_AfterDraftWithAnEmptyLoss_ReportsEveryMissingValue()
+    public void Check_AfterDraftWithALossOutsideThePolicy_PassesWithoutTheWarning()
     {
-        var claim = TestClaims.Create(TestClaims.Claimant());
-        var rule = CreateRule(LossDetails.Empty, ClaimStateKind.Open);
+        var claim = TestClaims.InState<ClaimOpenState>();
+        var loss = TestClaims.Loss(TestClaims.OutsidePolicyPeriod, TestClaims.Description);
 
-        var result = rule.Check(claim.LossEvent);
+        var result = CreateRule(loss).Check(claim);
 
-        result.Blocking.Select(finding => finding.Code).Should().BeEquivalentTo(
-            IsLossDatePresent.Code,
-            IsDescriptionLongEnough.Code,
-            IsCauseCodeActive.Code);
+        result.Findings.Should().BeEmpty();
     }
 
     [Fact]
     [Trait("Rule", IsLossCompleteAfterDraft.Code)]
-    public void Check_AfterDraftWithALossAfterTheReport_ReportsIt()
+    public void Check_AfterDraftWithAWaivedProblem_Passes()
     {
-        var claim = TestClaims.Create(TestClaims.Claimant());
-        var loss = TestClaims.Loss(TestClaims.Start.AddMinutes(30), TestClaims.Description);
-        var rule = CreateRule(loss, ClaimStateKind.Open);
+        var claim = WaivedShortDescriptionAfterDraft();
+        var loss = TestClaims.Loss(TestClaims.Start.AddDays(-3), "Leak");
 
-        var result = rule.Check(claim.LossEvent);
+        var result = CreateRule(loss).Check(claim);
 
-        result.Blocking.Should().ContainSingle().Which.Code.Should().Be(IsLossDateNotAfterReport.Code);
+        result.Findings.Should().BeEmpty();
     }
 
-    private static IsLossCompleteAfterDraft CreateRule(LossDetails details, ClaimStateKind claimState)
+    [Fact]
+    [Trait("Rule", IsLossCompleteAfterDraft.Code)]
+    public void Check_AfterDraftWithANewProblemOfAWaivedCode_ReturnsIt()
     {
-        var change = new ChangeLossInput(
-            details,
-            claimState,
-            TestClaims.Reference(),
-            TestClaims.Later,
-            TestClaims.Actor);
+        var claim = WaivedShortDescriptionAfterDraft();
+        var loss = TestClaims.Loss(TestClaims.Start.AddDays(-3), "Drip");
 
-        return new IsLossCompleteAfterDraft(change);
+        var result = CreateRule(loss).Check(claim);
+
+        result.CriticalFindings.Should().ContainSingle().Which.Code.Should().Be(IsDescriptionLongEnough.Code);
+    }
+
+    private static IsLossCompleteAfterDraft CreateRule(LossDetails details)
+    {
+        return new IsLossCompleteAfterDraft(details, TestClaims.LossReference());
+    }
+
+    private static Claim WaivedShortDescriptionAfterDraft()
+    {
+        var claim = TestClaims.WithDescription("Leak");
+        TestClaims.WaiveIssue(claim, IsDescriptionLongEnough.Code);
+        TestClaims.MoveTo<ClaimOpenState>(claim);
+
+        return claim;
     }
 }

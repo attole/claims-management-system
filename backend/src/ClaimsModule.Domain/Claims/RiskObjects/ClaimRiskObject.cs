@@ -1,53 +1,40 @@
+using ClaimsModule.Domain.Claims.RiskObjects.Flows;
+using ClaimsModule.Domain.Claims.RiskObjects.Inputs;
 using ClaimsModule.Domain.Common.Capabilities;
 using ClaimsModule.Domain.Common.Entities;
+using ClaimsModule.Domain.Core.Flows;
 
 namespace ClaimsModule.Domain.Claims.RiskObjects;
 
-public sealed class ClaimRiskObject : Entity, IAuditable, ISoftDeletable, ITenantOwned
+public sealed class ClaimRiskObject : Entity, ISoftDeletable
 {
     private ClaimRiskObject()
     {
         Details = new RiskObjectDetails(AssetType.Other, string.Empty);
     }
 
-    internal ClaimRiskObject(Guid id, Guid claimId, Guid organisationId, RiskObjectDetails details, DateTimeOffset now)
-        : base(id)
+    internal ClaimRiskObject(Guid id, Guid claimId, Guid organisationId, RiskObjectDetails details) : base(id)
     {
         ClaimId = claimId;
         OrganisationId = organisationId;
         Details = details;
-        CreatedAt = now;
-        UpdatedAt = now;
     }
 
     public Guid ClaimId { get; private set; } = Guid.Empty;
 
-    public RiskObjectDetails Details { get; private set; }
+    public RiskObjectDetails Details { get; internal set; }
 
-    public DateTimeOffset CreatedAt { get; private set; } = DateTimeOffset.MinValue;
+    public bool IsDeleted { get; internal set; } = false;
 
-    public DateTimeOffset UpdatedAt { get; private set; } = DateTimeOffset.MinValue;
+    public DateTimeOffset DeletedAt { get; internal set; } = DateTimeOffset.MinValue;
 
-    public Guid UserCreated { get; private set; } = Guid.Empty;
-
-    public Guid UserModified { get; private set; } = Guid.Empty;
-
-    public bool IsDeleted { get; private set; } = false;
-
-    public DateTimeOffset DeletedAt { get; private set; } = DateTimeOffset.MinValue;
-
-    public Guid OrganisationId { get; private set; } = Guid.Empty;
-
-    internal void Update(RiskObjectDetails details, DateTimeOffset now)
+    internal Outcome<ClaimRiskObject> Update(RiskObjectDetailsInput input)
     {
-        Details = details;
-        UpdatedAt = now;
+        return UpdateRiskObjectOperation.Run(this, input);
     }
 
-    internal void Remove(DateTimeOffset now)
+    internal Outcome<ClaimRiskObject> Remove(RiskObjectRemovalInput input)
     {
-        IsDeleted = true;
-        DeletedAt = now;
-        UpdatedAt = now;
+        return RemoveRiskObjectOperation.Run(this, input);
     }
 }

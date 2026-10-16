@@ -1,8 +1,6 @@
 using ClaimsModule.Domain.Claims.RiskObjects.Flows;
 using ClaimsModule.Domain.Claims.RiskObjects.Inputs;
 using ClaimsModule.Domain.Claims.RiskObjects.Rules;
-using ClaimsModule.Domain.Claims.Root;
-using ClaimsModule.Domain.Claims.Root.Rules;
 using ClaimsModule.Domain.Tests.Support.Claims;
 
 namespace ClaimsModule.Domain.Tests.Claims.RiskObjects.Flows;
@@ -10,73 +8,30 @@ namespace ClaimsModule.Domain.Tests.Claims.RiskObjects.Flows;
 public sealed class RemoveRiskObjectOperationTests
 {
     [Fact]
-    public void RemoveRiskObject_HidesItFromTheClaim()
-    {
-        var claim = TestClaims.Create(TestClaims.Claimant());
-        var input = new RemoveRiskObjectInput(
-            claim.RiskObjects[0].Id,
-            TestClaims.Actor,
-            TestClaims.Later,
-            TestClaims.Reference());
-
-        RemoveRiskObjectOperation.Execute(claim, input);
-
-        claim.RiskObjects.Should().BeEmpty();
-    }
-
-    [Fact]
-    [Trait("Rule", IsRiskObjectPresent.Code)]
-    public void RemoveRiskObject_AlreadyRemoved_FailsAndKeepsTheFirstRemovalTime()
+    public void Run_MarksTheRiskObjectRemovedAtTheTimeOfTheInput()
     {
         var claim = TestClaims.Create(TestClaims.Claimant());
         var riskObject = claim.RiskObjects[0];
-        var input = new RemoveRiskObjectInput(
-            riskObject.Id,
-            TestClaims.Actor,
-            TestClaims.Later,
-            TestClaims.Reference());
-        var laterInput = new RemoveRiskObjectInput(
-            riskObject.Id,
-            TestClaims.Actor,
-            TestClaims.Later.AddHours(1),
-            TestClaims.Reference());
-        RemoveRiskObjectOperation.Execute(claim, input);
+        var input = new RiskObjectRemovalInput(TestClaims.Later);
 
-        var outcome = RemoveRiskObjectOperation.Execute(claim, laterInput);
+        RemoveRiskObjectOperation.Run(riskObject, input);
 
-        outcome.Blocking.Should().ContainSingle().Which.Code.Should().Be(IsRiskObjectPresent.Code);
+        riskObject.IsDeleted.Should().BeTrue();
         riskObject.DeletedAt.Should().Be(TestClaims.Later);
     }
 
     [Fact]
-    [Trait("Rule", IsRiskObjectPresent.Code)]
-    public void RemoveRiskObject_UnknownRiskObject_Fails()
+    [Trait("Rule", IsRiskObjectNotRemoved.Code)]
+    public void Run_Twice_ReturnsTheFindingAndKeepsTheFirstTime()
     {
         var claim = TestClaims.Create(TestClaims.Claimant());
-        var input = new RemoveRiskObjectInput(
-            Guid.NewGuid(),
-            TestClaims.Actor,
-            TestClaims.Later,
-            TestClaims.Reference());
+        var riskObject = claim.RiskObjects[0];
+        RemoveRiskObjectOperation.Run(riskObject, new RiskObjectRemovalInput(TestClaims.Later));
+        var later = new RiskObjectRemovalInput(TestClaims.Later.AddHours(1));
 
-        var outcome = RemoveRiskObjectOperation.Execute(claim, input);
+        var outcome = RemoveRiskObjectOperation.Run(riskObject, later);
 
-        outcome.Blocking.Should().ContainSingle().Which.Code.Should().Be(IsRiskObjectPresent.Code);
-    }
-
-    [Fact]
-    [Trait("Rule", IsClaimEditable.Code)]
-    public void RemoveRiskObject_WhenTheClaimIsClosed_Fails()
-    {
-        var claim = TestClaims.InState<ClaimClosedState>();
-        var input = new RemoveRiskObjectInput(
-            claim.RiskObjects[0].Id,
-            TestClaims.Actor,
-            TestClaims.Later,
-            TestClaims.Reference());
-
-        var outcome = RemoveRiskObjectOperation.Execute(claim, input);
-
-        outcome.Blocking.Should().ContainSingle().Which.Code.Should().Be(IsClaimEditable.Code);
+        outcome.CriticalFindings.Should().ContainSingle().Which.Code.Should().Be(IsRiskObjectNotRemoved.Code);
+        riskObject.DeletedAt.Should().Be(TestClaims.Later);
     }
 }

@@ -7,8 +7,8 @@ internal sealed class FailingSampleOperation : SampleOperation<FailingSampleOper
 
     public FailingSampleOperation()
     {
-        Require(SampleRules.Fail(FirstFailure));
+        Require(SampleRules.Critical(FirstFailure));
         Require(SampleRules.Pass());
-        Require(SampleRules.Fail(SecondFailure));
+        Require(SampleRules.Critical(SecondFailure));
     }
 }

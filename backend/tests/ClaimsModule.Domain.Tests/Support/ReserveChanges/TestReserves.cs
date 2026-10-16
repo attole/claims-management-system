@@ -1,7 +1,8 @@
-using ClaimsModule.Domain.ReserveChanges.Root;
-using ClaimsModule.Domain.ReserveChanges.Root.Flows;
-using ClaimsModule.Domain.ReserveChanges.Root.Inputs;
-using ClaimsModule.Domain.Reserves.Root;
+using ClaimsModule.Domain.ReserveChanges;
+using ClaimsModule.Domain.ReserveChanges.Flows;
+using ClaimsModule.Domain.ReserveChanges.Inputs;
+using ClaimsModule.Domain.Reserves;
+using ClaimsModule.Domain.Roles;
 using ClaimsModule.Domain.Tests.Support.Claims;
 
 namespace ClaimsModule.Domain.Tests.Support.ReserveChanges;
@@ -13,70 +14,70 @@ public static class TestReserves
     public static readonly Guid Submitter = Guid.Parse("55555555-5555-5555-5555-555555555555");
     public static readonly Guid Approver = Guid.Parse("66666666-6666-6666-6666-666666666666");
 
-    public static ReserveSnapshot Snapshot()
+    public static ReserveReference Reference()
     {
-        return new ReserveSnapshot(true, 0m, false, new ReserveIndemnityComponentType(), 0m, 1);
+        return new ReserveReference(ReserveId, ClaimId, TestClaims.Organisation, new ReserveIndemnityComponentType());
     }
 
-    public static SubmitReserveInput SubmitInput(decimal amount, ReserveSnapshot snapshot)
+    public static SubmitReserveInput SubmitInput(decimal amount, int changeSequence = 1)
     {
         return new SubmitReserveInput(
-            TestClaims.Organisation,
-            ReserveId,
-            ClaimId,
+            Reference(),
             ReserveTransactionType.Add,
             amount,
             "Initial estimate",
             Submitter,
-            TestClaims.Handler,
-            snapshot,
+            true,
+            true,
+            0m,
+            0m,
+            changeSequence,
             TestClaims.Start);
+    }
+
+    public static ApproveReserveInput ApproveInput(UserRole actorRole, Guid actorId)
+    {
+        return new ApproveReserveInput(0m, 0m, false, actorRole, actorId, TestClaims.Later);
+    }
+
+    public static AutoApproveReserveInput AutoApproveInput()
+    {
+        return new AutoApproveReserveInput(0m, 0m, Submitter, TestClaims.Later);
     }
 
     public static ReserveChange Submit(decimal amount)
     {
-        return Submit(amount, Snapshot());
+        return Submit(SubmitInput(amount));
     }
 
-    public static ReserveChange Submit(decimal amount, ReserveSnapshot snapshot)
+    public static ReserveChange Submit(SubmitReserveInput input)
     {
-        var input = SubmitInput(amount, snapshot);
-        var reserve = SubmitReserveOperation.Execute(input).Value;
-        reserve.PopEvents();
+        var change = SubmitReserveOperation.Run(input).Value;
+        change.PopEvents();
 
-        return reserve;
+        return change;
     }
 
     public static ReserveChange SubmitRejected()
     {
-        var reserve = Submit(50_000m);
-        var input = new RejectReserveInput(TestClaims.Supervisor, Approver, TestClaims.Later, Snapshot())
+        var change = Submit(50_000m);
+        var input = new RejectReserveInput(TestClaims.Supervisor, Approver, TestClaims.Later)
         {
             Reason = "Not supported by the report",
         };
-        RejectReserveTransition.Execute(reserve, input);
-        reserve.PopEvents();
+        RejectReserveTransition.Run(change, input);
+        change.PopEvents();
 
-        return reserve;
-    }
-
-    public static ReserveChange SubmitRetracted()
-    {
-        var reserve = Submit(50_000m);
-        var input = new RetractReserveInput(TestClaims.Handler, Submitter, TestClaims.Later, Snapshot());
-        RetractReserveTransition.Execute(reserve, input);
-        reserve.PopEvents();
-
-        return reserve;
+        return change;
     }
 
     public static ReserveChange SubmitAutoApproved(decimal amount)
     {
-        var reserve = Submit(amount);
-        var input = new AutoApproveReserveInput(TestClaims.Handler, Submitter, TestClaims.Later, Snapshot());
-        AutoApproveReserveTransition.Execute(reserve, input);
-        reserve.PopEvents();
+        var change = Submit(amount);
+        var input = AutoApproveInput();
+        AutoApproveReserveTransition.Run(change, input);
+        change.PopEvents();
 
-        return reserve;
+        return change;
     }
 }

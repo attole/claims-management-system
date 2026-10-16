@@ -1,26 +1,22 @@
 using ClaimsModule.Domain.Claims.RiskObjects.Inputs;
 using ClaimsModule.Domain.Claims.RiskObjects.Rules;
-using ClaimsModule.Domain.Claims.Root;
-using ClaimsModule.Domain.Claims.Root.Rules;
-using ClaimsModule.Domain.Core.Operations;
+using ClaimsModule.Domain.Core.Flows;
 
 namespace ClaimsModule.Domain.Claims.RiskObjects.Flows;
 
 internal sealed class RemoveRiskObjectOperation
-    : Operation<RemoveRiskObjectOperation, Claim, RemoveRiskObjectInput, ClaimRiskObject>
+    : Operation<RemoveRiskObjectOperation, ClaimRiskObject, RiskObjectRemovalInput, ClaimRiskObject>
 {
     public RemoveRiskObjectOperation()
     {
-        Require(new IsClaimEditable());
-        Require(input => new IsRiskObjectPresent(input.RiskObjectId));
+        Require(new IsRiskObjectNotRemoved());
     }
 
-    protected override ClaimRiskObject Apply(Claim claim, RemoveRiskObjectInput input)
+    protected override Outcome<ClaimRiskObject> Apply(ClaimRiskObject riskObject, RiskObjectRemovalInput input)
     {
-        var riskObject = claim.RiskObjectList
-            .Single(candidate => candidate.Id == input.RiskObjectId && !candidate.IsDeleted);
-        riskObject.Remove(input.Now);
+        riskObject.IsDeleted = true;
+        riskObject.DeletedAt = input.Now;
 
-        return riskObject;
+        return Done(riskObject);
     }
 }

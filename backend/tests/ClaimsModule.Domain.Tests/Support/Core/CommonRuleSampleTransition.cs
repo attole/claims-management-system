@@ -10,6 +10,6 @@ internal sealed class CommonRuleSampleTransition : SampleTransition<CommonRuleSa
     {
         AllowedFrom(new DraftSampleState());
         AllowedFrom(new OpenSampleState());
-        Require(SampleRules.Fail(CommonDenied));
+        Require(SampleRules.Critical(CommonDenied));
     }
 }

@@ -1,4 +1,3 @@
-using ClaimsModule.Domain.Core.Base.Checks;
 using ClaimsModule.Domain.Core.Rules;
 using ClaimsModule.Domain.Tests.Support.Common;
 
@@ -11,8 +10,8 @@ internal sealed class CloseSampleTransition : SampleTransition<CloseSampleTransi
     public CloseSampleTransition() : base(new ClosedSampleState())
     {
         AllowedFrom(new OpenSampleState())
-            .Require(input => new DelegateRule(_ => string.IsNullOrWhiteSpace(input.Text)
-                ? CheckResult<DomainFinding>.Found(new RuleFinding(TextRequired, TextRequired))
-                : CheckResult<DomainFinding>.Pass));
+            .Require(input => new DelegateSampleRule(_ => string.IsNullOrWhiteSpace(input.Text)
+                ? CheckResult.Found(new Finding(TextRequired, TextRequired))
+                : CheckResult.Pass));
     }
 }

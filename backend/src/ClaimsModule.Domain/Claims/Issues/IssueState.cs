@@ -13,6 +13,10 @@ public enum IssueStateKind
 public abstract record IssueState(IssueStateKind Marker) : Marked<IssueStateKind>(Marker)
 {
     public abstract bool IsResolved { get; }
+
+    public virtual bool IsCurrent => true;
+
+    public virtual bool IsWaived => false;
 }
 
 public sealed record IssueRaisedState() : IssueState(IssueStateKind.Raised)
@@ -23,6 +27,8 @@ public sealed record IssueRaisedState() : IssueState(IssueStateKind.Raised)
 public sealed record IssueClearedState() : IssueState(IssueStateKind.Cleared)
 {
     public override bool IsResolved => true;
+
+    public override bool IsCurrent => false;
 }
 
 public sealed record IssueAcknowledgedState() : IssueState(IssueStateKind.Acknowledged)
@@ -33,4 +39,6 @@ public sealed record IssueAcknowledgedState() : IssueState(IssueStateKind.Acknow
 public sealed record IssueWaivedState() : IssueState(IssueStateKind.Waived)
 {
     public override bool IsResolved => true;
+
+    public override bool IsWaived => true;
 }

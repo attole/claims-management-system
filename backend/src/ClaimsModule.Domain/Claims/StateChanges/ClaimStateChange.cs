@@ -1,10 +1,8 @@
-using ClaimsModule.Domain.Claims.Root;
-using ClaimsModule.Domain.Common.Capabilities;
 using ClaimsModule.Domain.Common.Entities;
 
 namespace ClaimsModule.Domain.Claims.StateChanges;
 
-public sealed class ClaimStateChange : Entity, IAuditable, ITenantOwned
+public sealed class ClaimStateChange : Entity
 {
     private ClaimStateChange()
     {
@@ -20,8 +18,7 @@ public sealed class ClaimStateChange : Entity, IAuditable, ITenantOwned
         ClaimState from,
         ClaimState to,
         StateChangeReason reason,
-        string note,
-        DateTimeOffset now)
+        string note)
         : base(id)
     {
         ClaimId = claimId;
@@ -30,8 +27,6 @@ public sealed class ClaimStateChange : Entity, IAuditable, ITenantOwned
         To = to;
         Reason = reason;
         Note = note;
-        CreatedAt = now;
-        UpdatedAt = now;
     }
 
     public Guid ClaimId { get; private set; } = Guid.Empty;
@@ -43,14 +38,4 @@ public sealed class ClaimStateChange : Entity, IAuditable, ITenantOwned
     public StateChangeReason Reason { get; private set; }
 
     public string Note { get; private set; } = string.Empty;
-
-    public DateTimeOffset CreatedAt { get; private set; } = DateTimeOffset.MinValue;
-
-    public DateTimeOffset UpdatedAt { get; private set; } = DateTimeOffset.MinValue;
-
-    public Guid UserCreated { get; private set; } = Guid.Empty;
-
-    public Guid UserModified { get; private set; } = Guid.Empty;
-
-    public Guid OrganisationId { get; private set; } = Guid.Empty;
 }

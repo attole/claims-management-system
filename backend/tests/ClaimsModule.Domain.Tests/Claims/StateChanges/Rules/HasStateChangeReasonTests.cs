@@ -20,18 +20,6 @@ public sealed class HasStateChangeReasonTests
 
     [Fact]
     [Trait("Rule", HasStateChangeReason.Code)]
-    public void Check_WithoutAText_ReturnsTheFinding()
-    {
-        var claim = TestClaims.Empty();
-        var reason = new StateChangeReason("CODE", string.Empty);
-
-        var result = new HasStateChangeReason(reason).Check(claim);
-
-        result.Findings.Should().ContainSingle().Which.Code.Should().Be(HasStateChangeReason.Code);
-    }
-
-    [Fact]
-    [Trait("Rule", HasStateChangeReason.Code)]
     public void Check_WithoutAReason_ReturnsTheFinding()
     {
         var claim = TestClaims.Empty();

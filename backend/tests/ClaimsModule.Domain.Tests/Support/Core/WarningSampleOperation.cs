@@ -6,6 +6,6 @@ internal sealed class WarningSampleOperation : SampleOperation<WarningSampleOper
 
     public WarningSampleOperation()
     {
-        Require(SampleRules.Warn(Warned));
+        Require(SampleRules.Warning(Warned));
     }
 }

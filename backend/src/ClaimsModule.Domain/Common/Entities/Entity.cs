@@ -1,10 +1,11 @@
+using ClaimsModule.Domain.Common.Capabilities;
 using ClaimsModule.Domain.Common.Events;
 
 namespace ClaimsModule.Domain.Common.Entities;
 
-public abstract class Entity : IEquatable<Entity>
+public abstract class Entity : IEquatable<Entity>, ITenantOwned
 {
-    private readonly List<IDomainEvent> _events = [];
+    private readonly List<DomainEvent> _events = [];
 
     protected Entity()
     {
@@ -17,7 +18,9 @@ public abstract class Entity : IEquatable<Entity>
 
     public Guid Id { get; protected set; } = Guid.Empty;
 
-    public IReadOnlyList<IDomainEvent> PopEvents()
+    public Guid OrganisationId { get; protected set; } = Guid.Empty;
+
+    public IReadOnlyList<DomainEvent> PopEvents()
     {
         var events = _events.ToList();
         _events.Clear();
@@ -40,7 +43,7 @@ public abstract class Entity : IEquatable<Entity>
         return HashCode.Combine(GetType(), Id);
     }
 
-    protected void Raise(IDomainEvent domainEvent)
+    protected void Raise(DomainEvent domainEvent)
     {
         _events.Add(domainEvent);
     }

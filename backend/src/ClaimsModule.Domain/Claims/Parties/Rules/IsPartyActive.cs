@@ -1,22 +1,20 @@
-using ClaimsModule.Domain.Claims.Root;
-using ClaimsModule.Domain.Core.Base.Checks;
 using ClaimsModule.Domain.Core.Rules;
 
 namespace ClaimsModule.Domain.Claims.Parties.Rules;
 
-internal sealed class IsPartyActive(Guid partyId) : IRule<Claim>
+internal sealed class IsPartyActive : IRule<ClaimParty>
 {
     public const string Code = "PARTY_NOT_ACTIVE";
 
-    private const string Message = "The party is not on the claim or has been removed.";
+    private const string Message = "The party has been removed.";
     private const string Field = "PartyId";
 
-    public CheckResult<DomainFinding> Check(Claim claim)
+    public CheckResult Check(ClaimParty party)
     {
-        bool isPartyActive = claim.Parties.Any(party => party.Id == partyId && party.IsActive);
+        bool isPartyActive = party.IsActive;
 
         return isPartyActive
-            ? CheckResult<DomainFinding>.Pass
-            : CheckResult<DomainFinding>.Found(new RuleFinding(Code, Message, Field));
+            ? CheckResult.Pass
+            : CheckResult.Found(new Finding(Code, Message, Field));
     }
 }

@@ -1,27 +1,21 @@
 using ClaimsModule.Domain.Claims.RiskObjects.Inputs;
 using ClaimsModule.Domain.Claims.RiskObjects.Rules;
-using ClaimsModule.Domain.Claims.Root;
-using ClaimsModule.Domain.Claims.Root.Rules;
-using ClaimsModule.Domain.Core.Operations;
+using ClaimsModule.Domain.Core.Flows;
 
 namespace ClaimsModule.Domain.Claims.RiskObjects.Flows;
 
 internal sealed class UpdateRiskObjectOperation
-    : Operation<UpdateRiskObjectOperation, Claim, UpdateRiskObjectInput, ClaimRiskObject>
+    : Operation<UpdateRiskObjectOperation, ClaimRiskObject, RiskObjectDetailsInput, ClaimRiskObject>
 {
     public UpdateRiskObjectOperation()
     {
-        Require(new IsClaimEditable());
-        Require(input => new IsRiskObjectPresent(input.RiskObjectId));
-        Require(input => new HasNoOtherPrimaryRiskObject(input.RiskObjectId, input.Details.IsPrimary));
+        Require(new IsRiskObjectNotRemoved());
     }
 
-    protected override ClaimRiskObject Apply(Claim claim, UpdateRiskObjectInput input)
+    protected override Outcome<ClaimRiskObject> Apply(ClaimRiskObject riskObject, RiskObjectDetailsInput input)
     {
-        var riskObject = claim.RiskObjectList
-            .Single(candidate => candidate.Id == input.RiskObjectId && !candidate.IsDeleted);
-        riskObject.Update(input.Details, input.Now);
+        riskObject.Details = input.Details;
 
-        return riskObject;
+        return Done(riskObject);
     }
 }

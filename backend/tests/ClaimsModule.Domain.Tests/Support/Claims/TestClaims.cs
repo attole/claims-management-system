@@ -1,56 +1,66 @@
-using ClaimsModule.Domain.Claims.Issues;
+using ClaimsModule.Domain.Claims;
+using ClaimsModule.Domain.Claims.Inputs;
 using ClaimsModule.Domain.Claims.Issues.Inputs;
 using ClaimsModule.Domain.Claims.Loss;
-using ClaimsModule.Domain.Claims.Loss.Flows;
 using ClaimsModule.Domain.Claims.Loss.Inputs;
 using ClaimsModule.Domain.Claims.Parties;
 using ClaimsModule.Domain.Claims.Parties.Inputs;
 using ClaimsModule.Domain.Claims.RiskObjects;
 using ClaimsModule.Domain.Claims.RiskObjects.Inputs;
-using ClaimsModule.Domain.Claims.Root;
-using ClaimsModule.Domain.Claims.Root.Inputs;
-using ClaimsModule.Domain.Common.Roles;
+using ClaimsModule.Domain.Roles;
 
 namespace ClaimsModule.Domain.Tests.Support.Claims;
 
 public static class TestClaims
 {
+    public const string Description = "Water damage in the kitchen after a burst pipe";
+
     public static readonly DateTimeOffset Start = new(2026, 10, 12, 8, 0, 0, TimeSpan.Zero);
     public static readonly DateTimeOffset Later = Start.AddHours(1);
+    public static readonly DateOnly ReportDay = DateOnly.FromDateTime(Start.UtcDateTime);
     public static readonly Guid Organisation = Guid.Parse("11111111-1111-1111-1111-111111111111");
     public static readonly Guid Actor = Guid.Parse("22222222-2222-2222-2222-222222222222");
-    public const UserRole Handler = UserRole.Handler;
-    public const UserRole Supervisor = UserRole.Supervisor;
-    public const UserRole Manager = UserRole.Manager;
+    public static readonly UserRole Handler = new UserHandlerRole();
+    public static readonly UserRole Supervisor = new UserSupervisorRole();
+    public static readonly UserRole Manager = new UserManagerRole();
     public static readonly Guid Policy = Guid.Parse("77777777-7777-7777-7777-777777777777");
     public static readonly DateTimeOffset OutsidePolicyPeriod = new(2025, 12, 31, 8, 0, 0, TimeSpan.Zero);
-    public const string Description = "Water damage in the kitchen after a burst pipe";
 
     public static Claim Empty()
     {
         var claim = WithoutPolicy();
-        claim.LinkPolicy(new LinkPolicyInput(Policy, Actor, Start, Reference()));
+        claim.LinkPolicy(new LinkPolicyInput(Policy, LossReference()));
 
         return claim;
     }
 
     public static Claim WithoutPolicy()
     {
-        var input = new CreateClaimInput(Organisation, ClaimNumber.From("CLM-2026-0000001"), Actor, Start, Reference());
+        var input = new CreateClaimInput(
+            Organisation,
+            ClaimNumber.From("CLM-2026-0000001"),
+            Start,
+            Start,
+            NoPolicyReference());
 
         return Claim.Create(input).Value;
     }
 
-    public static Claim WithPolicyWarning()
+    public static LossReference LossReference()
     {
-        return WithoutPolicy();
+        var period = new PolicyPeriod(Policy, new DateOnly(2026, 1, 1), new DateOnly(2026, 12, 31), DateOnly.MinValue);
+
+        return new LossReference(["WATER"], period);
     }
 
-    public static ClaimReferenceSnapshot Reference()
+    public static LossReference NoPolicyReference()
     {
-        var period = new PolicyPeriod(new DateOnly(2026, 1, 1), new DateOnly(2026, 12, 31), DateOnly.MinValue);
+        return new LossReference(["WATER"], PolicyPeriod.Empty);
+    }
 
-        return new ClaimReferenceSnapshot(["WATER"], period);
+    public static LossReference ReferenceWithCauseCodes(params string[] codes)
+    {
+        return new LossReference(codes, LossReference().PolicyPeriod);
     }
 
     public static Claim Create(params PartyDetails[] parties)
@@ -59,11 +69,12 @@ public static class TestClaims
         var riskObject = new RiskObjectDetails(AssetType.Property, "Kitchen");
 
         SetLoss(claim, Loss(Start.AddDays(-3), Description));
-        claim.AddRiskObject(new AddRiskObjectInput(riskObject, Actor, Start, Reference()));
+        claim.AddRiskObject(new AddRiskObjectInput(riskObject, LossReference()));
+        claim.AssignHandler(new AssignHandlerInput(Actor, LossReference()));
 
         foreach (var party in parties)
         {
-            claim.AddParty(new AddPartyInput(party, Actor, Start, Reference()));
+            claim.AddParty(new AddPartyInput(party, LossReference()));
         }
 
         claim.PopEvents();
@@ -74,7 +85,7 @@ public static class TestClaims
     public static Claim WithLimitOverride()
     {
         var claim = Empty();
-        claim.SetLimitOverride(new SetLimitOverrideInput(true, Manager, Actor, Start, Reference()));
+        claim.SetLimitOverride(new SetLimitOverrideInput(true, Manager, 0m, LossReference()));
 
         return claim;
     }
@@ -100,40 +111,34 @@ public static class TestClaims
     public static void MoveTo<TState>(Claim claim)
         where TState : ClaimState, new()
     {
-        var input = new SampleMoveClaimInput(Handler, Actor, Start, Reference());
-        SampleMoveClaimTransition<TState>.Execute(claim, input);
+        var input = new ClaimTransitionInput(LossReference());
+        SampleMoveClaimTransition<TState>.Run(claim, input);
         claim.PopEvents();
     }
 
     public static void ChangeLoss(Claim claim, UpdateLossDetailsInput input)
     {
-        var change = new ChangeLossInput(input.Loss, claim.State.Marker, input.Reference, input.Now, input.ActorId);
-        UpdateLossDetailsOperation.Execute(claim.LossEvent, change);
+        claim.LossEvent.Update(new LossDetailsInput(input.Loss));
     }
 
     public static ClaimRiskObject AddPrimaryRiskObject(Claim claim)
     {
         var van = new RiskObjectDetails(AssetType.Vehicle, "Van") { IsPrimary = true };
-        var input = new AddRiskObjectInput(van, Actor, Start, Reference());
+        var input = new AddRiskObjectInput(van, LossReference());
 
         return claim.AddRiskObject(input).Value;
     }
 
-    public static ClaimReserveSnapshot Reserves()
-    {
-        return new ClaimReserveSnapshot(1, false, false);
-    }
-
     public static void WaiveIssue(Claim claim, string code)
     {
-        var issue = claim.Issues.Single(candidate => candidate.IsCurrent && candidate.Finding.Code == code);
-        claim.WaiveIssue(new WaiveIssueInput(issue.Id, Actor, Start, Reference()));
+        var issue = claim.Issues.Single(issue => issue.State.IsCurrent && issue.Finding.HasCode(code));
+        claim.WaiveIssue(new WaiveIssueInput(issue.Id, Supervisor, Actor, Start, LossReference()));
     }
 
     public static void AcknowledgeIssue(Claim claim, string code)
     {
-        var issue = claim.Issues.Single(candidate => candidate.IsCurrent && candidate.Finding.Code == code);
-        claim.AcknowledgeIssue(new AcknowledgeIssueInput(issue.Id, Actor, Start, Reference()));
+        var issue = claim.Issues.Single(issue => issue.State.IsCurrent && issue.Finding.HasCode(code));
+        claim.AcknowledgeIssue(new AcknowledgeIssueInput(issue.Id, Actor, Start, LossReference()));
     }
 
     public static Claim WithLoss(DateTimeOffset lossDate)
@@ -156,7 +161,7 @@ public static class TestClaims
 
     public static void SetLoss(Claim claim, LossDetails loss)
     {
-        claim.UpdateLossDetails(new UpdateLossDetailsInput(loss, Actor, Start, Reference()));
+        claim.UpdateLossDetails(new UpdateLossDetailsInput(loss, LossReference()));
     }
 
     public static LossDetails Loss(DateTimeOffset lossDate, string description)

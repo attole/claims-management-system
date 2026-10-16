@@ -1,25 +1,19 @@
-using ClaimsModule.Domain.Claims.Parties.Inputs;
 using ClaimsModule.Domain.Claims.Parties.Rules;
-using ClaimsModule.Domain.Claims.Root;
-using ClaimsModule.Domain.Claims.Root.Rules;
-using ClaimsModule.Domain.Core.Operations;
+using ClaimsModule.Domain.Core.Flows;
 
 namespace ClaimsModule.Domain.Claims.Parties.Flows;
 
-internal sealed class RemovePartyOperation : Operation<RemovePartyOperation, Claim, RemovePartyInput, ClaimParty>
+internal sealed class RemovePartyOperation : Operation<RemovePartyOperation, ClaimParty, NoInput, ClaimParty>
 {
     public RemovePartyOperation()
     {
-        Require(new IsClaimEditable());
-        Require(input => new IsPartyActive(input.PartyId));
-        Require(input => new IsNotLastClaimant(input.PartyId));
+        Require(new IsPartyActive());
     }
 
-    protected override ClaimParty Apply(Claim claim, RemovePartyInput input)
+    protected override Outcome<ClaimParty> Apply(ClaimParty party, NoInput input)
     {
-        var party = claim.PartyList.Single(candidate => candidate.Id == input.PartyId && candidate.IsActive);
-        party.Remove(input.Now);
+        party.IsActive = false;
 
-        return party;
+        return Done(party);
     }
 }

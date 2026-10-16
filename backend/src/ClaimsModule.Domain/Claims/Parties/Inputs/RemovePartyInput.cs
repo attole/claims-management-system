@@ -1,7 +1,7 @@
-using ClaimsModule.Domain.Claims.Issues;
-using ClaimsModule.Domain.Claims.Root.Inputs;
+using ClaimsModule.Domain.Claims.Inputs;
+using ClaimsModule.Domain.Claims.Loss;
 
 namespace ClaimsModule.Domain.Claims.Parties.Inputs;
 
-public sealed record RemovePartyInput(Guid PartyId, Guid ActorId, DateTimeOffset Now, ClaimReferenceSnapshot Reference)
-    : ClaimBaseOperationInput(Now, ActorId, Reference);
+public sealed record RemovePartyInput(Guid PartyId, LossReference LossReference)
+    : ClaimBaseOperationInput(LossReference);

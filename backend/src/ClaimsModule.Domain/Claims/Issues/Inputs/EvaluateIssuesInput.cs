@@ -1,6 +1,6 @@
-using ClaimsModule.Domain.Claims.Root.Inputs;
+using ClaimsModule.Domain.Claims.Inputs;
+using ClaimsModule.Domain.Claims.Loss;
 
 namespace ClaimsModule.Domain.Claims.Issues.Inputs;
 
-public sealed record EvaluateIssuesInput(DateTimeOffset Now, Guid ActorId, ClaimReferenceSnapshot Reference)
-    : ClaimBaseOperationInput(Now, ActorId, Reference);
+public sealed record EvaluateIssuesInput(LossReference LossReference) : ClaimBaseOperationInput(LossReference);

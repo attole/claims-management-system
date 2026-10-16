@@ -1,24 +1,24 @@
 using ClaimsModule.Domain.Claims.Issues.Inputs;
 using ClaimsModule.Domain.Claims.Issues.Rules;
-using ClaimsModule.Domain.Claims.Root;
-using ClaimsModule.Domain.Claims.Root.Rules;
-using ClaimsModule.Domain.Core.Operations;
+using ClaimsModule.Domain.Core.Flows;
 
 namespace ClaimsModule.Domain.Claims.Issues.Flows;
 
-internal sealed class WaiveIssueOperation : Operation<WaiveIssueOperation, Claim, WaiveIssueInput, ClaimValidationIssue>
+internal sealed class WaiveIssueOperation
+    : Operation<WaiveIssueOperation, ClaimValidationIssue, IssueResolutionInput, ClaimValidationIssue>
 {
     public WaiveIssueOperation()
     {
-        Require(new IsClaimEditable());
-        Require(input => new IsIssueWaivable(input.IssueId));
+        Require(new IsIssueWaivable());
+        Require(new HasWaivableFinding());
     }
 
-    protected override ClaimValidationIssue Apply(Claim claim, WaiveIssueInput input)
+    protected override Outcome<ClaimValidationIssue> Apply(ClaimValidationIssue issue, IssueResolutionInput input)
     {
-        var issue = claim.IssueList.Single(candidate => candidate.Id == input.IssueId);
-        issue.Waive(input.ActorId, input.Now);
+        issue.State = new IssueWaivedState();
+        issue.ResolvedAt = input.Now;
+        issue.ResolvedBy = input.ActorId;
 
-        return issue;
+        return Done(issue);
     }
 }

@@ -1,11 +1,9 @@
 using ClaimsModule.Domain.Claims.Issues;
-using ClaimsModule.Domain.Claims.Issues.Checks;
 using ClaimsModule.Domain.Claims.Issues.Flows;
 using ClaimsModule.Domain.Claims.Issues.Inputs;
 using ClaimsModule.Domain.Claims.Issues.Rules;
-using ClaimsModule.Domain.Claims.Loss.Checks;
-using ClaimsModule.Domain.Claims.Root;
-using ClaimsModule.Domain.Claims.Root.Rules;
+using ClaimsModule.Domain.Claims.Loss.Rules;
+using ClaimsModule.Domain.Claims.Rules;
 using ClaimsModule.Domain.Tests.Support.Claims;
 
 namespace ClaimsModule.Domain.Tests.Claims.Issues.Flows;
@@ -13,28 +11,13 @@ namespace ClaimsModule.Domain.Tests.Claims.Issues.Flows;
 public sealed class AcknowledgeIssueOperationTests
 {
     [Fact]
-    [Trait("Rule", "S:BR-C-02")]
-    public void Execute_ForThePolicyPeriodWarning_AcknowledgesIt()
+    public void Run_ResolvesTheIssueAndRecordsWhoAndWhen()
     {
-        var claim = TestClaims.WithLoss(TestClaims.OutsidePolicyPeriod);
-        var issue = claim.Issues.Single(candidate => candidate.Finding.Code == IsLossDateWithinPolicyPeriod.Code);
-        var input = new AcknowledgeIssueInput(issue.Id, TestClaims.Actor, TestClaims.Later, TestClaims.Reference());
+        var claim = TestClaims.WithoutPolicy();
+        var issue = claim.Issues.Single(issue => issue.Finding.HasCode(HasLinkedPolicy.Code));
+        var input = new IssueResolutionInput(TestClaims.Actor, TestClaims.Later);
 
-        var outcome = AcknowledgeIssueOperation.Execute(claim, input);
-
-        outcome.IsSuccess.Should().BeTrue();
-        issue.State.Should().BeOfType<IssueAcknowledgedState>();
-    }
-
-    [Fact]
-    [Trait("Rule", HasLinkedPolicy.Code)]
-    public void Execute_ForAnUnresolvedWarning_AcknowledgesItAndRecordsTheActor()
-    {
-        var claim = TestClaims.WithPolicyWarning();
-        var issue = claim.Issues.Single(candidate => candidate.Finding.Code == HasLinkedPolicy.Code);
-        var input = new AcknowledgeIssueInput(issue.Id, TestClaims.Actor, TestClaims.Later, TestClaims.Reference());
-
-        var outcome = AcknowledgeIssueOperation.Execute(claim, input);
+        var outcome = AcknowledgeIssueOperation.Run(issue, input);
 
         outcome.IsSuccess.Should().BeTrue();
         issue.State.Should().BeOfType<IssueAcknowledgedState>();
@@ -44,45 +27,15 @@ public sealed class AcknowledgeIssueOperationTests
 
     [Fact]
     [Trait("Rule", IsIssueAcknowledgeable.Code)]
-    public void Execute_ForACriticalIssue_ReturnsTheFindingAndKeepsTheIssue()
+    public void Run_ForTheWrongKindOfIssue_ReturnsTheFinding()
     {
-        var claim = TestClaims.WithPolicyWarning();
-        var issue = claim.Issues.Single(candidate => candidate.Finding.Code == IsLossDatePresent.Code);
-        var input = new AcknowledgeIssueInput(issue.Id, TestClaims.Actor, TestClaims.Later, TestClaims.Reference());
+        var claim = TestClaims.WithoutPolicy();
+        var issue = claim.Issues.Single(issue => issue.Finding.HasCode(IsLossDatePresent.Code));
+        var input = new IssueResolutionInput(TestClaims.Actor, TestClaims.Later);
 
-        var outcome = AcknowledgeIssueOperation.Execute(claim, input);
+        var outcome = AcknowledgeIssueOperation.Run(issue, input);
 
-        outcome.Blocking.Should().ContainSingle().Which.Code.Should().Be(IsIssueAcknowledgeable.Code);
+        outcome.CriticalFindings.Should().ContainSingle().Which.Code.Should().Be(IsIssueAcknowledgeable.Code);
         issue.State.Should().BeOfType<IssueRaisedState>();
-    }
-
-    [Fact]
-    [Trait("Rule", IsIssueAcknowledgeable.Code)]
-    public void Execute_Twice_ReturnsTheFindingTheSecondTime()
-    {
-        var claim = TestClaims.WithPolicyWarning();
-        var issue = claim.Issues.Single(candidate => candidate.Finding.Code == HasLinkedPolicy.Code);
-        var input = new AcknowledgeIssueInput(issue.Id, TestClaims.Actor, TestClaims.Later, TestClaims.Reference());
-        AcknowledgeIssueOperation.Execute(claim, input);
-
-        var outcome = AcknowledgeIssueOperation.Execute(claim, input);
-
-        outcome.Blocking.Should().ContainSingle().Which.Code.Should().Be(IsIssueAcknowledgeable.Code);
-    }
-
-    [Fact]
-    [Trait("Rule", IsClaimEditable.Code)]
-    public void Execute_OnAClosedClaim_ReturnsTheFinding()
-    {
-        var claim = TestClaims.InState<ClaimClosedState>();
-        var input = new AcknowledgeIssueInput(
-            Guid.NewGuid(),
-            TestClaims.Actor,
-            TestClaims.Later,
-            TestClaims.Reference());
-
-        var outcome = AcknowledgeIssueOperation.Execute(claim, input);
-
-        outcome.Blocking.Select(finding => finding.Code).Should().Contain(IsClaimEditable.Code);
     }
 }

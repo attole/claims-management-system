@@ -1,5 +1,3 @@
-using ClaimsModule.Domain.Claims.Root;
-using ClaimsModule.Domain.Core.Base.Checks;
 using ClaimsModule.Domain.Core.Rules;
 
 namespace ClaimsModule.Domain.Claims.Parties.Rules;
@@ -11,15 +9,12 @@ internal sealed class IsNotLastClaimant(Guid partyId) : IRule<Claim>
     private const string Message = "The last claimant cannot be removed.";
     private const string Field = "PartyId";
 
-    public CheckResult<DomainFinding> Check(Claim claim)
+    public CheckResult Check(Claim claim)
     {
-        bool isNotLastClaimant = !claim.Parties
-            .Where(party => party.IsActiveClaimant)
-            .Select(party => party.Id)
-            .SequenceEqual([partyId]);
+        bool isNotLastClaimant = !claim.IsOnlyActiveClaimant(partyId);
 
         return isNotLastClaimant
-            ? CheckResult<DomainFinding>.Pass
-            : CheckResult<DomainFinding>.Found(new RuleFinding(Code, Message, Field));
+            ? CheckResult.Pass
+            : CheckResult.Found(new Finding(Code, Message, Field));
     }
 }

@@ -1,19 +1,11 @@
-using ClaimsModule.Domain.Claims.Issues;
-using ClaimsModule.Domain.Claims.Root;
-using ClaimsModule.Domain.Claims.Root.Bases;
-using ClaimsModule.Domain.Claims.Root.Inputs;
-using ClaimsModule.Domain.Common.Roles;
+using ClaimsModule.Domain.Claims;
+using ClaimsModule.Domain.Claims.Flows;
+using ClaimsModule.Domain.Claims.Inputs;
 
 namespace ClaimsModule.Domain.Tests.Support.Claims;
 
-public sealed record SampleMoveClaimInput(
-    UserRole ActorRole,
-    Guid ActorId,
-    DateTimeOffset Now,
-    ClaimReferenceSnapshot Reference) : ClaimBaseTransitionInput(ActorRole, ActorId, Now, Reference);
-
 internal sealed class SampleMoveClaimTransition<TTarget>
-    : ClaimBaseTransition<SampleMoveClaimTransition<TTarget>, SampleMoveClaimInput>
+    : ClaimBaseTransition<SampleMoveClaimTransition<TTarget>, ClaimTransitionInput>
     where TTarget : ClaimState, new()
 {
     public SampleMoveClaimTransition() : base(new TTarget())

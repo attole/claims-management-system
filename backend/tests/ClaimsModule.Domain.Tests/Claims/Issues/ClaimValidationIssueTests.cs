@@ -1,77 +1,67 @@
 using ClaimsModule.Domain.Claims.Issues;
-using ClaimsModule.Domain.Claims.Issues.Flows;
+using ClaimsModule.Domain.Claims.Issues.Events;
 using ClaimsModule.Domain.Claims.Issues.Inputs;
-using ClaimsModule.Domain.Claims.Loss.Checks;
-using ClaimsModule.Domain.Claims.Loss.Inputs;
+using ClaimsModule.Domain.Claims.Loss.Rules;
+using ClaimsModule.Domain.Claims.Parties.Rules;
+using ClaimsModule.Domain.Core.Rules;
 using ClaimsModule.Domain.Tests.Support.Claims;
 
 namespace ClaimsModule.Domain.Tests.Claims.Issues;
 
 public sealed class ClaimValidationIssueTests
 {
-    private static readonly Guid _otherActor = Guid.Parse("33333333-3333-3333-3333-333333333333");
-
     [Fact]
-    public void ARaisedCriticalIssue_IsCurrentAndUnresolved()
+    public void Clear_RaisesTheClearedEventAndEndsTheIssue()
     {
-        var claim = TestClaims.Empty();
-        var current = claim.Issues
-            .Where(issue => issue.IsCurrent)
-            .Where(issue => issue.Finding.Severity.IsBlockingOpening)
-            .ToList();
+        var issue = TestClaims.Empty().Issues[0];
 
-        current.Should().HaveCount(4);
-        current.Should().OnlyContain(issue => issue.IsUnresolvedCritical && issue.State is IssueRaisedState);
+        issue.Clear();
+
+        issue.State.IsCurrent.Should().BeFalse();
+        issue.PopEvents().OfType<ValidationIssueClearedEvent>().Should().ContainSingle()
+            .Which.IssueId.Should().Be(issue.Id);
     }
 
     [Fact]
-    public void AFixedProblem_ClearsTheIssueAndRecordsTheTimeAndTheActor()
+    public void Waive_RaisesTheWaivedEventAndKeepsTheIssueCurrent()
     {
         var claim = TestClaims.Empty();
-        var loss = TestClaims.Loss(TestClaims.Start.AddDays(-1), TestClaims.Description);
-        var update = new UpdateLossDetailsInput(loss, TestClaims.Actor, TestClaims.Later, TestClaims.Reference());
-        TestClaims.ChangeLoss(claim, update);
-        var input = new EvaluateIssuesInput(TestClaims.Later, TestClaims.Actor, TestClaims.Reference());
+        var issue = claim.Issues.First(issue => issue.Finding.HasCode(IsDescriptionLongEnough.Code));
+        var input = new IssueResolutionInput(TestClaims.Actor, TestClaims.Later);
 
-        EvaluateIssuesFlow.Execute(claim, input);
+        issue.Waive(input);
 
-        var dateIssue = claim.Issues.Single(issue => issue.Finding.Code == IsLossDatePresent.Code);
-        dateIssue.State.Should().BeOfType<IssueClearedState>();
-        dateIssue.IsCurrent.Should().BeFalse();
-        dateIssue.ResolvedAt.Should().Be(TestClaims.Later);
-        dateIssue.ResolvedBy.Should().Be(TestClaims.Actor);
-    }
-
-    [Fact]
-    public void AWaivedIssue_IsResolvedButStillCurrent()
-    {
-        var claim = TestClaims.Empty();
-        var issue = claim.Issues[0];
-        var input = new WaiveIssueInput(issue.Id, TestClaims.Actor, TestClaims.Later, TestClaims.Reference());
-
-        WaiveIssueOperation.Execute(claim, input);
-
-        issue.IsCurrent.Should().BeTrue();
+        issue.State.IsCurrent.Should().BeTrue();
         issue.IsUnresolvedCritical.Should().BeFalse();
-        issue.ResolvedBy.Should().Be(TestClaims.Actor);
+        issue.PopEvents().OfType<ValidationIssueWaivedEvent>().Should().ContainSingle()
+            .Which.IssueId.Should().Be(issue.Id);
     }
 
     [Fact]
-    public void AWaivedIssue_WhoseProblemIsFixed_IsClearedByTheActorWhoFixedIt()
+    public void Acknowledge_ForAWarning_RaisesTheAcknowledgedEvent()
+    {
+        var claim = TestClaims.WithoutPolicy();
+        var warning = claim.Issues.First(issue => issue.Finding.Severity == FindingSeverity.Warning);
+        var input = new IssueResolutionInput(TestClaims.Actor, TestClaims.Later);
+
+        warning.Acknowledge(input);
+
+        warning.State.Should().BeOfType<IssueAcknowledgedState>();
+        warning.IsUnresolvedWarning.Should().BeFalse();
+        warning.PopEvents().OfType<ValidationIssueAcknowledgedEvent>().Should().ContainSingle()
+            .Which.IssueId.Should().Be(warning.Id);
+    }
+
+    [Theory]
+    [InlineData(IsLossDatePresent.Code, false)]
+    [InlineData(IsCauseCodeActive.Code, false)]
+    [InlineData(HasClaimant.Code, false)]
+    [InlineData(IsDescriptionLongEnough.Code, true)]
+    public void HasWaivableFinding_IsFalseOnlyForTheFixOnlyIssues(string code, bool isExpected)
     {
         var claim = TestClaims.Empty();
-        var issue = claim.Issues.Single(candidate => candidate.Finding.Code == IsLossDatePresent.Code);
-        var waive = new WaiveIssueInput(issue.Id, TestClaims.Actor, TestClaims.Later, TestClaims.Reference());
-        WaiveIssueOperation.Execute(claim, waive);
-        var loss = TestClaims.Loss(TestClaims.Start.AddDays(-1), TestClaims.Description);
-        var fix = new UpdateLossDetailsInput(loss, _otherActor, TestClaims.Later.AddHours(1), TestClaims.Reference());
-        TestClaims.ChangeLoss(claim, fix);
-        var input = new EvaluateIssuesInput(TestClaims.Later.AddHours(1), _otherActor, TestClaims.Reference());
+        var issue = claim.Issues.First(issue => issue.Finding.HasCode(code));
 
-        EvaluateIssuesFlow.Execute(claim, input);
-
-        issue.State.Should().BeOfType<IssueClearedState>();
-        issue.ResolvedBy.Should().Be(_otherActor);
-        issue.ResolvedAt.Should().Be(TestClaims.Later.AddHours(1));
+        issue.HasWaivableFinding.Should().Be(isExpected);
     }
 }

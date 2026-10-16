@@ -1,10 +1,6 @@
-using ClaimsModule.Domain.Claims.Issues;
-using ClaimsModule.Domain.Claims.Root.Inputs;
+using ClaimsModule.Domain.Claims.Inputs;
 
 namespace ClaimsModule.Domain.Claims.Loss.Inputs;
 
-public sealed record UpdateLossDetailsInput(
-    LossDetails Loss,
-    Guid ActorId,
-    DateTimeOffset Now,
-    ClaimReferenceSnapshot Reference) : ClaimBaseOperationInput(Now, ActorId, Reference);
+public sealed record UpdateLossDetailsInput(LossDetails Loss, LossReference LossReference)
+    : ClaimBaseOperationInput(LossReference);

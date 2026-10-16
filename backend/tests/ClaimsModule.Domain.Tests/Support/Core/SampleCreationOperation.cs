@@ -1,11 +1,11 @@
-using ClaimsModule.Domain.Core.Operations;
+using ClaimsModule.Domain.Core.Flows;
 
 namespace ClaimsModule.Domain.Tests.Support.Core;
 
 internal sealed class SampleCreationOperation : CreationOperation<SampleCreationOperation, SampleInput, string>
 {
-    protected override string Apply(SampleInput input)
+    protected override Outcome<string> Apply(SampleInput input)
     {
-        return input.Text;
+        return Done(input.Text);
     }
 }

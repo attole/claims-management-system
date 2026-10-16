@@ -1,11 +1,12 @@
+using ClaimsModule.Domain.Claims;
 using ClaimsModule.Domain.Claims.Issues;
 using ClaimsModule.Domain.Claims.Loss;
 using ClaimsModule.Domain.Claims.Parties;
 using ClaimsModule.Domain.Claims.RiskObjects;
-using ClaimsModule.Domain.Claims.Root;
 using ClaimsModule.Domain.Claims.StateChanges;
-using ClaimsModule.Domain.ReserveChanges.Root;
-using ClaimsModule.Domain.Reserves.Root;
+using ClaimsModule.Domain.Core.Rules;
+using ClaimsModule.Domain.ReserveChanges;
+using ClaimsModule.Domain.Reserves;
 
 namespace ClaimsModule.Domain.Tests.Claims;
 
@@ -27,44 +28,67 @@ public sealed class EntityConstructionTests
     }
 
     [Fact]
-    public void ChildEntities_CanBeBuiltWithoutArguments()
+    public void ClaimParty_CanBeBuiltWithoutArguments()
     {
         var party = (ClaimParty)Activator.CreateInstance(typeof(ClaimParty), nonPublic: true)!;
-        var riskObject = (ClaimRiskObject)Activator.CreateInstance(typeof(ClaimRiskObject), nonPublic: true)!;
-        var loss = (ClaimLossEvent)Activator.CreateInstance(typeof(ClaimLossEvent), nonPublic: true)!;
-        var issue = (ClaimValidationIssue)Activator.CreateInstance(typeof(ClaimValidationIssue), nonPublic: true)!;
-
-        var stateChange = (ClaimStateChange)Activator.CreateInstance(typeof(ClaimStateChange), nonPublic: true)!;
 
         party.Details.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void ClaimRiskObject_CanBeBuiltWithoutArguments()
+    {
+        var riskObject = (ClaimRiskObject)Activator.CreateInstance(typeof(ClaimRiskObject), nonPublic: true)!;
+
         riskObject.Details.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void ClaimLossEvent_CanBeBuiltWithoutArgumentsWithAnEmptyLoss()
+    {
+        var loss = (ClaimLossEvent)Activator.CreateInstance(typeof(ClaimLossEvent), nonPublic: true)!;
+
         loss.Details.Should().Be(LossDetails.Empty);
-        issue.Finding.Should().Be(IssueFinding.Empty);
+    }
+
+    [Fact]
+    public void ClaimValidationIssue_CanBeBuiltWithoutArgumentsWithAnEmptyFinding()
+    {
+        var issue = (ClaimValidationIssue)Activator.CreateInstance(typeof(ClaimValidationIssue), nonPublic: true)!;
+
+        issue.Finding.Should().Be(new Finding(string.Empty, string.Empty));
         issue.State.Should().BeOfType<IssueRaisedState>();
+    }
+
+    [Fact]
+    public void ClaimStateChange_CanBeBuiltWithoutArgumentsWithEmptyValues()
+    {
+        var stateChange = (ClaimStateChange)Activator.CreateInstance(typeof(ClaimStateChange), nonPublic: true)!;
+
         stateChange.Reason.Should().Be(StateChangeReason.Empty);
         stateChange.Note.Should().BeEmpty();
     }
 
     [Fact]
-    public void ReserveComponent_CanBeBuiltWithoutArgumentsWithEmptyValues()
+    public void Reserve_CanBeBuiltWithoutArgumentsWithEmptyValues()
     {
-        var component = (Reserve)Activator.CreateInstance(typeof(Reserve), nonPublic: true)!;
+        var reserve = (Reserve)Activator.CreateInstance(typeof(Reserve), nonPublic: true)!;
 
-        component.ComponentType.Should().BeOfType<ReserveIndemnityComponentType>();
-        component.Status.Should().Be(ReserveStatus.Active);
-        component.Notes.Should().BeEmpty();
+        reserve.ComponentType.Should().BeOfType<ReserveIndemnityComponentType>();
+        reserve.Status.Should().Be(ReserveStatus.Active);
+        reserve.Notes.Should().BeEmpty();
     }
 
     [Fact]
     public void ReserveChange_CanBeBuiltWithoutArgumentsWithEmptyValues()
     {
-        var reserve = (ReserveChange)Activator.CreateInstance(typeof(ReserveChange), nonPublic: true)!;
+        var change = (ReserveChange)Activator.CreateInstance(typeof(ReserveChange), nonPublic: true)!;
 
-        reserve.ApprovalState.Should().BeOfType<ReservePendingApprovalState>();
-        reserve.PostingState.Should().BeOfType<ReservePostingPendingState>();
-        reserve.PostingDetails.Should().Be(ReservePostingDetails.Empty);
-        reserve.Balances.Should().Be(ReserveBalances.Empty);
-        reserve.Review.Should().Be(ReserveReview.Empty);
-        reserve.Details.Amount.Should().Be(0m);
+        change.ApprovalState.Should().BeOfType<ReservePendingApprovalState>();
+        change.PostingState.Should().BeOfType<ReservePostingPendingState>();
+        change.PostingDetails.Should().Be(ReservePostingDetails.Empty);
+        change.Balances.Should().Be(ReserveBalances.Empty);
+        change.Review.Should().Be(ReserveReview.Empty);
+        change.Details.Amount.Should().Be(0m);
     }
 }

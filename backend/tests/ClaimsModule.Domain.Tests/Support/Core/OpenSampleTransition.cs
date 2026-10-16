@@ -10,6 +10,6 @@ internal sealed class OpenSampleTransition : SampleTransition<OpenSampleTransiti
     {
         AllowedFrom(new DraftSampleState());
         AllowedFrom(new ClosedSampleState())
-            .Require(SampleRules.Fail(ReopenDenied));
+            .Require(SampleRules.Critical(ReopenDenied));
     }
 }

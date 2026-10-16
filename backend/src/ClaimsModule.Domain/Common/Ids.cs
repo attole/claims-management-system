@@ -5,10 +5,15 @@ public static class Ids
     private const int TimestampLength = 6;
     private const int TimestampOffset = 10;
 
-    public static Guid Next(DateTimeOffset now)
+    public static Guid Next()
+    {
+        return NextAt(DateTimeOffset.UtcNow);
+    }
+
+    internal static Guid NextAt(DateTimeOffset time)
     {
         byte[] bytes = Guid.NewGuid().ToByteArray();
-        ulong milliseconds = (ulong)now.ToUnixTimeMilliseconds();
+        ulong milliseconds = (ulong)time.ToUnixTimeMilliseconds();
 
         for (int index = 0; index < TimestampLength; index++)
         {

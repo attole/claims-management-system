@@ -9,36 +9,25 @@ public sealed class IsPartyActiveTests
 {
     [Fact]
     [Trait("Rule", IsPartyActive.Code)]
-    public void Check_PassesForAnActiveParty()
+    public void Check_ForAnActiveParty_Passes()
     {
         var claim = TestClaims.Create(TestClaims.Claimant());
 
-        var result = new IsPartyActive(claim.Parties[0].Id).Check(claim);
+        var result = new IsPartyActive().Check(claim.Parties[0]);
 
         result.Findings.Should().BeEmpty();
     }
 
     [Fact]
     [Trait("Rule", IsPartyActive.Code)]
-    public void Check_FailsForAnUnknownParty()
-    {
-        var claim = TestClaims.Create(TestClaims.Claimant());
-
-        var result = new IsPartyActive(Guid.NewGuid()).Check(claim);
-
-        result.Findings.Should().ContainSingle().Which.Code.Should().Be(IsPartyActive.Code);
-    }
-
-    [Fact]
-    [Trait("Rule", IsPartyActive.Code)]
-    public void Check_FailsForARemovedParty()
+    public void Check_ForARemovedParty_ReturnsTheFinding()
     {
         var claim = TestClaims.Create(TestClaims.Claimant(), TestClaims.Witness());
-        var partyId = claim.Parties[1].Id;
-        var input = new RemovePartyInput(partyId, TestClaims.Actor, TestClaims.Later, TestClaims.Reference());
-        RemovePartyOperation.Execute(claim, input);
+        var witness = claim.Parties[1];
+        var input = new RemovePartyInput(witness.Id, TestClaims.LossReference());
+        RemovePartyOnClaimOperation.Run(claim, input);
 
-        var result = new IsPartyActive(partyId).Check(claim);
+        var result = new IsPartyActive().Check(witness);
 
         result.Findings.Should().ContainSingle().Which.Code.Should().Be(IsPartyActive.Code);
     }

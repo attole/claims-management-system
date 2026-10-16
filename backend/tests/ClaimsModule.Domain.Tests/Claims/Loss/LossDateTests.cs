@@ -22,4 +22,29 @@ public sealed class LossDateTests
     {
         new LossDate(TestClaims.Start).Should().Be(new LossDate(TestClaims.Start));
     }
+
+    [Fact]
+    public void UtcDay_ForADateInAnotherOffset_IsItsUtcDay()
+    {
+        var lossDate = new LossDate(new DateTimeOffset(2026, 1, 1, 0, 30, 0, TimeSpan.FromHours(2)));
+
+        lossDate.UtcDay.Should().Be(new DateOnly(2025, 12, 31));
+    }
+
+    [Theory]
+    [InlineData(0, false)]
+    [InlineData(5, false)]
+    [InlineData(24, true)]
+    public void IsAfterDay_ComparesCalendarDaysOnly(int hoursAfterStart, bool isExpected)
+    {
+        var lossDate = new LossDate(TestClaims.Start.AddHours(hoursAfterStart));
+
+        lossDate.IsAfterDay(TestClaims.ReportDay).Should().Be(isExpected);
+    }
+
+    [Fact]
+    public void IsAfterDay_WithoutADate_IsFalse()
+    {
+        LossDate.Empty.IsAfterDay(DateOnly.MinValue).Should().BeFalse();
+    }
 }

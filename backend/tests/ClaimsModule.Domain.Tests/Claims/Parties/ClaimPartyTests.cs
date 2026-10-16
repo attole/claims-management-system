@@ -1,3 +1,4 @@
+using ClaimsModule.Domain.Claims.Parties.Events;
 using ClaimsModule.Domain.Claims.Parties.Flows;
 using ClaimsModule.Domain.Claims.Parties.Inputs;
 using ClaimsModule.Domain.Tests.Support.Claims;
@@ -18,14 +19,21 @@ public sealed class ClaimPartyTests
     public void ARemovedClaimantParty_IsNoLongerAnActiveClaimant()
     {
         var claim = TestClaims.Create(TestClaims.Claimant(), TestClaims.Claimant());
-        var input = new RemovePartyInput(
-            claim.Parties[0].Id,
-            TestClaims.Actor,
-            TestClaims.Later,
-            TestClaims.Reference());
-        RemovePartyOperation.Execute(claim, input);
+        var input = new RemovePartyInput(claim.Parties[0].Id, TestClaims.LossReference());
+        RemovePartyOnClaimOperation.Run(claim, input);
 
         claim.Parties[0].IsActiveClaimant.Should().BeFalse();
-        claim.ActiveClaimantCount.Should().Be(1);
+    }
+
+    [Fact]
+    public void Remove_RaisesPartyRemoved()
+    {
+        var claim = TestClaims.Create(TestClaims.Claimant(), TestClaims.Witness());
+        var witness = claim.Parties[1];
+        witness.PopEvents();
+
+        witness.Remove();
+
+        witness.PopEvents().OfType<PartyRemovedEvent>().Should().ContainSingle().Which.PartyId.Should().Be(witness.Id);
     }
 }
