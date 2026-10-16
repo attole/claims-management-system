@@ -21,7 +21,7 @@ Phase 2 - Data model
 - Record: review pass with code-review against the conventions.
 - Exit: migrations apply from scratch on a fresh database; seed data present.
 
-Phase 3 - Backend (current: Domain packs 1 to 3 done; next the lifecycle pack, then reserves, reference data and audit, then Application and Persistence)
+Phase 3 - Backend (current: the Domain is built (claims, issues, reserves, reserve changes, roles); next Application and Persistence, then Infrastructure and API)
 - Task suggestion: scaffold commands, queries and validators; give each handler its business-rule context; use AI on idempotency and concurrency questions.
 - Here: pack by pack, in the dependency order of the design's build sequence, with boilerplate batched inside a pack; stop after each pack for review. Rules are cited by source-qualified ID (see CLAUDE.md 'Domain sources'). dev-log for tracing flows such as the background jobs. code-review (fresh Opus reader) after each pack.
 - Record: corrections found by code-review or by the user; prompts worth showing.
