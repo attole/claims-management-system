@@ -40,7 +40,7 @@ Search by area:
 
 - API: controllers, middleware, routes
 - Application: MediatR command/query and handler, validator, DTO, mapping profile
-- Domain: entity, value object, domain event, enumeration
+- Domain: aggregate, child entity, value, closed set, rule, step (operation, transition), input, domain event
 - Persistence: DbContext configuration, repository, Unit of Work, migration
 - Infrastructure: Blob/email services, Hangfire job definitions
 - Frontend: component, service, route, form

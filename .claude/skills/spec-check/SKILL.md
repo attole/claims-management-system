@@ -45,9 +45,9 @@ Per CLAUDE.md 'No explanatory comments', rule IDs ride on code, not comments:
 
 - tests: `[Trait("Rule", "S:BR-R-03")]`
 - validators: `.WithErrorCode("S:BR-R-03")`
-- domain guards: the ID in the exception or result error code name where one exists
+- Domain rules: the ID as the rule's `Code` constant
 
-Enforcement search: grep for the ID first, then search semantically (entity, command, and validator names in the area) when no ID is present. A missing ID is a finding only for rules that are otherwise enforced.
+Enforcement search: grep for the ID first, then search semantically (rule, step, entity, command and validator names in the area) when no ID is present. A missing ID is a finding only for rules that are otherwise enforced.
 
 ### Passive mode
 
