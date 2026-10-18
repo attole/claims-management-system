@@ -403,3 +403,39 @@ lesson: when a type exists only to serve one calling convention, drop it togethe
 area: resuming a pack cut by a session limit from the WIP commit
 helped: medium
 note: build and tests were green but one using-order finding and four stale doc lines survived; the workflow check and a reread caught them
+
+## CORRECTION-024 | p1 domain | 2026-10-18
+what: AI bundled the policy period with the cause codes in one loss reference, kept the period type under Claims, and flipped between a Domain Policy entity and a read model
+caught-by: user
+fix: plain Policy entity in its own folder; PolicyPeriod leaves Claims; the loss reference splits into PolicyPeriod and CauseCodes, both listed explicitly on every claim input
+lesson: a bundle that exists only because every caller needs both facts is coupling by our code; name the owner of each fact before grouping
+
+## CORRECTION-025 | p1 domain | 2026-10-18
+what: AI used its own names and two roots for reserves (Reserve, ReserveChange) and stated one reserve per component type, a rule no source gives
+caught-by: user
+fix: re-read spec tables 9.5 and 9.6: ReserveComponent root with ReserveHistory as child, duplicate types allowed with no check; the balance-check race of separate roots was admitted
+lesson: map every Domain type to a spec table before arguing a design; never state a uniqueness rule that no source gives
+
+## ASSESSMENT-010 | p1 domain | 2026-10-18
+area: web search for domain practice (documents on closed claims, reserve status after closing)
+helped: low
+note: results were thin and vendor-specific; they informed the options but decided nothing, the reserve status rule is the user's design choice
+
+## PROMPT-009 | p1 domain | 2026-10-18
+purpose: audit the plan against the stack requirements of the original documents
+prompt: read only the original documents on the tech stack and align each package, library and pattern with our plan; say what is missed or misused
+outcome: kept
+note: produced the gap list (documents aggregate, soft delete and audit, idempotency, sequential ids, validation split, deployment) that set the restructure order
+
+## SPLIT-005 | p1 domain | 2026-10-18
+item: analysis and planning of the spec-alignment restructure (documents, policy and loss split, reserves rename and child history, reserve status)
+who: hybrid
+note: the user decided every boundary and name; the AI read spec and code, argued options and wrote the pack outlines; no code yet
+
+## SUMMARY-016 | p1 domain | 2026-10-18
+topic: aligning the Domain model with the spec tables
+story: comparing our plan with the original documents showed our types did not map onto the spec: policy was bundled into the loss reference, reserves used invented names and two roots, and claim documents were missing. The plan is now ClaimDocument as its own aggregate, a plain Policy entity with two explicit facts on the claim input, ReserveComponent with ReserveHistory as a child, and a reserve status that follows the claim.
+decisions: the user chose documents as an own root that refuses uploads on frozen claims with soft delete; policy as a plain entity with one client name and coverage types; history as a child; duplicate component types allowed; status follows the claim; pack order reserves, policy, documents.
+ai-errors: the AI invented a one-per-type rule, kept spec-foreign names, bundled unrelated facts, understated a concurrency race, and proposed a facts record that the existing inputs already made unnecessary; the user's questions caught each one.
+human-vs-ai: the user drove every structure and name through short why-questions; the AI read the spec and code, argued options and recorded the plan.
+refs: CORRECTION-024, CORRECTION-025, ASSESSMENT-010, PROMPT-009, SPLIT-005
