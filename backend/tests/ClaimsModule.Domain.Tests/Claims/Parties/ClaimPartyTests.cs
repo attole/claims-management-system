@@ -19,7 +19,7 @@ public sealed class ClaimPartyTests
     public void ARemovedClaimantParty_IsNoLongerAnActiveClaimant()
     {
         var claim = TestClaims.Create(TestClaims.Claimant(), TestClaims.Claimant());
-        var input = new RemovePartyInput(claim.Parties[0].Id, TestClaims.LossReference());
+        var input = new RemovePartyInput(claim.Parties[0].Id, TestClaims.Period(), TestClaims.Codes());
         RemovePartyOnClaimOperation.Run(claim, input);
 
         claim.Parties[0].IsActiveClaimant.Should().BeFalse();

@@ -16,7 +16,12 @@ public sealed class AcknowledgeIssueOnClaimOperationTests
     {
         var claim = TestClaims.WithLoss(TestClaims.OutsidePolicyPeriod);
         var issue = claim.Issues.Single(issue => issue.Finding.HasCode(IsLossDateWithinPolicyPeriod.Code));
-        var input = new AcknowledgeIssueInput(issue.Id, TestClaims.Actor, TestClaims.Later, TestClaims.LossReference());
+        var input = new AcknowledgeIssueInput(
+            issue.Id,
+            TestClaims.Actor,
+            TestClaims.Later,
+            TestClaims.Period(),
+            TestClaims.Codes());
 
         var outcome = AcknowledgeIssueOnClaimOperation.Run(claim, input);
 
@@ -33,7 +38,8 @@ public sealed class AcknowledgeIssueOnClaimOperationTests
             Guid.NewGuid(),
             TestClaims.Actor,
             TestClaims.Later,
-            TestClaims.LossReference());
+            TestClaims.Period(),
+            TestClaims.Codes());
 
         var outcome = AcknowledgeIssueOnClaimOperation.Run(claim, input);
 
@@ -46,7 +52,12 @@ public sealed class AcknowledgeIssueOnClaimOperationTests
         var claim = TestClaims.WithLoss(TestClaims.OutsidePolicyPeriod);
         var issue = claim.Issues.Single(issue => issue.Finding.HasCode(IsLossDateWithinPolicyPeriod.Code));
         var earlier = TestClaims.Start.AddDays(-1);
-        var input = new AcknowledgeIssueInput(issue.Id, TestClaims.Actor, earlier, TestClaims.LossReference());
+        var input = new AcknowledgeIssueInput(
+            issue.Id,
+            TestClaims.Actor,
+            earlier,
+            TestClaims.Period(),
+            TestClaims.Codes());
 
         Action act = () => AcknowledgeIssueOnClaimOperation.Run(claim, input);
 

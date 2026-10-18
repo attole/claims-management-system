@@ -14,7 +14,7 @@ public sealed class OpenClaimTransitionTests
     public void Run_FromDraftWhenTheClaimIsComplete_OpensIt()
     {
         var claim = TestClaims.Create(TestClaims.Claimant());
-        var input = new ClaimTransitionInput(TestClaims.LossReference());
+        var input = new ClaimTransitionInput(TestClaims.Period(), TestClaims.Codes());
 
         var outcome = OpenClaimTransition.Run(claim, input);
 
@@ -28,7 +28,7 @@ public sealed class OpenClaimTransitionTests
     public void Run_FromDraftWithUnresolvedCriticalIssues_ReturnsEveryFinding()
     {
         var claim = TestClaims.Empty();
-        var input = new ClaimTransitionInput(TestClaims.LossReference());
+        var input = new ClaimTransitionInput(TestClaims.Period(), TestClaims.Codes());
 
         var outcome = OpenClaimTransition.Run(claim, input);
 
@@ -42,7 +42,7 @@ public sealed class OpenClaimTransitionTests
     public void Run_FromDraftWithAnUnacknowledgedPolicyPeriodWarning_ReturnsTheFinding()
     {
         var claim = TestClaims.WithLoss(TestClaims.OutsidePolicyPeriod);
-        var input = new ClaimTransitionInput(TestClaims.LossReference());
+        var input = new ClaimTransitionInput(TestClaims.Period(), TestClaims.Codes());
 
         var outcome = OpenClaimTransition.Run(claim, input);
 
@@ -55,7 +55,7 @@ public sealed class OpenClaimTransitionTests
     public void Run_FromUnderInvestigation_OpensIt()
     {
         var claim = TestClaims.InState<ClaimUnderInvestigationState>();
-        var input = new ClaimTransitionInput(TestClaims.LossReference());
+        var input = new ClaimTransitionInput(TestClaims.Period(), TestClaims.Codes());
 
         var outcome = OpenClaimTransition.Run(claim, input);
 
@@ -68,7 +68,7 @@ public sealed class OpenClaimTransitionTests
     public void Run_FromReopened_OpensItWithoutFurtherRules()
     {
         var claim = TestClaims.InState<ClaimReopenedState>();
-        var input = new ClaimTransitionInput(TestClaims.LossReference());
+        var input = new ClaimTransitionInput(TestClaims.Period(), TestClaims.Codes());
 
         var outcome = OpenClaimTransition.Run(claim, input);
 
@@ -81,7 +81,7 @@ public sealed class OpenClaimTransitionTests
     public void Run_FromAnUndeclaredSource_ReturnsNotPermitted()
     {
         var claim = TestClaims.InState<ClaimOpenState>();
-        var input = new ClaimTransitionInput(TestClaims.LossReference());
+        var input = new ClaimTransitionInput(TestClaims.Period(), TestClaims.Codes());
 
         var outcome = OpenClaimTransition.Run(claim, input);
 
@@ -93,8 +93,8 @@ public sealed class OpenClaimTransitionTests
     public void Run_FromDraftWithoutAHandler_ReturnsTheFindingAndKeepsTheDraft()
     {
         var claim = TestClaims.Create(TestClaims.Claimant());
-        claim.AssignHandler(new AssignHandlerInput(Guid.Empty, TestClaims.LossReference()));
-        var input = new ClaimTransitionInput(TestClaims.LossReference());
+        claim.AssignHandler(new AssignHandlerInput(Guid.Empty, TestClaims.Period(), TestClaims.Codes()));
+        var input = new ClaimTransitionInput(TestClaims.Period(), TestClaims.Codes());
 
         var outcome = OpenClaimTransition.Run(claim, input);
 

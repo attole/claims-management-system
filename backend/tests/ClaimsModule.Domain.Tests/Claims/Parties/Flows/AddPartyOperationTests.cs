@@ -13,7 +13,7 @@ public sealed class AddPartyOperationTests
     public void Run_AddsAnActiveParty()
     {
         var claim = TestClaims.Create(TestClaims.Claimant());
-        var input = new AddPartyInput(TestClaims.Witness(), TestClaims.LossReference());
+        var input = new AddPartyInput(TestClaims.Witness(), TestClaims.Period(), TestClaims.Codes());
 
         var outcome = AddPartyOperation.Run(claim, input);
 
@@ -27,7 +27,7 @@ public sealed class AddPartyOperationTests
     public void Run_AllowsSeveralPartiesOfOneRole()
     {
         var claim = TestClaims.Create(TestClaims.Claimant());
-        var input = new AddPartyInput(TestClaims.Claimant(), TestClaims.LossReference());
+        var input = new AddPartyInput(TestClaims.Claimant(), TestClaims.Period(), TestClaims.Codes());
 
         AddPartyOperation.Run(claim, input);
 
@@ -39,7 +39,7 @@ public sealed class AddPartyOperationTests
     public void Run_WhenTheClaimIsClosed_Fails()
     {
         var claim = TestClaims.InState<ClaimClosedState>();
-        var input = new AddPartyInput(TestClaims.Witness(), TestClaims.LossReference());
+        var input = new AddPartyInput(TestClaims.Witness(), TestClaims.Period(), TestClaims.Codes());
 
         var outcome = AddPartyOperation.Run(claim, input);
 

@@ -9,7 +9,12 @@ public sealed class AcknowledgeIssueInputTests
     public void Now_WhenNotGiven_Throws()
     {
         Func<AcknowledgeIssueInput> act = () =>
-            new AcknowledgeIssueInput(Guid.NewGuid(), TestClaims.Actor, default, TestClaims.LossReference());
+            new AcknowledgeIssueInput(
+                Guid.NewGuid(),
+                TestClaims.Actor,
+                default,
+                TestClaims.Period(),
+                TestClaims.Codes());
 
         act.Should().Throw<ArgumentException>();
     }

@@ -11,7 +11,7 @@ public sealed class IsLossDateWithinPolicyPeriodTests
     public void Check_ForALossInsideThePeriod_Passes()
     {
         var loss = TestClaims.Loss(TestClaims.Start, TestClaims.Description);
-        var rule = new IsLossDateWithinPolicyPeriod(TestClaims.LossReference().PolicyPeriod);
+        var rule = new IsLossDateWithinPolicyPeriod(TestClaims.Period());
 
         var result = rule.Check(loss);
 
@@ -23,7 +23,7 @@ public sealed class IsLossDateWithinPolicyPeriodTests
     public void Check_ForALossBeforeThePeriod_ReturnsAWarningWithTheDayAndThePeriod()
     {
         var loss = TestClaims.Loss(TestClaims.OutsidePolicyPeriod, TestClaims.Description);
-        var rule = new IsLossDateWithinPolicyPeriod(TestClaims.LossReference().PolicyPeriod);
+        var rule = new IsLossDateWithinPolicyPeriod(TestClaims.Period());
 
         var result = rule.Check(loss);
 

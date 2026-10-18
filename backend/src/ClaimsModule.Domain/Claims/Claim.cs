@@ -38,7 +38,7 @@ public sealed class Claim : AggregateRoot, ISoftDeletable, IStateful<ClaimState>
         ClaimNumber = ClaimNumber.Empty;
         State = new ClaimDraftState();
         Severity = ClaimSeverity.Unspecified;
-        LossEvent = new ClaimLossEvent(Guid.Empty, Guid.Empty, Guid.Empty, LossDetails.Empty, DateTimeOffset.MinValue);
+        LossEvent = new LossEvent(Guid.Empty, Guid.Empty, Guid.Empty, LossDetails.Empty, DateTimeOffset.MinValue);
     }
 
     internal Claim(Guid id, Guid organisationId, ClaimNumber claimNumber, DateTimeOffset reportDate, DateTimeOffset now)
@@ -49,7 +49,7 @@ public sealed class Claim : AggregateRoot, ISoftDeletable, IStateful<ClaimState>
         State = new ClaimDraftState();
         Severity = ClaimSeverity.Unspecified;
         ReportedDate = now;
-        LossEvent = new ClaimLossEvent(Ids.Next(), id, organisationId, LossDetails.Empty, reportDate);
+        LossEvent = new LossEvent(Ids.Next(), id, organisationId, LossDetails.Empty, reportDate);
     }
 
     public ClaimNumber ClaimNumber { get; private set; }
@@ -68,7 +68,7 @@ public sealed class Claim : AggregateRoot, ISoftDeletable, IStateful<ClaimState>
 
     public bool HasAggregateLimitOverride { get; internal set; } = false;
 
-    public ClaimLossEvent LossEvent { get; private set; }
+    public LossEvent LossEvent { get; private set; }
 
     public IReadOnlyList<ClaimParty> Parties => _parties.AsReadOnly();
 
@@ -78,13 +78,7 @@ public sealed class Claim : AggregateRoot, ISoftDeletable, IStateful<ClaimState>
 
     public IReadOnlyList<ClaimStateChange> StateChanges => _stateChanges.AsReadOnly();
 
-    internal List<ClaimParty> PartyList => _parties;
-
-    internal List<ClaimRiskObject> RiskObjectList => _riskObjects;
-
-    internal List<ClaimValidationIssue> IssueList => _issues;
-
-    internal List<ClaimStateChange> StateChangeList => _stateChanges;
+    public ClaimReference Reference => new(Id, OrganisationId, State);
 
     public bool HasActiveClaimant => _parties.Any(party => party.IsActiveClaimant);
 
@@ -134,7 +128,7 @@ public sealed class Claim : AggregateRoot, ISoftDeletable, IStateful<ClaimState>
         return RemoveRiskObjectOnClaimOperation.Run(this, input).OnSuccess(() => Settle(input));
     }
 
-    public Outcome<ClaimLossEvent> UpdateLossDetails(UpdateLossDetailsInput input)
+    public Outcome<LossEvent> UpdateLossDetails(UpdateLossDetailsInput input)
     {
         return UpdateLossDetailsOnClaimOperation.Run(this, input).OnSuccess(() => Settle(input));
     }
@@ -243,7 +237,7 @@ public sealed class Claim : AggregateRoot, ISoftDeletable, IStateful<ClaimState>
         return isWithinLimit;
     }
 
-    public static bool IsReserveChangeWithinLimit(decimal approvedTotal, decimal amount)
+    public static bool IsReserveHistoryWithinLimit(decimal approvedTotal, decimal amount)
     {
         bool isWithinLimit = amount <= 0m || IsWithinReserveLimit(approvedTotal + amount);
 
@@ -288,9 +282,29 @@ public sealed class Claim : AggregateRoot, ISoftDeletable, IStateful<ClaimState>
         return hasUnresolvedWarning;
     }
 
+    internal void AttachParty(ClaimParty party)
+    {
+        _parties.Add(party);
+    }
+
+    internal void AttachRiskObject(ClaimRiskObject riskObject)
+    {
+        _riskObjects.Add(riskObject);
+    }
+
+    internal void AttachIssues(IEnumerable<ClaimValidationIssue> issues)
+    {
+        _issues.AddRange(issues);
+    }
+
+    internal void AttachStateChange(ClaimStateChange stateChange)
+    {
+        _stateChanges.Add(stateChange);
+    }
+
     private void Settle(ClaimBaseOperationInput input)
     {
-        var evaluation = new EvaluateIssuesInput(input.LossReference);
+        var evaluation = new EvaluateIssuesInput(input.PolicyPeriod, input.CauseCodes);
         EvaluateIssues(evaluation);
     }
 
@@ -301,7 +315,7 @@ public sealed class Claim : AggregateRoot, ISoftDeletable, IStateful<ClaimState>
 
     private void OpenAfterReopen(ReopenClaimInput input)
     {
-        var open = new ClaimTransitionInput(input.LossReference);
+        var open = new ClaimTransitionInput(input.PolicyPeriod, input.CauseCodes);
         OpenClaimTransition.Run(this, open).OnSuccess(move => RecordMove(move, open));
     }
 

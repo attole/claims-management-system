@@ -1,5 +1,6 @@
 using System.Globalization;
 using ClaimsModule.Domain.Core.Rules;
+using ClaimsModule.Domain.Policies;
 
 namespace ClaimsModule.Domain.Claims.Loss.Rules;
 
@@ -12,7 +13,7 @@ internal sealed class IsLossDateWithinPolicyPeriod(PolicyPeriod period) : IRule<
 
     public CheckResult Check(LossDetails loss)
     {
-        bool isWithinPeriod = period.CanCoverLoss(loss.LossDate);
+        bool isWithinPeriod = loss.LossDate.IsCoveredBy(period);
         string evidence = string.Join(
             '|',
             loss.LossDate.UtcDay.ToString("O", CultureInfo.InvariantCulture),

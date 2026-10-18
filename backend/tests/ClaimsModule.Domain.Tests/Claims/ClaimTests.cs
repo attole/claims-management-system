@@ -14,6 +14,7 @@ using ClaimsModule.Domain.Claims.RiskObjects;
 using ClaimsModule.Domain.Claims.RiskObjects.Inputs;
 using ClaimsModule.Domain.Claims.Rules;
 using ClaimsModule.Domain.Claims.StateChanges;
+using ClaimsModule.Domain.Policies;
 using ClaimsModule.Domain.Tests.Support.Claims;
 
 namespace ClaimsModule.Domain.Tests.Claims;
@@ -24,7 +25,7 @@ public sealed class ClaimTests
     private static readonly RiskObjectDetails _van = new(AssetType.Vehicle, "Van");
     private static readonly LossDetails _loss = TestClaims.Loss(TestClaims.Start.AddDays(-2), TestClaims.Description);
 
-    public static TheoryData<string, Func<Claim>, Action<Claim, LossReference>> Edits => new()
+    public static TheoryData<string, Func<Claim>, Action<Claim, PolicyPeriod, CauseCodes>> Edits => new()
     {
         { "notes", Complete, UpdateNotes },
         { "handler", Complete, AssignHandler },
@@ -41,7 +42,7 @@ public sealed class ClaimTests
         { "acknowledge", WithPolicyWarning, AcknowledgeIssue },
     };
 
-    public static TheoryData<string, Action<Claim, LossReference>> Moves => new()
+    public static TheoryData<string, Action<Claim, PolicyPeriod, CauseCodes>> Moves => new()
     {
         { "investigate", Investigate },
         { "send to payment", SendToPayment },
@@ -61,11 +62,21 @@ public sealed class ClaimTests
     }
 
     [Fact]
+    public void Reference_CarriesTheIdTheOrganisationAndTheState()
+    {
+        var claim = TestClaims.Create();
+
+        var result = claim.Reference;
+
+        result.Should().Be(new ClaimReference(claim.Id, TestClaims.Organisation, claim.State));
+    }
+
+    [Fact]
     [Trait("Rule", HasClaimant.Code)]
     public void AddParty_AClaimant_ClearsTheClaimantIssueInTheSameCall()
     {
         var claim = TestClaims.Create();
-        var input = new AddPartyInput(TestClaims.Claimant(), TestClaims.LossReference());
+        var input = new AddPartyInput(TestClaims.Claimant(), TestClaims.Period(), TestClaims.Codes());
 
         claim.AddParty(input);
 
@@ -79,7 +90,7 @@ public sealed class ClaimTests
     {
         var claim = TestClaims.InState<ClaimClosedState>();
         var issuesBefore = claim.Issues.Count;
-        var input = new AddPartyInput(TestClaims.Claimant(), TestClaims.LossReference());
+        var input = new AddPartyInput(TestClaims.Claimant(), TestClaims.Period(), TestClaims.Codes());
 
         var outcome = claim.AddParty(input);
 
@@ -92,7 +103,7 @@ public sealed class ClaimTests
     public void Reopen_BySupervisor_EndsInOpenWithTwoStateChanges()
     {
         var claim = TestClaims.InState<ClaimClosedState>();
-        var input = new ReopenClaimInput(TestClaims.Supervisor, TestClaims.LossReference())
+        var input = new ReopenClaimInput(TestClaims.Supervisor, TestClaims.Period(), TestClaims.Codes())
         {
             Reason = _reason,
         };
@@ -121,7 +132,7 @@ public sealed class ClaimTests
     {
         var claim = TestClaims.Create(TestClaims.Claimant());
         claim.PopEvents();
-        var input = new AddPartyInput(TestClaims.Witness(), TestClaims.LossReference());
+        var input = new AddPartyInput(TestClaims.Witness(), TestClaims.Period(), TestClaims.Codes());
 
         var outcome = claim.AddParty(input);
 
@@ -134,7 +145,7 @@ public sealed class ClaimTests
     {
         var claim = TestClaims.Create(TestClaims.Claimant());
         claim.PopEvents();
-        var input = new ClaimTransitionInput(TestClaims.LossReference());
+        var input = new ClaimTransitionInput(TestClaims.Period(), TestClaims.Codes());
 
         claim.Open(input);
 
@@ -150,7 +161,7 @@ public sealed class ClaimTests
     {
         var claim = TestClaims.InState<ClaimOpenState>();
         var reason = new StateChangeReason("CUSTOMER_REQUEST", "The insured withdrew the claim");
-        var input = new FreezeClaimInput(false, false, false, TestClaims.LossReference())
+        var input = new FreezeClaimInput(false, false, false, TestClaims.Period(), TestClaims.Codes())
         {
             Reason = reason,
         };
@@ -166,7 +177,7 @@ public sealed class ClaimTests
     public void Reopen_RaisesAStateChangedEventForEachMove()
     {
         var claim = TestClaims.InState<ClaimClosedState>();
-        var input = new ReopenClaimInput(TestClaims.Supervisor, TestClaims.LossReference())
+        var input = new ReopenClaimInput(TestClaims.Supervisor, TestClaims.Period(), TestClaims.Codes())
         {
             Reason = _reason,
         };
@@ -195,7 +206,7 @@ public sealed class ClaimTests
     {
         var claim = TestClaims.Create(TestClaims.Claimant());
         claim.PopEvents();
-        var input = new EvaluateIssuesInput(TestClaims.LossReference());
+        var input = new EvaluateIssuesInput(TestClaims.Period(), TestClaims.Codes());
 
         var outcome = claim.EvaluateIssues(input);
 
@@ -210,7 +221,7 @@ public sealed class ClaimTests
         var claim = TestClaims.Empty();
         var currentBefore = claim.Issues.Count(issue => issue.State.IsCurrent);
         claim.PopEvents();
-        var input = new SetSeverityInput(ClaimSeverity.Critical, TestClaims.LossReference());
+        var input = new SetSeverityInput(ClaimSeverity.Critical, TestClaims.Period(), TestClaims.Codes());
 
         claim.SetSeverity(input);
 
@@ -256,12 +267,13 @@ public sealed class ClaimTests
     public void Edit_ReevaluatesTheIssuesWithTheInputsReference(
         string edit,
         Func<Claim> createClaim,
-        Action<Claim, LossReference> change)
+        Action<Claim, PolicyPeriod, CauseCodes> change)
     {
         var claim = createClaim();
-        var reference = TestClaims.ReferenceWithCauseCodes("OTHER");
+        var period = TestClaims.Period();
+        var causeCodes = TestClaims.CodesOf("OTHER");
 
-        change(claim, reference);
+        change(claim, period, causeCodes);
 
         claim.Issues.Should().Contain(
             issue => issue.State.IsCurrent && issue.Finding.HasCode(IsCauseCodeActive.Code),
@@ -271,12 +283,13 @@ public sealed class ClaimTests
 
     [Theory]
     [MemberData(nameof(Moves))]
-    public void Move_RecordsTheMoveAndReevaluatesTheIssues(string move, Action<Claim, LossReference> change)
+    public void Move_RecordsTheMoveAndReevaluatesTheIssues(string move, Action<Claim, PolicyPeriod, CauseCodes> change)
     {
         var claim = TestClaims.InState<ClaimOpenState>();
-        var reference = TestClaims.ReferenceWithCauseCodes("OTHER");
+        var period = TestClaims.Period();
+        var causeCodes = TestClaims.CodesOf("OTHER");
 
-        change(claim, reference);
+        change(claim, period, causeCodes);
 
         claim.PopEvents().OfType<ClaimStateChangedEvent>().Should().ContainSingle("the {0} move is recorded", move);
         claim.Issues.Should().Contain(issue => issue.State.IsCurrent && issue.Finding.HasCode(IsCauseCodeActive.Code));
@@ -294,7 +307,11 @@ public sealed class ClaimTests
     public void HasActiveRiskObject_AfterTheOnlyRiskObjectIsRemoved_IsFalse()
     {
         var claim = TestClaims.Create(TestClaims.Claimant());
-        var remove = new RemoveRiskObjectInput(claim.RiskObjects[0].Id, TestClaims.Later, TestClaims.LossReference());
+        var remove = new RemoveRiskObjectInput(
+            claim.RiskObjects[0].Id,
+            TestClaims.Later,
+            TestClaims.Period(),
+            TestClaims.Codes());
         claim.RemoveRiskObject(remove);
 
         claim.HasActiveRiskObject.Should().BeFalse();
@@ -335,7 +352,7 @@ public sealed class ClaimTests
     {
         var claim = TestClaims.Create(TestClaims.Claimant(), TestClaims.Claimant());
         var removed = claim.Parties[0].Id;
-        claim.RemoveParty(new RemovePartyInput(removed, TestClaims.LossReference()));
+        claim.RemoveParty(new RemovePartyInput(removed, TestClaims.Period(), TestClaims.Codes()));
 
         var result = claim.IsOnlyActiveClaimant(removed);
 
@@ -379,7 +396,12 @@ public sealed class ClaimTests
     {
         var claim = TestClaims.Create(TestClaims.Claimant());
         var primary = TestClaims.AddPrimaryRiskObject(claim);
-        claim.RemoveRiskObject(new RemoveRiskObjectInput(primary.Id, TestClaims.Later, TestClaims.LossReference()));
+        var input = new RemoveRiskObjectInput(
+            primary.Id,
+            TestClaims.Later,
+            TestClaims.Period(),
+            TestClaims.Codes());
+        claim.RemoveRiskObject(input);
 
         var result = claim.HasOtherPrimaryRiskObject(Guid.Empty);
 
@@ -432,7 +454,7 @@ public sealed class ClaimTests
     public void Open_FromDraftWhenItsReferenceDeactivatesTheCauseCode_IsRefusedByTheFreshIssue()
     {
         var claim = TestClaims.Create(TestClaims.Claimant());
-        var input = new ClaimTransitionInput(TestClaims.ReferenceWithCauseCodes("OTHER"));
+        var input = new ClaimTransitionInput(TestClaims.Period(), TestClaims.CodesOf("OTHER"));
 
         var outcome = claim.Open(input);
 
@@ -445,7 +467,7 @@ public sealed class ClaimTests
     public void Close_WhenItsReferenceDeactivatesTheCauseCode_IsRefusedByTheFreshIssue()
     {
         var claim = TestClaims.InState<ClaimOpenState>();
-        var input = new FreezeClaimInput(false, false, false, TestClaims.ReferenceWithCauseCodes("OTHER"));
+        var input = new FreezeClaimInput(false, false, false, TestClaims.Period(), TestClaims.CodesOf("OTHER"));
 
         var outcome = claim.Close(input);
 
@@ -457,7 +479,7 @@ public sealed class ClaimTests
     public void Withdraw_RecordsTheIssuesOfItsReferenceBeforeTheClaimFreezes()
     {
         var claim = TestClaims.InState<ClaimOpenState>();
-        var input = WithdrawInput(TestClaims.ReferenceWithCauseCodes("OTHER"));
+        var input = WithdrawInput(TestClaims.Period(), TestClaims.CodesOf("OTHER"));
 
         claim.Withdraw(input);
 
@@ -469,8 +491,9 @@ public sealed class ClaimTests
     public void UpdateNotes_OnAClosedClaim_KeepsTheIssues()
     {
         var claim = TestClaims.InState<ClaimClosedState>();
-        var reference = TestClaims.ReferenceWithCauseCodes("OTHER");
-        var input = new UpdateNotesInput("Late call", reference);
+        var period = TestClaims.Period();
+        var causeCodes = TestClaims.CodesOf("OTHER");
+        var input = new UpdateNotesInput("Late call", period, causeCodes);
 
         claim.UpdateNotes(input);
 
@@ -510,12 +533,12 @@ public sealed class ClaimTests
     [InlineData(9_990_000, 10_000, true)]
     [InlineData(9_990_000, 10_001, false)]
     [InlineData(12_000_000, -1_000, true)]
-    public void IsReserveChangeWithinLimit_PassesAnyChangeThatDoesNotIncrease(
+    public void IsReserveHistoryWithinLimit_PassesAnyChangeThatDoesNotIncrease(
         int approvedTotal,
         int amount,
         bool isExpected)
     {
-        var result = Claim.IsReserveChangeWithinLimit(approvedTotal, amount);
+        var result = Claim.IsReserveHistoryWithinLimit(approvedTotal, amount);
 
         result.Should().Be(isExpected);
     }
@@ -567,7 +590,7 @@ public sealed class ClaimTests
     {
         var claim = TestClaims.Empty();
         claim.PopEvents();
-        var input = new SetLimitOverrideInput(true, TestClaims.Manager, 0m, TestClaims.LossReference());
+        var input = new SetLimitOverrideInput(true, TestClaims.Manager, 0m, TestClaims.Period(), TestClaims.Codes());
 
         claim.SetLimitOverride(input);
 
@@ -582,7 +605,8 @@ public sealed class ClaimTests
             ClaimNumber.From("CLM-2026-0000001"),
             TestClaims.Start,
             TestClaims.Start,
-            TestClaims.NoPolicyReference());
+            PolicyPeriod.Empty,
+            TestClaims.Codes());
 
         return input;
     }
@@ -614,132 +638,138 @@ public sealed class ClaimTests
         return issue.Id;
     }
 
-    private static SetLimitOverrideInput OverrideInput(LossReference reference)
+    private static SetLimitOverrideInput OverrideInput(PolicyPeriod period, CauseCodes causeCodes)
     {
-        return new SetLimitOverrideInput(true, TestClaims.Manager, 0m, reference);
+        return new SetLimitOverrideInput(true, TestClaims.Manager, 0m, period, causeCodes);
     }
 
-    private static RemovePartyInput RemoveWitnessInput(Claim claim, LossReference reference)
+    private static RemovePartyInput RemoveWitnessInput(Claim claim, PolicyPeriod period, CauseCodes causeCodes)
     {
-        return new RemovePartyInput(claim.Parties[1].Id, reference);
+        return new RemovePartyInput(claim.Parties[1].Id, period, causeCodes);
     }
 
-    private static UpdateRiskObjectInput UpdateRiskObjectInput(Claim claim, LossReference reference)
+    private static UpdateRiskObjectInput UpdateRiskObjectInput(Claim claim, PolicyPeriod period, CauseCodes causeCodes)
     {
-        return new UpdateRiskObjectInput(claim.RiskObjects[0].Id, _van, reference);
+        return new UpdateRiskObjectInput(claim.RiskObjects[0].Id, _van, period, causeCodes);
     }
 
-    private static RemoveRiskObjectInput RemoveRiskObjectInput(Claim claim, LossReference reference)
+    private static RemoveRiskObjectInput RemoveRiskObjectInput(Claim claim, PolicyPeriod period, CauseCodes causeCodes)
     {
-        return new RemoveRiskObjectInput(claim.RiskObjects[0].Id, TestClaims.Later, reference);
+        return new RemoveRiskObjectInput(claim.RiskObjects[0].Id, TestClaims.Later, period, causeCodes);
     }
 
-    private static WaiveIssueInput WaiveInput(Claim claim, LossReference reference)
+    private static WaiveIssueInput WaiveInput(Claim claim, PolicyPeriod period, CauseCodes causeCodes)
     {
         var issueId = CurrentIssueId(claim, IsDescriptionLongEnough.Code);
 
-        return new WaiveIssueInput(issueId, TestClaims.Supervisor, TestClaims.Actor, TestClaims.Later, reference);
+        return new WaiveIssueInput(
+            issueId,
+            TestClaims.Supervisor,
+            TestClaims.Actor,
+            TestClaims.Later,
+            period,
+            causeCodes);
     }
 
-    private static AcknowledgeIssueInput AcknowledgeInput(Claim claim, LossReference reference)
+    private static AcknowledgeIssueInput AcknowledgeInput(Claim claim, PolicyPeriod period, CauseCodes causeCodes)
     {
         var issueId = CurrentIssueId(claim, IsLossDateWithinPolicyPeriod.Code);
 
-        return new AcknowledgeIssueInput(issueId, TestClaims.Actor, TestClaims.Later, reference);
+        return new AcknowledgeIssueInput(issueId, TestClaims.Actor, TestClaims.Later, period, causeCodes);
     }
 
-    private static SendToPaymentClaimInput SendToPaymentInput(LossReference reference)
+    private static SendToPaymentClaimInput SendToPaymentInput(PolicyPeriod period, CauseCodes causeCodes)
     {
-        return new SendToPaymentClaimInput(true, reference);
+        return new SendToPaymentClaimInput(true, period, causeCodes);
     }
 
-    private static FreezeClaimInput WithdrawInput(LossReference reference)
+    private static FreezeClaimInput WithdrawInput(PolicyPeriod period, CauseCodes causeCodes)
     {
-        return new FreezeClaimInput(false, false, false, reference) { Reason = _reason };
+        return new FreezeClaimInput(false, false, false, period, causeCodes) { Reason = _reason };
     }
 
-    private static void UpdateNotes(Claim claim, LossReference reference)
+    private static void UpdateNotes(Claim claim, PolicyPeriod period, CauseCodes causeCodes)
     {
-        claim.UpdateNotes(new UpdateNotesInput("Called", reference));
+        claim.UpdateNotes(new UpdateNotesInput("Called", period, causeCodes));
     }
 
-    private static void AssignHandler(Claim claim, LossReference reference)
+    private static void AssignHandler(Claim claim, PolicyPeriod period, CauseCodes causeCodes)
     {
-        claim.AssignHandler(new AssignHandlerInput(TestClaims.Actor, reference));
+        claim.AssignHandler(new AssignHandlerInput(TestClaims.Actor, period, causeCodes));
     }
 
-    private static void SetSeverity(Claim claim, LossReference reference)
+    private static void SetSeverity(Claim claim, PolicyPeriod period, CauseCodes causeCodes)
     {
-        claim.SetSeverity(new SetSeverityInput(ClaimSeverity.Minor, reference));
+        claim.SetSeverity(new SetSeverityInput(ClaimSeverity.Minor, period, causeCodes));
     }
 
-    private static void LinkPolicy(Claim claim, LossReference reference)
+    private static void LinkPolicy(Claim claim, PolicyPeriod period, CauseCodes causeCodes)
     {
-        claim.LinkPolicy(new LinkPolicyInput(TestClaims.Policy, reference));
+        claim.LinkPolicy(new LinkPolicyInput(TestClaims.Policy, period, causeCodes));
     }
 
-    private static void SetOverride(Claim claim, LossReference reference)
+    private static void SetOverride(Claim claim, PolicyPeriod period, CauseCodes causeCodes)
     {
-        claim.SetLimitOverride(OverrideInput(reference));
+        claim.SetLimitOverride(OverrideInput(period, causeCodes));
     }
 
-    private static void AddParty(Claim claim, LossReference reference)
+    private static void AddParty(Claim claim, PolicyPeriod period, CauseCodes causeCodes)
     {
-        claim.AddParty(new AddPartyInput(TestClaims.Witness(), reference));
+        claim.AddParty(new AddPartyInput(TestClaims.Witness(), period, causeCodes));
     }
 
-    private static void RemoveParty(Claim claim, LossReference reference)
+    private static void RemoveParty(Claim claim, PolicyPeriod period, CauseCodes causeCodes)
     {
-        claim.RemoveParty(RemoveWitnessInput(claim, reference));
+        claim.RemoveParty(RemoveWitnessInput(claim, period, causeCodes));
     }
 
-    private static void AddRiskObject(Claim claim, LossReference reference)
+    private static void AddRiskObject(Claim claim, PolicyPeriod period, CauseCodes causeCodes)
     {
-        claim.AddRiskObject(new AddRiskObjectInput(_van, reference));
+        claim.AddRiskObject(new AddRiskObjectInput(_van, period, causeCodes));
     }
 
-    private static void UpdateRiskObject(Claim claim, LossReference reference)
+    private static void UpdateRiskObject(Claim claim, PolicyPeriod period, CauseCodes causeCodes)
     {
-        claim.UpdateRiskObject(UpdateRiskObjectInput(claim, reference));
+        claim.UpdateRiskObject(UpdateRiskObjectInput(claim, period, causeCodes));
     }
 
-    private static void RemoveRiskObject(Claim claim, LossReference reference)
+    private static void RemoveRiskObject(Claim claim, PolicyPeriod period, CauseCodes causeCodes)
     {
-        claim.RemoveRiskObject(RemoveRiskObjectInput(claim, reference));
+        claim.RemoveRiskObject(RemoveRiskObjectInput(claim, period, causeCodes));
     }
 
-    private static void UpdateLoss(Claim claim, LossReference reference)
+    private static void UpdateLoss(Claim claim, PolicyPeriod period, CauseCodes causeCodes)
     {
-        claim.UpdateLossDetails(new UpdateLossDetailsInput(_loss, reference));
+        claim.UpdateLossDetails(new UpdateLossDetailsInput(_loss, period, causeCodes));
     }
 
-    private static void WaiveIssue(Claim claim, LossReference reference)
+    private static void WaiveIssue(Claim claim, PolicyPeriod period, CauseCodes causeCodes)
     {
-        claim.WaiveIssue(WaiveInput(claim, reference));
+        claim.WaiveIssue(WaiveInput(claim, period, causeCodes));
     }
 
-    private static void AcknowledgeIssue(Claim claim, LossReference reference)
+    private static void AcknowledgeIssue(Claim claim, PolicyPeriod period, CauseCodes causeCodes)
     {
-        claim.AcknowledgeIssue(AcknowledgeInput(claim, reference));
+        claim.AcknowledgeIssue(AcknowledgeInput(claim, period, causeCodes));
     }
 
-    private static void Investigate(Claim claim, LossReference reference)
+    private static void Investigate(Claim claim, PolicyPeriod period, CauseCodes causeCodes)
     {
-        claim.Investigate(new ClaimTransitionInput(reference));
+        claim.Investigate(new ClaimTransitionInput(period, causeCodes));
     }
 
-    private static void SendToPayment(Claim claim, LossReference reference)
+    private static void SendToPayment(Claim claim, PolicyPeriod period, CauseCodes causeCodes)
     {
-        claim.SendToPayment(SendToPaymentInput(reference));
+        claim.SendToPayment(SendToPaymentInput(period, causeCodes));
     }
 
-    private static void Close(Claim claim, LossReference reference)
+    private static void Close(Claim claim, PolicyPeriod period, CauseCodes causeCodes)
     {
-        claim.Close(new FreezeClaimInput(false, false, false, reference));
+        claim.Close(new FreezeClaimInput(false, false, false, period, causeCodes));
     }
 
-    private static void Withdraw(Claim claim, LossReference reference)
+    private static void Withdraw(Claim claim, PolicyPeriod period, CauseCodes causeCodes)
     {
-        claim.Withdraw(WithdrawInput(reference));
+        claim.Withdraw(WithdrawInput(period, causeCodes));
     }
 }

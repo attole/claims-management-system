@@ -18,7 +18,7 @@ internal sealed class WaiveIssueOnClaimOperation
 
     protected override Outcome<ClaimValidationIssue> Apply(Claim claim, WaiveIssueInput input)
     {
-        var issue = claim.IssueList.Single(issue => issue.Id == input.IssueId);
+        var issue = claim.Issues.Single(issue => issue.Id == input.IssueId);
 
         var resolvedAt = InputTime.NotBefore(input.Now, claim.ReportedDate);
         var resolution = new IssueResolutionInput(input.ActorId, resolvedAt);

@@ -86,6 +86,6 @@ public sealed class SendToPaymentClaimTransitionTests
 
     private static SendToPaymentClaimInput CreateInput()
     {
-        return new SendToPaymentClaimInput(true, TestClaims.LossReference());
+        return new SendToPaymentClaimInput(true, TestClaims.Period(), TestClaims.Codes());
     }
 }

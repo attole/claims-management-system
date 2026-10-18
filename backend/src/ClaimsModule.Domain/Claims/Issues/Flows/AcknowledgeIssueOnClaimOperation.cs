@@ -15,7 +15,7 @@ internal sealed class AcknowledgeIssueOnClaimOperation
 
     protected override Outcome<ClaimValidationIssue> Apply(Claim claim, AcknowledgeIssueInput input)
     {
-        var issue = claim.IssueList.Single(issue => issue.Id == input.IssueId);
+        var issue = claim.Issues.Single(issue => issue.Id == input.IssueId);
 
         var resolvedAt = InputTime.NotBefore(input.Now, claim.ReportedDate);
         var resolution = new IssueResolutionInput(input.ActorId, resolvedAt);

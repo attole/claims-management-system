@@ -47,28 +47,28 @@ public sealed class CloseClaimTransitionTests
     }
 
     [Fact]
-    [Trait("Rule", HasNoPendingReserveChange.Code)]
-    public void Run_WithAReserveChangeAwaitingApproval_ReturnsTheFindingAndKeepsTheState()
+    [Trait("Rule", HasNoPendingReserveHistory.Code)]
+    public void Run_WithAReserveHistoryAwaitingApproval_ReturnsTheFindingAndKeepsTheState()
     {
         var claim = TestClaims.InState<ClaimOpenState>();
-        var input = CreateInput() with { HasPendingReserveChange = true };
+        var input = CreateInput() with { HasPendingReserveHistory = true };
 
         var outcome = CloseClaimTransition.Run(claim, input);
 
-        outcome.CriticalFindings.Should().ContainSingle().Which.Code.Should().Be(HasNoPendingReserveChange.Code);
+        outcome.CriticalFindings.Should().ContainSingle().Which.Code.Should().Be(HasNoPendingReserveHistory.Code);
         claim.State.Should().BeOfType<ClaimOpenState>();
     }
 
     [Fact]
-    [Trait("Rule", HasNoUnpostedReserveChange.Code)]
+    [Trait("Rule", HasNoUnpostedReserveHistory.Code)]
     public void Run_WithAnApprovedChangeNotYetPosted_ReturnsTheFindingAndKeepsTheState()
     {
         var claim = TestClaims.InState<ClaimOpenState>();
-        var input = CreateInput() with { HasUnpostedReserveChange = true };
+        var input = CreateInput() with { HasUnpostedReserveHistory = true };
 
         var outcome = CloseClaimTransition.Run(claim, input);
 
-        outcome.CriticalFindings.Should().ContainSingle().Which.Code.Should().Be(HasNoUnpostedReserveChange.Code);
+        outcome.CriticalFindings.Should().ContainSingle().Which.Code.Should().Be(HasNoUnpostedReserveHistory.Code);
         claim.State.Should().BeOfType<ClaimOpenState>();
     }
 
@@ -126,12 +126,12 @@ public sealed class CloseClaimTransitionTests
     public void Run_WithSeveralFailedConditions_ReturnsEveryFinding()
     {
         var claim = TestClaims.InState<ClaimOpenState>();
-        var input = CreateInput() with { HasPendingReserveChange = true, HasOpenReserveBalance = true };
+        var input = CreateInput() with { HasPendingReserveHistory = true, HasOpenReserveBalance = true };
 
         var outcome = CloseClaimTransition.Run(claim, input);
 
         outcome.CriticalFindings.Select(finding => finding.Code)
-            .Should().BeEquivalentTo(HasNoPendingReserveChange.Code, HasClosingNoteForOpenReserves.Code);
+            .Should().BeEquivalentTo(HasNoPendingReserveHistory.Code, HasClosingNoteForOpenReserves.Code);
     }
 
     [Fact]
@@ -148,6 +148,6 @@ public sealed class CloseClaimTransitionTests
 
     private static FreezeClaimInput CreateInput()
     {
-        return new FreezeClaimInput(false, false, false, TestClaims.LossReference());
+        return new FreezeClaimInput(false, false, false, TestClaims.Period(), TestClaims.Codes());
     }
 }

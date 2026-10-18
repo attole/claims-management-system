@@ -15,7 +15,7 @@ internal sealed class RemoveRiskObjectOnClaimOperation
 
     protected override Outcome<ClaimRiskObject> Apply(Claim claim, RemoveRiskObjectInput input)
     {
-        var riskObject = claim.RiskObjectList.Single(riskObject => riskObject.Id == input.RiskObjectId);
+        var riskObject = claim.RiskObjects.Single(riskObject => riskObject.Id == input.RiskObjectId);
 
         var deletedAt = InputTime.NotBefore(input.Now, claim.ReportedDate);
         var removal = new RiskObjectRemovalInput(deletedAt);

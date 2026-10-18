@@ -47,7 +47,8 @@ public sealed class CreateClaimOperationTests
             number,
             TestClaims.Start,
             TestClaims.Start,
-            TestClaims.LossReference());
+            TestClaims.Period(),
+            TestClaims.Codes());
 
         var outcome = CreateClaimOperation.Run(input);
 
@@ -64,7 +65,8 @@ public sealed class CreateClaimOperationTests
             ClaimNumber.Empty,
             TestClaims.Start,
             TestClaims.Start,
-            TestClaims.LossReference());
+            TestClaims.Period(),
+            TestClaims.Codes());
 
         var outcome = CreateClaimOperation.Run(input);
 
@@ -81,7 +83,8 @@ public sealed class CreateClaimOperationTests
             number,
             DateTimeOffset.MinValue,
             TestClaims.Start,
-            TestClaims.LossReference());
+            TestClaims.Period(),
+            TestClaims.Codes());
 
         var outcome = CreateClaimOperation.Run(input);
 
@@ -98,7 +101,8 @@ public sealed class CreateClaimOperationTests
             number,
             TestClaims.Later,
             TestClaims.Start,
-            TestClaims.LossReference());
+            TestClaims.Period(),
+            TestClaims.Codes());
 
         var outcome = CreateClaimOperation.Run(input);
 
@@ -115,7 +119,8 @@ public sealed class CreateClaimOperationTests
             number,
             reportDate,
             TestClaims.Start,
-            TestClaims.LossReference());
+            TestClaims.Period(),
+            TestClaims.Codes());
 
         var outcome = CreateClaimOperation.Run(input);
 
@@ -127,8 +132,16 @@ public sealed class CreateClaimOperationTests
     {
         var number = ClaimNumber.From("CLM-2026-0000001");
 
-        var reference = TestClaims.LossReference();
+        var period = TestClaims.Period();
 
-        return new CreateClaimInput(TestClaims.Organisation, number, TestClaims.Start, TestClaims.Start, reference);
+        var causeCodes = TestClaims.Codes();
+
+        return new CreateClaimInput(
+            TestClaims.Organisation,
+            number,
+            TestClaims.Start,
+            TestClaims.Start,
+            period,
+            causeCodes);
     }
 }

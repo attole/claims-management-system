@@ -29,12 +29,16 @@ BOOL_EXEMPT = {"Equals", "Authorize"}
 TEST_METHOD = re.compile(r"\[(?:Fact|Theory)\](?:\s*\[[^\]]*\])*\s*public (?:async )?(?:void|Task) (\w+)\(")
 INTERFACE = re.compile(r"^\s*(?:public|internal)(?: partial)? interface (\w+)", re.M)
 ENTITY_SUBFOLDERS = {"Inputs", "Flows", "Events", "Rules"}
-AGGREGATE_FOLDERS = ("Claims", "Reserves", "ReserveChanges")
+AGGREGATE_FOLDERS = ("Claims", "ReserveComponents", "Policies", "ClaimDocuments")
 LAYER_FORBIDS = {
     "Common": ["Claims", "Core", "Roles"],
     "Core/Rules": ["Core.Flows", "Claims", "Roles"],
     "Core/Flows": ["Claims", "Roles"],
-    "Roles": ["Claims", "Reserves", "ReserveChanges"],
+    "Roles": ["Claims", "ReserveComponents", "Policies", "ClaimDocuments"],
+    "Claims": ["ReserveComponents", "ClaimDocuments"],
+    "ReserveComponents": ["ClaimDocuments"],
+    "ClaimDocuments": ["ReserveComponents"],
+    "Policies": ["Claims", "ReserveComponents", "ClaimDocuments"],
 }
 SKILLS = ["design", "explore", "code-review", "dev-log", "spec-check", "ai-journal"]
 SKELETON = ["Triggers", "Procedure", "Output", "Handoff", "Guardrails"]

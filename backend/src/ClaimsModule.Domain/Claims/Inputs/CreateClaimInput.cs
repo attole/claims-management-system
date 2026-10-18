@@ -1,5 +1,6 @@
 using ClaimsModule.Domain.Claims.Loss;
 using ClaimsModule.Domain.Common;
+using ClaimsModule.Domain.Policies;
 
 namespace ClaimsModule.Domain.Claims.Inputs;
 
@@ -8,7 +9,8 @@ public sealed record CreateClaimInput(
     ClaimNumber ClaimNumber,
     DateTimeOffset ReportDate,
     DateTimeOffset Now,
-    LossReference LossReference) : ClaimBaseOperationInput(LossReference)
+    PolicyPeriod PolicyPeriod,
+    CauseCodes CauseCodes) : ClaimBaseOperationInput(PolicyPeriod, CauseCodes)
 {
     public DateTimeOffset Now { get; } = InputTime.Required(Now);
 }

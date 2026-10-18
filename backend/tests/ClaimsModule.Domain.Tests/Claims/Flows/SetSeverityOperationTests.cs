@@ -12,7 +12,7 @@ public sealed class SetSeverityOperationTests
     public void Run_SetsTheSeverity()
     {
         var claim = TestClaims.Create(TestClaims.Claimant());
-        var input = new SetSeverityInput(ClaimSeverity.Critical, TestClaims.LossReference());
+        var input = new SetSeverityInput(ClaimSeverity.Critical, TestClaims.Period(), TestClaims.Codes());
 
         SetSeverityOperation.Run(claim, input);
 
@@ -24,7 +24,7 @@ public sealed class SetSeverityOperationTests
     public void Run_WhenTheClaimIsClosed_Fails()
     {
         var claim = TestClaims.InState<ClaimClosedState>();
-        var input = new SetSeverityInput(ClaimSeverity.Critical, TestClaims.LossReference());
+        var input = new SetSeverityInput(ClaimSeverity.Critical, TestClaims.Period(), TestClaims.Codes());
 
         var outcome = SetSeverityOperation.Run(claim, input);
 

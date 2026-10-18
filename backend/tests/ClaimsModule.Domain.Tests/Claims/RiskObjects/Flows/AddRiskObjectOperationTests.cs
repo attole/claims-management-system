@@ -16,7 +16,7 @@ public sealed class AddRiskObjectOperationTests
     {
         var claim = TestClaims.Create(TestClaims.Claimant());
         var van = new RiskObjectDetails(AssetType.Vehicle, "Van");
-        var input = new AddRiskObjectInput(van, TestClaims.LossReference());
+        var input = new AddRiskObjectInput(van, TestClaims.Period(), TestClaims.Codes());
 
         AddRiskObjectOperation.Run(claim, input);
 
@@ -29,7 +29,7 @@ public sealed class AddRiskObjectOperationTests
     {
         var claim = TestClaims.InState<ClaimClosedState>();
         var van = new RiskObjectDetails(AssetType.Vehicle, "Van");
-        var input = new AddRiskObjectInput(van, TestClaims.LossReference());
+        var input = new AddRiskObjectInput(van, TestClaims.Period(), TestClaims.Codes());
 
         var outcome = AddRiskObjectOperation.Run(claim, input);
 
@@ -43,7 +43,7 @@ public sealed class AddRiskObjectOperationTests
         var claim = TestClaims.Create(TestClaims.Claimant());
         TestClaims.AddPrimaryRiskObject(claim);
         var truck = new RiskObjectDetails(AssetType.Vehicle, "Truck") { IsPrimary = true };
-        var input = new AddRiskObjectInput(truck, TestClaims.LossReference());
+        var input = new AddRiskObjectInput(truck, TestClaims.Period(), TestClaims.Codes());
 
         var outcome = AddRiskObjectOperation.Run(claim, input);
 

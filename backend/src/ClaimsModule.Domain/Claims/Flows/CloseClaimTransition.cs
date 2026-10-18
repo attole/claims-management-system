@@ -8,8 +8,8 @@ internal sealed class CloseClaimTransition : ClaimBaseTransition<CloseClaimTrans
     public CloseClaimTransition() : base(new ClaimClosedState())
     {
         AllowedFrom(new ClaimOpenState(), new ClaimUnderInvestigationState(), new ClaimPendingPaymentState())
-            .Require(input => new HasNoPendingReserveChange(input.HasPendingReserveChange))
-            .Require(input => new HasNoUnpostedReserveChange(input.HasUnpostedReserveChange))
+            .Require(input => new HasNoPendingReserveHistory(input.HasPendingReserveHistory))
+            .Require(input => new HasNoUnpostedReserveHistory(input.HasUnpostedReserveHistory))
             .Require(new HasNoCriticalIssuesForClose())
             .Require(new HasClaimantForClosure())
             .Require(input => new HasClosingNoteForOpenReserves(input.HasOpenReserveBalance, input.HasNote))

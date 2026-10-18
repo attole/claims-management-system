@@ -1,3 +1,5 @@
+using ClaimsModule.Domain.Policies;
+
 namespace ClaimsModule.Domain.Claims.Loss;
 
 public sealed record LossDate(DateTimeOffset Value)
@@ -13,5 +15,12 @@ public sealed record LossDate(DateTimeOffset Value)
         bool isAfter = IsSet && UtcDay > day;
 
         return isAfter;
+    }
+
+    public bool IsCoveredBy(PolicyPeriod period)
+    {
+        bool isCovered = !IsSet || !period.IsSet || period.CanCover(UtcDay);
+
+        return isCovered;
     }
 }

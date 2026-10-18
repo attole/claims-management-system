@@ -1,6 +1,7 @@
 using ClaimsModule.Domain.Claims.Inputs;
 using ClaimsModule.Domain.Claims.Loss;
 using ClaimsModule.Domain.Common;
+using ClaimsModule.Domain.Policies;
 using ClaimsModule.Domain.Roles;
 
 namespace ClaimsModule.Domain.Claims.Issues.Inputs;
@@ -10,7 +11,8 @@ public sealed record WaiveIssueInput(
     UserRole ActorRole,
     Guid ActorId,
     DateTimeOffset Now,
-    LossReference LossReference) : ClaimBaseOperationInput(LossReference)
+    PolicyPeriod PolicyPeriod,
+    CauseCodes CauseCodes) : ClaimBaseOperationInput(PolicyPeriod, CauseCodes)
 {
     public Guid ActorId { get; } = InputActor.Required(ActorId);
 

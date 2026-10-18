@@ -16,7 +16,7 @@ internal sealed class RemovePartyOnClaimOperation
 
     protected override Outcome<ClaimParty> Apply(Claim claim, RemovePartyInput input)
     {
-        var party = claim.PartyList.Single(party => party.Id == input.PartyId);
+        var party = claim.Parties.Single(party => party.Id == input.PartyId);
 
         return party.Remove();
     }

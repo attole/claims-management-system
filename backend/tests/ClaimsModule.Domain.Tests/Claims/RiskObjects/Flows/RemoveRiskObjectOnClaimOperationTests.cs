@@ -12,7 +12,11 @@ public sealed class RemoveRiskObjectOnClaimOperationTests
     public void Run_HidesItFromTheClaim()
     {
         var claim = TestClaims.Create(TestClaims.Claimant());
-        var input = new RemoveRiskObjectInput(claim.RiskObjects[0].Id, TestClaims.Later, TestClaims.LossReference());
+        var input = new RemoveRiskObjectInput(
+            claim.RiskObjects[0].Id,
+            TestClaims.Later,
+            TestClaims.Period(),
+            TestClaims.Codes());
 
         RemoveRiskObjectOnClaimOperation.Run(claim, input);
 
@@ -23,7 +27,11 @@ public sealed class RemoveRiskObjectOnClaimOperationTests
     public void Run_UnknownRiskObject_Throws()
     {
         var claim = TestClaims.Create(TestClaims.Claimant());
-        var input = new RemoveRiskObjectInput(Guid.NewGuid(), TestClaims.Later, TestClaims.LossReference());
+        var input = new RemoveRiskObjectInput(
+            Guid.NewGuid(),
+            TestClaims.Later,
+            TestClaims.Period(),
+            TestClaims.Codes());
 
         Action act = () => RemoveRiskObjectOnClaimOperation.Run(claim, input);
 
@@ -35,7 +43,11 @@ public sealed class RemoveRiskObjectOnClaimOperationTests
     public void Run_WhenTheClaimIsClosed_Fails()
     {
         var claim = TestClaims.InState<ClaimClosedState>();
-        var input = new RemoveRiskObjectInput(claim.RiskObjects[0].Id, TestClaims.Later, TestClaims.LossReference());
+        var input = new RemoveRiskObjectInput(
+            claim.RiskObjects[0].Id,
+            TestClaims.Later,
+            TestClaims.Period(),
+            TestClaims.Codes());
 
         var outcome = RemoveRiskObjectOnClaimOperation.Run(claim, input);
 
@@ -48,7 +60,7 @@ public sealed class RemoveRiskObjectOnClaimOperationTests
         var claim = TestClaims.Create(TestClaims.Claimant());
         var riskObject = claim.RiskObjects[0];
         var earlier = TestClaims.Start.AddDays(-1);
-        var input = new RemoveRiskObjectInput(riskObject.Id, earlier, TestClaims.LossReference());
+        var input = new RemoveRiskObjectInput(riskObject.Id, earlier, TestClaims.Period(), TestClaims.Codes());
 
         Action act = () => RemoveRiskObjectOnClaimOperation.Run(claim, input);
 

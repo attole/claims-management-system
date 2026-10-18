@@ -1,9 +1,11 @@
 using ClaimsModule.Domain.Claims.Loss;
 using ClaimsModule.Domain.Claims.StateChanges;
+using ClaimsModule.Domain.Policies;
 
 namespace ClaimsModule.Domain.Claims.Inputs;
 
-public record ClaimTransitionInput(LossReference LossReference) : ClaimBaseOperationInput(LossReference)
+public record ClaimTransitionInput(PolicyPeriod PolicyPeriod, CauseCodes CauseCodes)
+    : ClaimBaseOperationInput(PolicyPeriod, CauseCodes)
 {
     public StateChangeReason Reason { get; init; } = StateChangeReason.Empty;
 

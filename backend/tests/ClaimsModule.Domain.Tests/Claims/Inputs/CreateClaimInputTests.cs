@@ -10,10 +10,11 @@ public sealed class CreateClaimInputTests
     public void Now_WhenNotGiven_Throws()
     {
         var number = ClaimNumber.From("CLM-2026-0000001");
-        var reference = TestClaims.LossReference();
+        var period = TestClaims.Period();
+        var causeCodes = TestClaims.Codes();
 
         Func<CreateClaimInput> act = () =>
-            new CreateClaimInput(TestClaims.Organisation, number, TestClaims.Start, default, reference);
+            new CreateClaimInput(TestClaims.Organisation, number, TestClaims.Start, default, period, causeCodes);
 
         act.Should().Throw<ArgumentException>();
     }

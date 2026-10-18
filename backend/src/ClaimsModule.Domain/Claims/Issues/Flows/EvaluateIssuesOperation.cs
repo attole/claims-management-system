@@ -45,7 +45,7 @@ internal sealed class EvaluateIssuesOperation
         var raised = added
             .Select(finding => new ClaimValidationIssue(Ids.Next(), claim.Id, claim.OrganisationId, finding))
             .ToList();
-        claim.IssueList.AddRange(raised);
+        claim.AttachIssues(raised);
 
         var changes = new IssueChanges(raised, resolved);
 
@@ -55,10 +55,10 @@ internal sealed class EvaluateIssuesOperation
     private static IReadOnlyList<Finding> CheckIssueRules(Claim claim, EvaluateIssuesInput input)
     {
         var loss = claim.LossEvent;
-        var reference = input.LossReference.RequireFor(claim.PolicyId);
+        var period = input.PolicyPeriod.RequireFor(claim.PolicyId);
         CheckResult[] results =
         [
-            new HasValidLossDetails(loss.ReportDay, reference).Check(loss.Details),
+            new HasValidLossDetails(loss.ReportDay, period, input.CauseCodes).Check(loss.Details),
             new HasClaimant().Check(claim),
             new HasLinkedPolicy().Check(claim),
             new HasRiskObject().Check(claim),

@@ -8,10 +8,11 @@ public sealed class WaiveIssueInputTests
     [Fact]
     public void Now_WhenNotGiven_Throws()
     {
-        var reference = TestClaims.LossReference();
+        var period = TestClaims.Period();
+        var causeCodes = TestClaims.Codes();
 
         Func<WaiveIssueInput> act = () =>
-            new WaiveIssueInput(Guid.NewGuid(), TestClaims.Supervisor, TestClaims.Actor, default, reference);
+            new WaiveIssueInput(Guid.NewGuid(), TestClaims.Supervisor, TestClaims.Actor, default, period, causeCodes);
 
         act.Should().Throw<ArgumentException>();
     }

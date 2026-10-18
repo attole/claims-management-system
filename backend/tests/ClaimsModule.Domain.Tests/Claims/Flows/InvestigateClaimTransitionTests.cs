@@ -12,7 +12,7 @@ public sealed class InvestigateClaimTransitionTests
     public void Run_FromOpen_MovesTheClaimUnderInvestigation()
     {
         var claim = TestClaims.InState<ClaimOpenState>();
-        var input = new ClaimTransitionInput(TestClaims.LossReference());
+        var input = new ClaimTransitionInput(TestClaims.Period(), TestClaims.Codes());
 
         var outcome = InvestigateClaimTransition.Run(claim, input);
 
@@ -25,7 +25,7 @@ public sealed class InvestigateClaimTransitionTests
     public void Run_FromADraft_ReturnsNotPermitted()
     {
         var claim = TestClaims.Create(TestClaims.Claimant());
-        var input = new ClaimTransitionInput(TestClaims.LossReference());
+        var input = new ClaimTransitionInput(TestClaims.Period(), TestClaims.Codes());
 
         var outcome = InvestigateClaimTransition.Run(claim, input);
 

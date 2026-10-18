@@ -18,7 +18,7 @@ internal sealed class AddRiskObjectOperation
     protected override Outcome<ClaimRiskObject> Apply(Claim claim, AddRiskObjectInput input)
     {
         var riskObject = new ClaimRiskObject(Ids.Next(), claim.Id, claim.OrganisationId, input.Details);
-        claim.RiskObjectList.Add(riskObject);
+        claim.AttachRiskObject(riskObject);
 
         return Done(riskObject);
     }

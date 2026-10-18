@@ -15,7 +15,11 @@ public sealed class UpdateRiskObjectOnClaimOperationTests
     {
         var claim = TestClaims.Create(TestClaims.Claimant());
         var details = new RiskObjectDetails(AssetType.Equipment, "Pump") { DamageDescription = "Seized" };
-        var input = new UpdateRiskObjectInput(claim.RiskObjects[0].Id, details, TestClaims.LossReference());
+        var input = new UpdateRiskObjectInput(
+            claim.RiskObjects[0].Id,
+            details,
+            TestClaims.Period(),
+            TestClaims.Codes());
 
         var outcome = UpdateRiskObjectOnClaimOperation.Run(claim, input);
 
@@ -27,7 +31,7 @@ public sealed class UpdateRiskObjectOnClaimOperationTests
     {
         var claim = TestClaims.Create(TestClaims.Claimant());
         var details = new RiskObjectDetails(AssetType.Equipment, "Pump");
-        var input = new UpdateRiskObjectInput(Guid.NewGuid(), details, TestClaims.LossReference());
+        var input = new UpdateRiskObjectInput(Guid.NewGuid(), details, TestClaims.Period(), TestClaims.Codes());
 
         Action act = () => UpdateRiskObjectOnClaimOperation.Run(claim, input);
 
@@ -40,7 +44,11 @@ public sealed class UpdateRiskObjectOnClaimOperationTests
     {
         var claim = TestClaims.InState<ClaimClosedState>();
         var details = new RiskObjectDetails(AssetType.Equipment, "Pump");
-        var input = new UpdateRiskObjectInput(claim.RiskObjects[0].Id, details, TestClaims.LossReference());
+        var input = new UpdateRiskObjectInput(
+            claim.RiskObjects[0].Id,
+            details,
+            TestClaims.Period(),
+            TestClaims.Codes());
 
         var outcome = UpdateRiskObjectOnClaimOperation.Run(claim, input);
 
@@ -54,7 +62,11 @@ public sealed class UpdateRiskObjectOnClaimOperationTests
         var claim = TestClaims.Create(TestClaims.Claimant());
         TestClaims.AddPrimaryRiskObject(claim);
         var details = new RiskObjectDetails(AssetType.Property, "Kitchen") { IsPrimary = true };
-        var input = new UpdateRiskObjectInput(claim.RiskObjects[0].Id, details, TestClaims.LossReference());
+        var input = new UpdateRiskObjectInput(
+            claim.RiskObjects[0].Id,
+            details,
+            TestClaims.Period(),
+            TestClaims.Codes());
 
         var outcome = UpdateRiskObjectOnClaimOperation.Run(claim, input);
 

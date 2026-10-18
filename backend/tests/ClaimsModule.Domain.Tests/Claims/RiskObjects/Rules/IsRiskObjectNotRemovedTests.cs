@@ -24,7 +24,7 @@ public sealed class IsRiskObjectNotRemovedTests
     {
         var claim = TestClaims.Create(TestClaims.Claimant());
         var riskObject = claim.RiskObjects[0];
-        var input = new RemoveRiskObjectInput(riskObject.Id, TestClaims.Later, TestClaims.LossReference());
+        var input = new RemoveRiskObjectInput(riskObject.Id, TestClaims.Later, TestClaims.Period(), TestClaims.Codes());
         RemoveRiskObjectOnClaimOperation.Run(claim, input);
 
         var result = new IsRiskObjectNotRemoved().Check(riskObject);

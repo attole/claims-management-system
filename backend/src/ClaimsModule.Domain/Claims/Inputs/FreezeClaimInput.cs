@@ -1,9 +1,11 @@
 using ClaimsModule.Domain.Claims.Loss;
+using ClaimsModule.Domain.Policies;
 
 namespace ClaimsModule.Domain.Claims.Inputs;
 
 public sealed record FreezeClaimInput(
-    bool HasPendingReserveChange,
-    bool HasUnpostedReserveChange,
+    bool HasPendingReserveHistory,
+    bool HasUnpostedReserveHistory,
     bool HasOpenReserveBalance,
-    LossReference LossReference) : ClaimTransitionInput(LossReference);
+    PolicyPeriod PolicyPeriod,
+    CauseCodes CauseCodes) : ClaimTransitionInput(PolicyPeriod, CauseCodes);

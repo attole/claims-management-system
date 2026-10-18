@@ -68,7 +68,7 @@ public sealed class IsLossCompleteAfterDraftTests
 
     private static IsLossCompleteAfterDraft CreateRule(LossDetails details)
     {
-        return new IsLossCompleteAfterDraft(details, TestClaims.LossReference());
+        return new IsLossCompleteAfterDraft(details, TestClaims.Period(), TestClaims.Codes());
     }
 
     private static Claim WaivedShortDescriptionAfterDraft()

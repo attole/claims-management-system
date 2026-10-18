@@ -72,7 +72,8 @@ public sealed class WaiveIssueOnClaimOperationTests
             TestClaims.Supervisor,
             TestClaims.Actor,
             earlier,
-            TestClaims.LossReference());
+            TestClaims.Period(),
+            TestClaims.Codes());
 
         Action act = () => WaiveIssueOnClaimOperation.Run(claim, input);
 
@@ -81,7 +82,13 @@ public sealed class WaiveIssueOnClaimOperationTests
 
     private static WaiveIssueInput CreateInput(Guid issueId, UserRole role)
     {
-        var input = new WaiveIssueInput(issueId, role, TestClaims.Actor, TestClaims.Later, TestClaims.LossReference());
+        var input = new WaiveIssueInput(
+            issueId,
+            role,
+            TestClaims.Actor,
+            TestClaims.Later,
+            TestClaims.Period(),
+            TestClaims.Codes());
 
         return input;
     }

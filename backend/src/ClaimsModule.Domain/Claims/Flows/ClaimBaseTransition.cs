@@ -20,7 +20,7 @@ internal abstract class ClaimBaseTransition<TSelf, TInput>(ClaimState target)
             move.To,
             input.Reason,
             input.Note);
-        claim.StateChangeList.Add(history);
+        claim.AttachStateChange(history);
         claim.State = move.To;
     }
 }

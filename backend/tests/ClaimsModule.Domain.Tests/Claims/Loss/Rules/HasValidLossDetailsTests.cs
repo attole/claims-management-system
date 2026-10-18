@@ -51,6 +51,6 @@ public sealed class HasValidLossDetailsTests
 
     private static HasValidLossDetails CreateRule()
     {
-        return new HasValidLossDetails(TestClaims.ReportDay, TestClaims.LossReference());
+        return new HasValidLossDetails(TestClaims.ReportDay, TestClaims.Period(), TestClaims.Codes());
     }
 }

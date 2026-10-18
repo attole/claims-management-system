@@ -9,7 +9,7 @@ public sealed class RemoveRiskObjectInputTests
     public void Now_WhenNotGiven_Throws()
     {
         Func<RemoveRiskObjectInput> act = () =>
-            new RemoveRiskObjectInput(Guid.NewGuid(), default, TestClaims.LossReference());
+            new RemoveRiskObjectInput(Guid.NewGuid(), default, TestClaims.Period(), TestClaims.Codes());
 
         act.Should().Throw<ArgumentException>();
     }

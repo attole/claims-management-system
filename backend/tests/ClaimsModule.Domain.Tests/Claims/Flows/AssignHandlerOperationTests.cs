@@ -13,7 +13,7 @@ public sealed class AssignHandlerOperationTests
     {
         var claim = TestClaims.Create(TestClaims.Claimant());
         var handler = Guid.NewGuid();
-        var input = new AssignHandlerInput(handler, TestClaims.LossReference());
+        var input = new AssignHandlerInput(handler, TestClaims.Period(), TestClaims.Codes());
 
         AssignHandlerOperation.Run(claim, input);
 
@@ -25,7 +25,7 @@ public sealed class AssignHandlerOperationTests
     public void Run_WhenTheClaimIsWithdrawn_Fails()
     {
         var claim = TestClaims.InState<ClaimWithdrawnState>();
-        var input = new AssignHandlerInput(Guid.NewGuid(), TestClaims.LossReference());
+        var input = new AssignHandlerInput(Guid.NewGuid(), TestClaims.Period(), TestClaims.Codes());
 
         var outcome = AssignHandlerOperation.Run(claim, input);
 
@@ -37,7 +37,7 @@ public sealed class AssignHandlerOperationTests
     public void Run_UnassigningAfterDraft_ReturnsTheFindingAndKeepsTheHandler()
     {
         var claim = TestClaims.InState<ClaimOpenState>();
-        var input = new AssignHandlerInput(Guid.Empty, TestClaims.LossReference());
+        var input = new AssignHandlerInput(Guid.Empty, TestClaims.Period(), TestClaims.Codes());
 
         var outcome = AssignHandlerOperation.Run(claim, input);
 

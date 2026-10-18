@@ -16,7 +16,7 @@ internal sealed class UpdateRiskObjectOnClaimOperation
 
     protected override Outcome<ClaimRiskObject> Apply(Claim claim, UpdateRiskObjectInput input)
     {
-        var riskObject = claim.RiskObjectList.Single(riskObject => riskObject.Id == input.RiskObjectId);
+        var riskObject = claim.RiskObjects.Single(riskObject => riskObject.Id == input.RiskObjectId);
 
         return riskObject.Update(new RiskObjectDetailsInput(input.Details));
     }

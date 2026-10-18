@@ -15,7 +15,7 @@ public sealed class UpdateLossDetailsOnClaimOperationTests
     {
         var claim = TestClaims.Create(TestClaims.Claimant());
         var details = new LossDetails(new LossDate(TestClaims.Start.AddDays(-1)), "Fire", "FIRE");
-        var input = new UpdateLossDetailsInput(details, TestClaims.LossReference());
+        var input = new UpdateLossDetailsInput(details, TestClaims.Period(), TestClaims.Codes());
 
         var outcome = UpdateLossDetailsOnClaimOperation.Run(claim, input);
 
@@ -29,7 +29,7 @@ public sealed class UpdateLossDetailsOnClaimOperationTests
     {
         var claim = TestClaims.InState<ClaimClosedState>();
         var loss = TestClaims.Loss(TestClaims.Start.AddDays(-1), TestClaims.Description);
-        var input = new UpdateLossDetailsInput(loss, TestClaims.LossReference());
+        var input = new UpdateLossDetailsInput(loss, TestClaims.Period(), TestClaims.Codes());
 
         var outcome = UpdateLossDetailsOnClaimOperation.Run(claim, input);
 
@@ -42,7 +42,7 @@ public sealed class UpdateLossDetailsOnClaimOperationTests
     {
         var claim = TestClaims.InState<ClaimOpenState>();
         var before = claim.LossEvent.Details;
-        var input = new UpdateLossDetailsInput(LossDetails.Empty, TestClaims.LossReference());
+        var input = new UpdateLossDetailsInput(LossDetails.Empty, TestClaims.Period(), TestClaims.Codes());
 
         var outcome = UpdateLossDetailsOnClaimOperation.Run(claim, input);
 

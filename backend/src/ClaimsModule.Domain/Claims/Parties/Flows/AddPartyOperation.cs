@@ -15,7 +15,7 @@ internal sealed class AddPartyOperation : Operation<AddPartyOperation, Claim, Ad
     protected override Outcome<ClaimParty> Apply(Claim claim, AddPartyInput input)
     {
         var party = new ClaimParty(Ids.Next(), claim.Id, claim.OrganisationId, input.Details);
-        claim.PartyList.Add(party);
+        claim.AttachParty(party);
 
         return Done(party);
     }

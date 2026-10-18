@@ -18,7 +18,7 @@ public sealed class ReopenClaimTransitionTests
     public void Run_ByASupervisorWithAReason_MovesToReopened()
     {
         var claim = TestClaims.InState<ClaimClosedState>();
-        var input = new ReopenClaimInput(TestClaims.Supervisor, TestClaims.LossReference())
+        var input = new ReopenClaimInput(TestClaims.Supervisor, TestClaims.Period(), TestClaims.Codes())
         {
             Reason = _reason,
         };
@@ -34,7 +34,7 @@ public sealed class ReopenClaimTransitionTests
     public void Run_ByAHandler_ReturnsTheRoleFinding()
     {
         var claim = TestClaims.InState<ClaimClosedState>();
-        var input = new ReopenClaimInput(TestClaims.Handler, TestClaims.LossReference())
+        var input = new ReopenClaimInput(TestClaims.Handler, TestClaims.Period(), TestClaims.Codes())
         {
             Reason = _reason,
         };
@@ -50,7 +50,7 @@ public sealed class ReopenClaimTransitionTests
     public void Run_WithoutAReason_ReturnsTheReasonFinding()
     {
         var claim = TestClaims.InState<ClaimClosedState>();
-        var input = new ReopenClaimInput(TestClaims.Supervisor, TestClaims.LossReference());
+        var input = new ReopenClaimInput(TestClaims.Supervisor, TestClaims.Period(), TestClaims.Codes());
 
         var outcome = ReopenClaimTransition.Run(claim, input);
 
@@ -62,7 +62,7 @@ public sealed class ReopenClaimTransitionTests
     public void Run_FromOpen_ReturnsNotPermitted()
     {
         var claim = TestClaims.InState<ClaimOpenState>();
-        var input = new ReopenClaimInput(TestClaims.Supervisor, TestClaims.LossReference())
+        var input = new ReopenClaimInput(TestClaims.Supervisor, TestClaims.Period(), TestClaims.Codes())
         {
             Reason = _reason,
         };

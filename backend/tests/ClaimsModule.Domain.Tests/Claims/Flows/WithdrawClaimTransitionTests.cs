@@ -65,29 +65,29 @@ public sealed class WithdrawClaimTransitionTests
     }
 
     [Fact]
-    [Trait("Rule", HasNoPendingReserveChangeForWithdrawal.Code)]
-    public void Run_WithAReserveChangeAwaitingApproval_ReturnsTheFindingAndKeepsTheState()
+    [Trait("Rule", HasNoPendingReserveHistoryForWithdrawal.Code)]
+    public void Run_WithAReserveHistoryAwaitingApproval_ReturnsTheFindingAndKeepsTheState()
     {
         var claim = TestClaims.InState<ClaimOpenState>();
-        var input = CreateInput() with { HasPendingReserveChange = true };
+        var input = CreateInput() with { HasPendingReserveHistory = true };
 
         var outcome = WithdrawClaimTransition.Run(claim, input);
 
         outcome.CriticalFindings.Should().ContainSingle()
-            .Which.Code.Should().Be(HasNoPendingReserveChangeForWithdrawal.Code);
+            .Which.Code.Should().Be(HasNoPendingReserveHistoryForWithdrawal.Code);
         claim.State.Should().BeOfType<ClaimOpenState>();
     }
 
     [Fact]
-    [Trait("Rule", HasNoUnpostedReserveChange.Code)]
+    [Trait("Rule", HasNoUnpostedReserveHistory.Code)]
     public void Run_WithAnApprovedChangeNotYetPosted_ReturnsTheFinding()
     {
         var claim = TestClaims.InState<ClaimOpenState>();
-        var input = CreateInput() with { HasUnpostedReserveChange = true };
+        var input = CreateInput() with { HasUnpostedReserveHistory = true };
 
         var outcome = WithdrawClaimTransition.Run(claim, input);
 
-        outcome.CriticalFindings.Should().ContainSingle().Which.Code.Should().Be(HasNoUnpostedReserveChange.Code);
+        outcome.CriticalFindings.Should().ContainSingle().Which.Code.Should().Be(HasNoUnpostedReserveHistory.Code);
     }
 
     [Fact]
@@ -118,6 +118,6 @@ public sealed class WithdrawClaimTransitionTests
 
     private static FreezeClaimInput CreateInput()
     {
-        return new FreezeClaimInput(false, false, false, TestClaims.LossReference()) { Reason = _reason };
+        return new FreezeClaimInput(false, false, false, TestClaims.Period(), TestClaims.Codes()) { Reason = _reason };
     }
 }

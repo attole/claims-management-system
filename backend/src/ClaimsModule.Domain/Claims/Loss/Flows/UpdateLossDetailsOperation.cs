@@ -4,9 +4,9 @@ using ClaimsModule.Domain.Core.Flows;
 namespace ClaimsModule.Domain.Claims.Loss.Flows;
 
 internal sealed class UpdateLossDetailsOperation
-    : Operation<UpdateLossDetailsOperation, ClaimLossEvent, LossDetailsInput, ClaimLossEvent>
+    : Operation<UpdateLossDetailsOperation, LossEvent, LossDetailsInput, LossEvent>
 {
-    protected override Outcome<ClaimLossEvent> Apply(ClaimLossEvent loss, LossDetailsInput input)
+    protected override Outcome<LossEvent> Apply(LossEvent loss, LossDetailsInput input)
     {
         loss.Details = input.Details;
 
