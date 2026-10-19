@@ -1,6 +1,6 @@
 using ClaimsModule.Domain.Common.Events;
 
-namespace ClaimsModule.Application.Events;
+namespace ClaimsModule.Application.Events.Contracts;
 
 public interface IBeforeCommitEventHandler<in TEvent>
     where TEvent : DomainEvent

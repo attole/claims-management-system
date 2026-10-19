@@ -1,4 +1,4 @@
-namespace ClaimsModule.Application.Audit;
+namespace ClaimsModule.Application.Audit.Contracts;
 
 public sealed record AuditEntry(Guid ClaimId, string EventType, string Description)
 {

@@ -1,5 +1,5 @@
 using ClaimsModule.Application.Abstractions;
-using ClaimsModule.Application.Audit;
+using ClaimsModule.Application.Audit.Contracts;
 using ClaimsModule.Application.ClaimDocuments;
 using ClaimsModule.Application.ClaimDocuments.Contracts;
 using ClaimsModule.Application.Claims.Contracts;

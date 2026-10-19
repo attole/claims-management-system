@@ -1,4 +1,4 @@
-using ClaimsModule.Application.Events;
+using ClaimsModule.Application.Events.Contracts;
 using ClaimsModule.Application.ReserveComponents.Contracts;
 using ClaimsModule.Domain.Claims;
 using ClaimsModule.Domain.Claims.Events;

@@ -1,3 +1,5 @@
+using ClaimsModule.Application.Audit.Contracts;
+using ClaimsModule.Application.Audit.Dtos;
 using ClaimsModule.Application.Claims;
 using ClaimsModule.Application.Claims.Contracts;
 using ClaimsModule.Application.Messaging;

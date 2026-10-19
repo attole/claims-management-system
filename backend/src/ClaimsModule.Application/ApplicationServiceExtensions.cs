@@ -18,7 +18,7 @@ public static class ApplicationServiceExtensions
         });
         services.AddValidatorsFromAssembly(assembly);
         services.AddAutoMapper(assembly);
-        services.AddEventHandlers(assembly);
+        services.AddEvents(assembly);
 
         return services;
     }

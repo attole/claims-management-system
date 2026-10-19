@@ -1,6 +1,6 @@
 using ClaimsModule.Domain.Common.Events;
 
-namespace ClaimsModule.Application.Events;
+namespace ClaimsModule.Application.Events.Contracts;
 
 public sealed record EventContext(
     Guid EventId,

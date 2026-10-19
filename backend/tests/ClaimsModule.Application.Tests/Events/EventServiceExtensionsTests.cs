@@ -1,5 +1,9 @@
 using ClaimsModule.Application.Abstractions;
+using ClaimsModule.Application.Audit.Contracts;
+using ClaimsModule.Application.Audit.Handlers;
 using ClaimsModule.Application.Events;
+using ClaimsModule.Application.Events.Contracts;
+using ClaimsModule.Application.Events.Services;
 using ClaimsModule.Application.ReserveComponents.Contracts;
 using ClaimsModule.Application.ReserveComponents.Handlers;
 using ClaimsModule.Application.ReserveComponents.History.Handlers;
@@ -9,25 +13,22 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace ClaimsModule.Application.Tests.Events;
 
-public sealed class EventHandlersServiceExtensionsTests
+public sealed class EventServiceExtensionsTests
 {
     [Fact]
     [Trait("Rule", "S:RES-Components")]
-    public void AddEventHandlers_RegistersTheBeforeCommitHandlersOfTheAssembly()
+    public void AddEvents_RegistersTheBeforeCommitHandlersOfTheAssembly()
     {
-        var services = new ServiceCollection();
-        services.AddSingleton(Mock.Of<IReserveComponentRepository>());
-        services.AddEventHandlers(typeof(ApplicationServiceExtensions).Assembly);
-        var provider = services.BuildServiceProvider();
+        var provider = CreateProvider();
 
         var result = provider.GetServices<IBeforeCommitEventHandler<ClaimStateChangedEvent>>();
 
-        result.Should().ContainSingle(handler => handler is ClaimStateChangedReserveComponentHandler);
+        result.Should().Contain(handler => handler is ClaimStateChangedReserveComponentHandler);
     }
 
     [Fact]
     [Trait("Rule", "S:RES-PendingFlow")]
-    public void AddEventHandlers_RegistersTheApprovalPostingHandler()
+    public void AddEvents_RegistersTheApprovalPostingHandler()
     {
         var provider = CreateProvider();
 
@@ -38,7 +39,7 @@ public sealed class EventHandlersServiceExtensionsTests
 
     [Fact]
     [Trait("Rule", "S:RES-PendingFlow")]
-    public void AddEventHandlers_RegistersTheRetriedPostingHandler()
+    public void AddEvents_RegistersTheRetriedPostingHandler()
     {
         var provider = CreateProvider();
 
@@ -47,12 +48,34 @@ public sealed class EventHandlersServiceExtensionsTests
         result.Should().ContainSingle(handler => handler is ReservePostingRetriedHandler);
     }
 
+    [Fact]
+    [Trait("Rule", "S:AUD-Events")]
+    public void AddEvents_RegistersTheAuditHandlerOfAClaimStatusChange()
+    {
+        var provider = CreateProvider();
+
+        var result = provider.GetServices<IBeforeCommitEventHandler<ClaimStateChangedEvent>>();
+
+        result.Should().Contain(handler => handler is ClaimStateChangedAuditHandler);
+    }
+
+    [Fact]
+    public void AddEvents_RegistersTheEventDispatcher()
+    {
+        var provider = CreateProvider();
+
+        var result = provider.GetRequiredService<IEventDispatcher>();
+
+        result.Should().BeOfType<EventDispatcher>();
+    }
+
     private static ServiceProvider CreateProvider()
     {
         var services = new ServiceCollection();
         services.AddSingleton(Mock.Of<IReserveComponentRepository>());
         services.AddSingleton(Mock.Of<IPostingScheduler>());
-        services.AddEventHandlers(typeof(ApplicationServiceExtensions).Assembly);
+        services.AddSingleton(Mock.Of<IAuditLogService>());
+        services.AddEvents(typeof(ApplicationServiceExtensions).Assembly);
 
         return services.BuildServiceProvider();
     }

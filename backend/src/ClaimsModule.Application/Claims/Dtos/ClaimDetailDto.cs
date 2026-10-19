@@ -1,4 +1,4 @@
-using ClaimsModule.Application.Audit;
+using ClaimsModule.Application.Audit.Dtos;
 using ClaimsModule.Application.ClaimDocuments.Dtos;
 using ClaimsModule.Application.Claims.Issues;
 using ClaimsModule.Application.Claims.Loss;

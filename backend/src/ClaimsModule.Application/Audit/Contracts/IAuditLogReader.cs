@@ -1,6 +1,7 @@
+using ClaimsModule.Application.Audit.Dtos;
 using ClaimsModule.Application.Paging;
 
-namespace ClaimsModule.Application.Audit;
+namespace ClaimsModule.Application.Audit.Contracts;
 
 public interface IAuditLogReader
 {

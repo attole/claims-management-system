@@ -1,5 +1,6 @@
 using ClaimsModule.Application.Abstractions;
-using ClaimsModule.Application.Audit;
+using ClaimsModule.Application.Audit.Contracts;
+using ClaimsModule.Application.Audit.Dtos;
 using ClaimsModule.Application.CauseOfLoss;
 using ClaimsModule.Application.ClaimDocuments.Contracts;
 using ClaimsModule.Application.Claims;

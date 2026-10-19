@@ -7,7 +7,7 @@ The final design of the claims module. The Domain is built and tested, and the A
 | Layer | State |
 |---|---|
 | Domain | complete: the claim with its children, the reserve component with its history rows, claim documents, policies, the cause-of-loss reference data, roles and the generic engine, with tests |
-| Application | built with tests: results, command and query markers, closed-set `From`, the claim, reserve and document use cases, status changes and all reads; the audit handlers, the event dispatcher and Unit of Work contract and the idempotency contract are next; the obligations the Domain hands over are listed under 'What the next layers must do' |
+| Application | built with tests: results, command and query markers, closed-set `From`, the claim, reserve and document use cases, status changes and all reads, the audit handlers, the event dispatcher with the Unit of Work that runs it, and the idempotency store contract; the obligations the Domain hands over are listed under 'What the next layers must do' |
 | Persistence, Infrastructure, API, frontend | not started; working notes are in `.claude/temp/notes-layer-application.md` and `.claude/temp/notes-layer-persistence.md` |
 
 ## Configuration

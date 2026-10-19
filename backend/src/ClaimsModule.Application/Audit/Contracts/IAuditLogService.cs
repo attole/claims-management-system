@@ -1,6 +1,6 @@
-using ClaimsModule.Application.Events;
+using ClaimsModule.Application.Events.Contracts;
 
-namespace ClaimsModule.Application.Audit;
+namespace ClaimsModule.Application.Audit.Contracts;
 
 public interface IAuditLogService
 {

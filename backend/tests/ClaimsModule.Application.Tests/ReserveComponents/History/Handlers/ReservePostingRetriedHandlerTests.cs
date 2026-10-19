@@ -1,4 +1,4 @@
-using ClaimsModule.Application.Events;
+using ClaimsModule.Application.Events.Contracts;
 using ClaimsModule.Application.ReserveComponents.History.Handlers;
 using ClaimsModule.Application.Tests.Support.Claims;
 using ClaimsModule.Domain.ReserveComponents.History.Events;

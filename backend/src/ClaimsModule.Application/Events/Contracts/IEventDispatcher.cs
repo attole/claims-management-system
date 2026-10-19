@@ -1,4 +1,4 @@
-namespace ClaimsModule.Application.Events;
+namespace ClaimsModule.Application.Events.Contracts;
 
 public interface IEventDispatcher
 {

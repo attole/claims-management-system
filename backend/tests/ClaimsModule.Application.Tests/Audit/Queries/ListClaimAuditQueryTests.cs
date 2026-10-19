@@ -1,4 +1,4 @@
-using ClaimsModule.Application.Audit;
+using ClaimsModule.Application.Audit.Dtos;
 using ClaimsModule.Application.Audit.Queries;
 using ClaimsModule.Application.Claims;
 using ClaimsModule.Application.Paging;

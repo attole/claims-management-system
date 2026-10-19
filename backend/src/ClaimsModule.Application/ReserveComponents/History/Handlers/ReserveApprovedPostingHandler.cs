@@ -1,5 +1,5 @@
 using ClaimsModule.Application.Abstractions;
-using ClaimsModule.Application.Events;
+using ClaimsModule.Application.Events.Contracts;
 using ClaimsModule.Domain.ReserveComponents.History;
 using ClaimsModule.Domain.ReserveComponents.History.Events;
 

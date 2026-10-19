@@ -1,4 +1,4 @@
-namespace ClaimsModule.Application.Audit;
+namespace ClaimsModule.Application.Audit.Dtos;
 
 public sealed record AuditEntryDto
 {
