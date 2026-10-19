@@ -32,4 +32,13 @@ public sealed class ClaimErrorsTests
         errors.Should().ContainSingle(error => error.Code == code);
         errors.Should().OnlyContain(error => error.Kind == ErrorKind.NotFound);
     }
+
+    [Fact]
+    public void StatusUnsupported_IsAValidationErrorOnTheTargetStatus()
+    {
+        var error = ClaimErrors.StatusUnsupported("Draft");
+
+        error.Kind.Should().Be(ErrorKind.Validation);
+        error.Field.Should().Be("TargetStatus");
+    }
 }

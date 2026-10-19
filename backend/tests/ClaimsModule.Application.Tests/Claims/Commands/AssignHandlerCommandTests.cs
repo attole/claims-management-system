@@ -1,28 +1,30 @@
 using ClaimsModule.Application.Claims;
+using ClaimsModule.Application.Claims.Commands;
 using ClaimsModule.Application.Tests.Support.Claims;
 using FluentValidation.TestHelper;
 
-namespace ClaimsModule.Application.Tests.Claims;
+namespace ClaimsModule.Application.Tests.Claims.Commands;
 
-public sealed class UpdateNotesCommandTests
+public sealed class AssignHandlerCommandTests
 {
     [Fact]
-    public async Task Handle_WhenTheClaimIsEditable_UpdatesTheNotesAndCommits()
+    public async Task Handle_WhenTheClaimIsEditable_AssignsTheHandlerAndCommits()
     {
         var claim = ApplicationClaims.Draft();
+        var handlerId = Guid.NewGuid();
         var context = new ClaimHandlerContext().WithClaim(claim);
-        var handler = new UpdateNotesCommandHandler(
+        var handler = new AssignHandlerCommandHandler(
             context.Claims,
             context.Policies,
             context.Causes,
             context.UnitOfWork,
             context.Mapper);
-        var command = new UpdateNotesCommand(claim.Id, "Called the insured");
+        var command = new AssignHandlerCommand(claim.Id, handlerId);
 
         var result = await handler.Handle(command, CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Notes.Should().Be("Called the insured");
+        result.Value.AssignedHandlerId.Should().Be(handlerId);
         context.VerifyCommitted(Times.Once());
     }
 
@@ -31,13 +33,13 @@ public sealed class UpdateNotesCommandTests
     {
         var claimId = Guid.NewGuid();
         var context = new ClaimHandlerContext().WithoutClaim(claimId);
-        var handler = new UpdateNotesCommandHandler(
+        var handler = new AssignHandlerCommandHandler(
             context.Claims,
             context.Policies,
             context.Causes,
             context.UnitOfWork,
             context.Mapper);
-        var command = new UpdateNotesCommand(claimId, "Called the insured");
+        var command = new AssignHandlerCommand(claimId, Guid.NewGuid());
 
         var result = await handler.Handle(command, CancellationToken.None);
 
@@ -48,8 +50,8 @@ public sealed class UpdateNotesCommandTests
     [Fact]
     public void Validate_ForAValidCommand_HasNoErrors()
     {
-        var validator = new UpdateNotesCommandValidator();
-        var command = new UpdateNotesCommand(Guid.NewGuid(), "Called the insured");
+        var validator = new AssignHandlerCommandValidator();
+        var command = new AssignHandlerCommand(Guid.NewGuid(), Guid.NewGuid());
 
         var result = validator.TestValidate(command);
 
@@ -59,8 +61,8 @@ public sealed class UpdateNotesCommandTests
     [Fact]
     public void Validate_WithAnEmptyClaimId_FailsOnTheField()
     {
-        var validator = new UpdateNotesCommandValidator();
-        var command = new UpdateNotesCommand(Guid.Empty, "Called the insured");
+        var validator = new AssignHandlerCommandValidator();
+        var command = new AssignHandlerCommand(Guid.Empty, Guid.NewGuid());
 
         var result = validator.TestValidate(command);
 
@@ -68,13 +70,13 @@ public sealed class UpdateNotesCommandTests
     }
 
     [Fact]
-    public void Validate_WithNullNotes_FailsOnTheField()
+    public void Validate_WithAnEmptyHandlerId_FailsOnTheField()
     {
-        var validator = new UpdateNotesCommandValidator();
-        var command = new UpdateNotesCommand(Guid.NewGuid(), null!);
+        var validator = new AssignHandlerCommandValidator();
+        var command = new AssignHandlerCommand(Guid.NewGuid(), Guid.Empty);
 
         var result = validator.TestValidate(command);
 
-        result.ShouldHaveValidationErrorFor(command => command.Notes);
+        result.ShouldHaveValidationErrorFor(command => command.HandlerId);
     }
 }

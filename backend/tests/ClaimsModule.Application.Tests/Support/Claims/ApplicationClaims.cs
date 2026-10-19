@@ -49,7 +49,7 @@ public static class ApplicationClaims
 
     public static Outcome<Move<ClaimState>> WithdrawnWithOpenBalance()
     {
-        var claim = Open();
+        var claim = Opened();
         var input = new FreezeClaimInput(false, false, true, _period, _codes)
         {
             Reason = new StateChangeReason("WITHDRAWN", "Reported in error"),
@@ -96,7 +96,39 @@ public static class ApplicationClaims
         return claim;
     }
 
-    private static Claim Open()
+    public static PolicyPeriod LinkedPeriod()
+    {
+        return _period;
+    }
+
+    public static Claim Opened()
+    {
+        var claim = ReadyDraft();
+
+        claim.Open(new ClaimTransitionInput(_period, _codes));
+
+        return claim;
+    }
+
+    public static Claim UnderInvestigation()
+    {
+        var claim = Opened();
+
+        claim.Investigate(new ClaimTransitionInput(_period, _codes));
+
+        return claim;
+    }
+
+    public static Claim Closed()
+    {
+        var claim = Opened();
+
+        claim.Close(new FreezeClaimInput(false, false, false, _period, _codes));
+
+        return claim;
+    }
+
+    public static Claim ReadyDraft()
     {
         var claim = Created().Value;
         var loss = new LossDetails(new LossDate(_start.AddDays(-3)), "Water damage in the kitchen", "WATER");
@@ -112,7 +144,6 @@ public static class ApplicationClaims
         claim.AddRiskObject(new AddRiskObjectInput(riskObject, _period, _codes));
         claim.AssignHandler(new AssignHandlerInput(_handler, _period, _codes));
         claim.AddParty(new AddPartyInput(person, _period, _codes));
-        claim.Open(new ClaimTransitionInput(_period, _codes));
 
         return claim;
     }

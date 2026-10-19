@@ -1,29 +1,29 @@
 using ClaimsModule.Application.Claims;
+using ClaimsModule.Application.Claims.Commands;
 using ClaimsModule.Application.Tests.Support.Claims;
-using ClaimsModule.Domain.Claims;
 using FluentValidation.TestHelper;
 
-namespace ClaimsModule.Application.Tests.Claims;
+namespace ClaimsModule.Application.Tests.Claims.Commands;
 
-public sealed class SetSeverityCommandTests
+public sealed class UpdateNotesCommandTests
 {
     [Fact]
-    public async Task Handle_WhenTheClaimIsEditable_SetsTheSeverityAndCommits()
+    public async Task Handle_WhenTheClaimIsEditable_UpdatesTheNotesAndCommits()
     {
         var claim = ApplicationClaims.Draft();
         var context = new ClaimHandlerContext().WithClaim(claim);
-        var handler = new SetSeverityCommandHandler(
+        var handler = new UpdateNotesCommandHandler(
             context.Claims,
             context.Policies,
             context.Causes,
             context.UnitOfWork,
             context.Mapper);
-        var command = new SetSeverityCommand(claim.Id, ClaimSeverity.Standard);
+        var command = new UpdateNotesCommand(claim.Id, "Called the insured");
 
         var result = await handler.Handle(command, CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Severity.Should().Be("Standard");
+        result.Value.Notes.Should().Be("Called the insured");
         context.VerifyCommitted(Times.Once());
     }
 
@@ -32,13 +32,13 @@ public sealed class SetSeverityCommandTests
     {
         var claimId = Guid.NewGuid();
         var context = new ClaimHandlerContext().WithoutClaim(claimId);
-        var handler = new SetSeverityCommandHandler(
+        var handler = new UpdateNotesCommandHandler(
             context.Claims,
             context.Policies,
             context.Causes,
             context.UnitOfWork,
             context.Mapper);
-        var command = new SetSeverityCommand(claimId, ClaimSeverity.Standard);
+        var command = new UpdateNotesCommand(claimId, "Called the insured");
 
         var result = await handler.Handle(command, CancellationToken.None);
 
@@ -49,8 +49,8 @@ public sealed class SetSeverityCommandTests
     [Fact]
     public void Validate_ForAValidCommand_HasNoErrors()
     {
-        var validator = new SetSeverityCommandValidator();
-        var command = new SetSeverityCommand(Guid.NewGuid(), ClaimSeverity.Standard);
+        var validator = new UpdateNotesCommandValidator();
+        var command = new UpdateNotesCommand(Guid.NewGuid(), "Called the insured");
 
         var result = validator.TestValidate(command);
 
@@ -60,8 +60,8 @@ public sealed class SetSeverityCommandTests
     [Fact]
     public void Validate_WithAnEmptyClaimId_FailsOnTheField()
     {
-        var validator = new SetSeverityCommandValidator();
-        var command = new SetSeverityCommand(Guid.Empty, ClaimSeverity.Standard);
+        var validator = new UpdateNotesCommandValidator();
+        var command = new UpdateNotesCommand(Guid.Empty, "Called the insured");
 
         var result = validator.TestValidate(command);
 
@@ -69,13 +69,13 @@ public sealed class SetSeverityCommandTests
     }
 
     [Fact]
-    public void Validate_WithAnUnknownSeverity_FailsOnTheField()
+    public void Validate_WithNullNotes_FailsOnTheField()
     {
-        var validator = new SetSeverityCommandValidator();
-        var command = new SetSeverityCommand(Guid.NewGuid(), (ClaimSeverity)99);
+        var validator = new UpdateNotesCommandValidator();
+        var command = new UpdateNotesCommand(Guid.NewGuid(), null!);
 
         var result = validator.TestValidate(command);
 
-        result.ShouldHaveValidationErrorFor(command => command.Severity);
+        result.ShouldHaveValidationErrorFor(command => command.Notes);
     }
 }

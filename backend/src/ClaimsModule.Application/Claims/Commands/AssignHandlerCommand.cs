@@ -10,33 +10,33 @@ using ClaimsModule.Domain.Policies;
 using FluentValidation;
 using MediatR;
 
-namespace ClaimsModule.Application.Claims;
+namespace ClaimsModule.Application.Claims.Commands;
 
-public sealed record LinkPolicyCommand(Guid ClaimId, Guid PolicyId) : ICommand<Result<ClaimDto>>
+public sealed record AssignHandlerCommand(Guid ClaimId, Guid HandlerId) : ICommand<Result<ClaimDto>>
 {
-    public LinkPolicyInput ToInput(PolicyPeriod period, CauseCodes codes)
+    public AssignHandlerInput ToInput(PolicyPeriod period, CauseCodes codes)
     {
-        return new LinkPolicyInput(PolicyId, period, codes);
+        return new AssignHandlerInput(HandlerId, period, codes);
     }
 }
 
-public sealed class LinkPolicyCommandValidator : AbstractValidator<LinkPolicyCommand>
+public sealed class AssignHandlerCommandValidator : AbstractValidator<AssignHandlerCommand>
 {
-    public LinkPolicyCommandValidator()
+    public AssignHandlerCommandValidator()
     {
         RuleFor(command => command.ClaimId).NotEmpty();
-        RuleFor(command => command.PolicyId).NotEmpty();
+        RuleFor(command => command.HandlerId).NotEmpty();
     }
 }
 
-public sealed class LinkPolicyCommandHandler(
+public sealed class AssignHandlerCommandHandler(
     IClaimRepository claims,
     IPolicyReader policies,
     ICauseCodeReader causes,
     IUnitOfWork unitOfWork,
-    IMapper mapper) : IRequestHandler<LinkPolicyCommand, Result<ClaimDto>>
+    IMapper mapper) : IRequestHandler<AssignHandlerCommand, Result<ClaimDto>>
 {
-    public async Task<Result<ClaimDto>> Handle(LinkPolicyCommand command, CancellationToken cancellationToken)
+    public async Task<Result<ClaimDto>> Handle(AssignHandlerCommand command, CancellationToken cancellationToken)
     {
         var loaded = await claims.GetAsync(command.ClaimId, cancellationToken);
 
@@ -46,17 +46,9 @@ public sealed class LinkPolicyCommandHandler(
         }
 
         var claim = loaded.Value;
-
-        bool hasPolicy = await policies.ExistsAsync(command.PolicyId, cancellationToken);
-
-        if (!hasPolicy)
-        {
-            return Result<ClaimDto>.Failure([ClaimErrors.PolicyNotFound(command.PolicyId)]);
-        }
-
-        var period = await policies.GetPeriodAsync(command.PolicyId, cancellationToken);
+        var period = await policies.GetPeriodAsync(claim.PolicyId, cancellationToken);
         var codes = await causes.GetActiveAsync(cancellationToken);
-        var outcome = claim.LinkPolicy(command.ToInput(period, codes));
+        var outcome = claim.AssignHandler(command.ToInput(period, codes));
         var result = outcome.ToResult();
 
         if (result.IsSuccess)

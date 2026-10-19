@@ -9,6 +9,7 @@ public static class ClaimErrors
     public const string RiskObjectNotFoundCode = "RISK_OBJECT_NOT_FOUND";
     public const string IssueNotFoundCode = "ISSUE_NOT_FOUND";
     public const string PolicyNotFoundCode = "POLICY_NOT_FOUND";
+    public const string StatusUnsupportedCode = "STATUS_TARGET_UNSUPPORTED";
 
     public static Error ClaimNotFound(Guid claimId)
     {
@@ -28,6 +29,11 @@ public static class ClaimErrors
     public static Error IssueNotFound(Guid issueId)
     {
         return Error.NotFound(IssueNotFoundCode, $"Issue {issueId} does not exist on the claim.");
+    }
+
+    public static Error StatusUnsupported(string targetStatus)
+    {
+        return Error.Validation(StatusUnsupportedCode, $"A claim cannot be moved to {targetStatus}.", "TargetStatus");
     }
 
     public static Error PolicyNotFound(Guid policyId)

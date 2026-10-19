@@ -1,4 +1,5 @@
 using ClaimsModule.Application.Claims;
+using ClaimsModule.Application.Claims.Commands;
 using ClaimsModule.Application.Claims.Parties;
 using ClaimsModule.Application.Claims.RiskObjects;
 using ClaimsModule.Application.Tests.Support.Claims;
@@ -6,7 +7,7 @@ using ClaimsModule.Domain.Claims.Parties;
 using ClaimsModule.Domain.Policies;
 using FluentValidation.TestHelper;
 
-namespace ClaimsModule.Application.Tests.Claims;
+namespace ClaimsModule.Application.Tests.Claims.Commands;
 
 public sealed class CreateClaimCommandTests
 {

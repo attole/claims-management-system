@@ -1,9 +1,10 @@
 using ClaimsModule.Application.Claims;
+using ClaimsModule.Application.Claims.Commands;
 using ClaimsModule.Application.Tests.Support.Claims;
 using ClaimsModule.Domain.Policies;
 using FluentValidation.TestHelper;
 
-namespace ClaimsModule.Application.Tests.Claims;
+namespace ClaimsModule.Application.Tests.Claims.Commands;
 
 public sealed class LinkPolicyCommandTests
 {

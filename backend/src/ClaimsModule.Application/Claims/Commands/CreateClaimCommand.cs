@@ -17,7 +17,7 @@ using ClaimsModule.Domain.Policies;
 using FluentValidation;
 using MediatR;
 
-namespace ClaimsModule.Application.Claims;
+namespace ClaimsModule.Application.Claims.Commands;
 
 public sealed record CreateClaimCommand(
     Guid PolicyId,

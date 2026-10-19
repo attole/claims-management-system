@@ -5,39 +5,38 @@ using ClaimsModule.Application.Messaging;
 using ClaimsModule.Application.Policies;
 using ClaimsModule.Application.Results;
 using ClaimsModule.Domain.CauseOfLoss;
-using ClaimsModule.Domain.Claims;
 using ClaimsModule.Domain.Claims.Inputs;
 using ClaimsModule.Domain.Policies;
 using FluentValidation;
 using MediatR;
 
-namespace ClaimsModule.Application.Claims;
+namespace ClaimsModule.Application.Claims.Commands;
 
-public sealed record SetSeverityCommand(Guid ClaimId, ClaimSeverity Severity) : ICommand<Result<ClaimDto>>
+public sealed record LinkPolicyCommand(Guid ClaimId, Guid PolicyId) : ICommand<Result<ClaimDto>>
 {
-    public SetSeverityInput ToInput(PolicyPeriod period, CauseCodes codes)
+    public LinkPolicyInput ToInput(PolicyPeriod period, CauseCodes codes)
     {
-        return new SetSeverityInput(Severity, period, codes);
+        return new LinkPolicyInput(PolicyId, period, codes);
     }
 }
 
-public sealed class SetSeverityCommandValidator : AbstractValidator<SetSeverityCommand>
+public sealed class LinkPolicyCommandValidator : AbstractValidator<LinkPolicyCommand>
 {
-    public SetSeverityCommandValidator()
+    public LinkPolicyCommandValidator()
     {
         RuleFor(command => command.ClaimId).NotEmpty();
-        RuleFor(command => command.Severity).IsInEnum();
+        RuleFor(command => command.PolicyId).NotEmpty();
     }
 }
 
-public sealed class SetSeverityCommandHandler(
+public sealed class LinkPolicyCommandHandler(
     IClaimRepository claims,
     IPolicyReader policies,
     ICauseCodeReader causes,
     IUnitOfWork unitOfWork,
-    IMapper mapper) : IRequestHandler<SetSeverityCommand, Result<ClaimDto>>
+    IMapper mapper) : IRequestHandler<LinkPolicyCommand, Result<ClaimDto>>
 {
-    public async Task<Result<ClaimDto>> Handle(SetSeverityCommand command, CancellationToken cancellationToken)
+    public async Task<Result<ClaimDto>> Handle(LinkPolicyCommand command, CancellationToken cancellationToken)
     {
         var loaded = await claims.GetAsync(command.ClaimId, cancellationToken);
 
@@ -47,9 +46,17 @@ public sealed class SetSeverityCommandHandler(
         }
 
         var claim = loaded.Value;
-        var period = await policies.GetPeriodAsync(claim.PolicyId, cancellationToken);
+
+        bool hasPolicy = await policies.ExistsAsync(command.PolicyId, cancellationToken);
+
+        if (!hasPolicy)
+        {
+            return Result<ClaimDto>.Failure([ClaimErrors.PolicyNotFound(command.PolicyId)]);
+        }
+
+        var period = await policies.GetPeriodAsync(command.PolicyId, cancellationToken);
         var codes = await causes.GetActiveAsync(cancellationToken);
-        var outcome = claim.SetSeverity(command.ToInput(period, codes));
+        var outcome = claim.LinkPolicy(command.ToInput(period, codes));
         var result = outcome.ToResult();
 
         if (result.IsSuccess)

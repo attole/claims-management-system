@@ -10,33 +10,33 @@ using ClaimsModule.Domain.Policies;
 using FluentValidation;
 using MediatR;
 
-namespace ClaimsModule.Application.Claims;
+namespace ClaimsModule.Application.Claims.Commands;
 
-public sealed record AssignHandlerCommand(Guid ClaimId, Guid HandlerId) : ICommand<Result<ClaimDto>>
+public sealed record UpdateNotesCommand(Guid ClaimId, string Notes) : ICommand<Result<ClaimDto>>
 {
-    public AssignHandlerInput ToInput(PolicyPeriod period, CauseCodes codes)
+    public UpdateNotesInput ToInput(PolicyPeriod period, CauseCodes codes)
     {
-        return new AssignHandlerInput(HandlerId, period, codes);
+        return new UpdateNotesInput(Notes, period, codes);
     }
 }
 
-public sealed class AssignHandlerCommandValidator : AbstractValidator<AssignHandlerCommand>
+public sealed class UpdateNotesCommandValidator : AbstractValidator<UpdateNotesCommand>
 {
-    public AssignHandlerCommandValidator()
+    public UpdateNotesCommandValidator()
     {
         RuleFor(command => command.ClaimId).NotEmpty();
-        RuleFor(command => command.HandlerId).NotEmpty();
+        RuleFor(command => command.Notes).NotNull();
     }
 }
 
-public sealed class AssignHandlerCommandHandler(
+public sealed class UpdateNotesCommandHandler(
     IClaimRepository claims,
     IPolicyReader policies,
     ICauseCodeReader causes,
     IUnitOfWork unitOfWork,
-    IMapper mapper) : IRequestHandler<AssignHandlerCommand, Result<ClaimDto>>
+    IMapper mapper) : IRequestHandler<UpdateNotesCommand, Result<ClaimDto>>
 {
-    public async Task<Result<ClaimDto>> Handle(AssignHandlerCommand command, CancellationToken cancellationToken)
+    public async Task<Result<ClaimDto>> Handle(UpdateNotesCommand command, CancellationToken cancellationToken)
     {
         var loaded = await claims.GetAsync(command.ClaimId, cancellationToken);
 
@@ -48,7 +48,7 @@ public sealed class AssignHandlerCommandHandler(
         var claim = loaded.Value;
         var period = await policies.GetPeriodAsync(claim.PolicyId, cancellationToken);
         var codes = await causes.GetActiveAsync(cancellationToken);
-        var outcome = claim.AssignHandler(command.ToInput(period, codes));
+        var outcome = claim.UpdateNotes(command.ToInput(period, codes));
         var result = outcome.ToResult();
 
         if (result.IsSuccess)

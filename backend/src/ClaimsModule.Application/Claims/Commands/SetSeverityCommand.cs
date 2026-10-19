@@ -5,38 +5,39 @@ using ClaimsModule.Application.Messaging;
 using ClaimsModule.Application.Policies;
 using ClaimsModule.Application.Results;
 using ClaimsModule.Domain.CauseOfLoss;
+using ClaimsModule.Domain.Claims;
 using ClaimsModule.Domain.Claims.Inputs;
 using ClaimsModule.Domain.Policies;
 using FluentValidation;
 using MediatR;
 
-namespace ClaimsModule.Application.Claims;
+namespace ClaimsModule.Application.Claims.Commands;
 
-public sealed record UpdateNotesCommand(Guid ClaimId, string Notes) : ICommand<Result<ClaimDto>>
+public sealed record SetSeverityCommand(Guid ClaimId, ClaimSeverity Severity) : ICommand<Result<ClaimDto>>
 {
-    public UpdateNotesInput ToInput(PolicyPeriod period, CauseCodes codes)
+    public SetSeverityInput ToInput(PolicyPeriod period, CauseCodes codes)
     {
-        return new UpdateNotesInput(Notes, period, codes);
+        return new SetSeverityInput(Severity, period, codes);
     }
 }
 
-public sealed class UpdateNotesCommandValidator : AbstractValidator<UpdateNotesCommand>
+public sealed class SetSeverityCommandValidator : AbstractValidator<SetSeverityCommand>
 {
-    public UpdateNotesCommandValidator()
+    public SetSeverityCommandValidator()
     {
         RuleFor(command => command.ClaimId).NotEmpty();
-        RuleFor(command => command.Notes).NotNull();
+        RuleFor(command => command.Severity).IsInEnum();
     }
 }
 
-public sealed class UpdateNotesCommandHandler(
+public sealed class SetSeverityCommandHandler(
     IClaimRepository claims,
     IPolicyReader policies,
     ICauseCodeReader causes,
     IUnitOfWork unitOfWork,
-    IMapper mapper) : IRequestHandler<UpdateNotesCommand, Result<ClaimDto>>
+    IMapper mapper) : IRequestHandler<SetSeverityCommand, Result<ClaimDto>>
 {
-    public async Task<Result<ClaimDto>> Handle(UpdateNotesCommand command, CancellationToken cancellationToken)
+    public async Task<Result<ClaimDto>> Handle(SetSeverityCommand command, CancellationToken cancellationToken)
     {
         var loaded = await claims.GetAsync(command.ClaimId, cancellationToken);
 
@@ -48,7 +49,7 @@ public sealed class UpdateNotesCommandHandler(
         var claim = loaded.Value;
         var period = await policies.GetPeriodAsync(claim.PolicyId, cancellationToken);
         var codes = await causes.GetActiveAsync(cancellationToken);
-        var outcome = claim.UpdateNotes(command.ToInput(period, codes));
+        var outcome = claim.SetSeverity(command.ToInput(period, codes));
         var result = outcome.ToResult();
 
         if (result.IsSuccess)

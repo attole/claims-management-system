@@ -3,10 +3,12 @@ using ClaimsModule.Application.Abstractions;
 using ClaimsModule.Application.CauseOfLoss;
 using ClaimsModule.Application.Claims;
 using ClaimsModule.Application.Policies;
+using ClaimsModule.Application.ReserveComponents;
 using ClaimsModule.Application.Results;
 using ClaimsModule.Domain.CauseOfLoss;
 using ClaimsModule.Domain.Claims;
 using ClaimsModule.Domain.Policies;
+using ClaimsModule.Domain.ReserveComponents;
 using ClaimsModule.Domain.Roles;
 
 namespace ClaimsModule.Application.Tests.Support.Claims;
@@ -21,6 +23,8 @@ public sealed class ClaimHandlerContext
     private readonly Mock<IClaimRepository> _claims = new();
     private readonly Mock<IClaimNumberGenerator> _numbers = new();
     private readonly Mock<IPolicyReader> _policies = new();
+    private readonly Mock<IClaimReserveReader> _reserves = new();
+    private readonly Mock<IReserveComponentRepository> _components = new();
     private readonly Mock<ICauseCodeReader> _causes = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<IClock> _clock = new();
@@ -37,6 +41,10 @@ public sealed class ClaimHandlerContext
         _claims.Setup(mock => mock.AddAsync(It.IsAny<Claim>(), It.IsAny<CancellationToken>()))
             .Callback<Claim, CancellationToken>((claim, _) => _addedClaims.Add(claim))
             .Returns(Task.CompletedTask);
+        _reserves.Setup(mock => mock.GetFactsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ClaimReserveFacts(false, false, false, false, 0m));
+        _components.Setup(mock => mock.ListByClaimAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
         _unitOfWork.Setup(mock => mock.CommitAsync(It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
         _clock.SetupGet(mock => mock.UtcNow).Returns(Now);
@@ -56,6 +64,10 @@ public sealed class ClaimHandlerContext
     public IPolicyReader Policies => _policies.Object;
 
     public ICauseCodeReader Causes => _causes.Object;
+
+    public IClaimReserveReader Reserves => _reserves.Object;
+
+    public IReserveComponentRepository ReserveComponents => _components.Object;
 
     public IUnitOfWork UnitOfWork => _unitOfWork.Object;
 
@@ -95,6 +107,22 @@ public sealed class ClaimHandlerContext
     {
         _policies.Setup(mock => mock.ExistsAsync(policyId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
+
+        return this;
+    }
+
+    public ClaimHandlerContext WithReserveFacts(ClaimReserveFacts facts)
+    {
+        _reserves.Setup(mock => mock.GetFactsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(facts);
+
+        return this;
+    }
+
+    public ClaimHandlerContext WithComponents(params ReserveComponent[] components)
+    {
+        _components.Setup(mock => mock.ListByClaimAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(components);
 
         return this;
     }

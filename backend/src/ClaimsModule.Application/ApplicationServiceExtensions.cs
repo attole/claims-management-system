@@ -1,4 +1,5 @@
 using ClaimsModule.Application.Behaviors;
+using ClaimsModule.Application.Events;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -17,6 +18,7 @@ public static class ApplicationServiceExtensions
         });
         services.AddValidatorsFromAssembly(assembly);
         services.AddAutoMapper(assembly);
+        services.AddEventHandlers(assembly);
 
         return services;
     }

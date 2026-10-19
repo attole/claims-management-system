@@ -1,29 +1,30 @@
 using ClaimsModule.Application.Claims;
+using ClaimsModule.Application.Claims.Commands;
 using ClaimsModule.Application.Tests.Support.Claims;
+using ClaimsModule.Domain.Claims;
 using FluentValidation.TestHelper;
 
-namespace ClaimsModule.Application.Tests.Claims;
+namespace ClaimsModule.Application.Tests.Claims.Commands;
 
-public sealed class AssignHandlerCommandTests
+public sealed class SetSeverityCommandTests
 {
     [Fact]
-    public async Task Handle_WhenTheClaimIsEditable_AssignsTheHandlerAndCommits()
+    public async Task Handle_WhenTheClaimIsEditable_SetsTheSeverityAndCommits()
     {
         var claim = ApplicationClaims.Draft();
-        var handlerId = Guid.NewGuid();
         var context = new ClaimHandlerContext().WithClaim(claim);
-        var handler = new AssignHandlerCommandHandler(
+        var handler = new SetSeverityCommandHandler(
             context.Claims,
             context.Policies,
             context.Causes,
             context.UnitOfWork,
             context.Mapper);
-        var command = new AssignHandlerCommand(claim.Id, handlerId);
+        var command = new SetSeverityCommand(claim.Id, ClaimSeverity.Standard);
 
         var result = await handler.Handle(command, CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.AssignedHandlerId.Should().Be(handlerId);
+        result.Value.Severity.Should().Be("Standard");
         context.VerifyCommitted(Times.Once());
     }
 
@@ -32,13 +33,13 @@ public sealed class AssignHandlerCommandTests
     {
         var claimId = Guid.NewGuid();
         var context = new ClaimHandlerContext().WithoutClaim(claimId);
-        var handler = new AssignHandlerCommandHandler(
+        var handler = new SetSeverityCommandHandler(
             context.Claims,
             context.Policies,
             context.Causes,
             context.UnitOfWork,
             context.Mapper);
-        var command = new AssignHandlerCommand(claimId, Guid.NewGuid());
+        var command = new SetSeverityCommand(claimId, ClaimSeverity.Standard);
 
         var result = await handler.Handle(command, CancellationToken.None);
 
@@ -49,8 +50,8 @@ public sealed class AssignHandlerCommandTests
     [Fact]
     public void Validate_ForAValidCommand_HasNoErrors()
     {
-        var validator = new AssignHandlerCommandValidator();
-        var command = new AssignHandlerCommand(Guid.NewGuid(), Guid.NewGuid());
+        var validator = new SetSeverityCommandValidator();
+        var command = new SetSeverityCommand(Guid.NewGuid(), ClaimSeverity.Standard);
 
         var result = validator.TestValidate(command);
 
@@ -60,8 +61,8 @@ public sealed class AssignHandlerCommandTests
     [Fact]
     public void Validate_WithAnEmptyClaimId_FailsOnTheField()
     {
-        var validator = new AssignHandlerCommandValidator();
-        var command = new AssignHandlerCommand(Guid.Empty, Guid.NewGuid());
+        var validator = new SetSeverityCommandValidator();
+        var command = new SetSeverityCommand(Guid.Empty, ClaimSeverity.Standard);
 
         var result = validator.TestValidate(command);
 
@@ -69,13 +70,13 @@ public sealed class AssignHandlerCommandTests
     }
 
     [Fact]
-    public void Validate_WithAnEmptyHandlerId_FailsOnTheField()
+    public void Validate_WithAnUnknownSeverity_FailsOnTheField()
     {
-        var validator = new AssignHandlerCommandValidator();
-        var command = new AssignHandlerCommand(Guid.NewGuid(), Guid.Empty);
+        var validator = new SetSeverityCommandValidator();
+        var command = new SetSeverityCommand(Guid.NewGuid(), (ClaimSeverity)99);
 
         var result = validator.TestValidate(command);
 
-        result.ShouldHaveValidationErrorFor(command => command.HandlerId);
+        result.ShouldHaveValidationErrorFor(command => command.Severity);
     }
 }
