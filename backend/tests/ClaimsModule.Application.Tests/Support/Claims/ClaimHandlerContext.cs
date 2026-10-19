@@ -1,12 +1,15 @@
 using AutoMapper;
 using ClaimsModule.Application.Abstractions;
 using ClaimsModule.Application.CauseOfLoss;
+using ClaimsModule.Application.ClaimDocuments;
 using ClaimsModule.Application.Claims;
 using ClaimsModule.Application.Jobs;
 using ClaimsModule.Application.Policies;
 using ClaimsModule.Application.ReserveComponents;
 using ClaimsModule.Application.Results;
+using ClaimsModule.Application.Storage;
 using ClaimsModule.Domain.CauseOfLoss;
+using ClaimsModule.Domain.ClaimDocuments;
 using ClaimsModule.Domain.Claims;
 using ClaimsModule.Domain.Policies;
 using ClaimsModule.Domain.ReserveComponents;
@@ -28,6 +31,9 @@ public sealed class ClaimHandlerContext
     private readonly List<ReserveComponent> _addedComponents = [];
     private readonly Mock<IReserveComponentRepository> _components = new();
     private readonly Mock<IPostingScheduler> _scheduler = new();
+    private readonly List<ClaimDocument> _addedDocuments = [];
+    private readonly Mock<IClaimDocumentRepository> _documents = new();
+    private readonly Mock<IStorageService> _storage = new();
     private readonly Mock<ICauseCodeReader> _causes = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<IClock> _clock = new();
@@ -57,6 +63,15 @@ public sealed class ClaimHandlerContext
                 It.IsAny<string>(),
                 It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
+        _documents.Setup(mock => mock.AddAsync(It.IsAny<ClaimDocument>(), It.IsAny<CancellationToken>()))
+            .Callback<ClaimDocument, CancellationToken>((document, _) => _addedDocuments.Add(document))
+            .Returns(Task.CompletedTask);
+        _storage.Setup(mock => mock.UploadAsync(
+                It.IsAny<string>(),
+                It.IsAny<Stream>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
         _unitOfWork.Setup(mock => mock.CommitAsync(It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
         _clock.SetupGet(mock => mock.UtcNow).Returns(Now);
@@ -82,6 +97,12 @@ public sealed class ClaimHandlerContext
     public IReserveComponentRepository ReserveComponents => _components.Object;
 
     public IPostingScheduler Scheduler => _scheduler.Object;
+
+    public IClaimDocumentRepository Documents => _documents.Object;
+
+    public IStorageService Storage => _storage.Object;
+
+    public IReadOnlyList<ClaimDocument> AddedDocuments => _addedDocuments;
 
     public IReadOnlyList<ReserveComponent> AddedComponents => _addedComponents;
 
@@ -177,6 +198,44 @@ public sealed class ClaimHandlerContext
             .ReturnsAsync(Result<ReserveComponent>.Failure([ReserveErrors.HistoryNotFound(reserveHistoryId)]));
 
         return this;
+    }
+
+    public ClaimHandlerContext WithDocument(ClaimDocument document)
+    {
+        _documents.Setup(mock => mock.GetAsync(It.IsAny<Guid>(), document.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<ClaimDocument>.Success(document));
+
+        return this;
+    }
+
+    public ClaimHandlerContext WithoutDocument(Guid documentId)
+    {
+        _documents.Setup(mock => mock.GetAsync(It.IsAny<Guid>(), documentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<ClaimDocument>.Failure([DocumentErrors.NotFound(documentId)]));
+
+        return this;
+    }
+
+    public void VerifyUploaded(Func<string, bool> isPath, Times times)
+    {
+        _storage.Verify(
+            mock => mock.UploadAsync(
+                It.Is<string>(path => isPath(path)),
+                It.IsAny<Stream>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()),
+            times);
+    }
+
+    public void VerifyAnyUpload(Times times)
+    {
+        _storage.Verify(
+            mock => mock.UploadAsync(
+                It.IsAny<string>(),
+                It.IsAny<Stream>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()),
+            times);
     }
 
     public void VerifyEnqueued(Times times)
