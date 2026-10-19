@@ -13,6 +13,11 @@ public abstract record PartyType(PartyTypeKind Marker) : Marked<PartyTypeKind>(M
     public abstract bool HasPersonName { get; }
 
     public bool HasCompanyName => !HasPersonName;
+
+    public static PartyType From(PartyTypeKind kind)
+    {
+        return ClosedSet<PartyType, PartyTypeKind>.From(kind);
+    }
 }
 
 public sealed record PartyPersonType() : PartyType(PartyTypeKind.Person)

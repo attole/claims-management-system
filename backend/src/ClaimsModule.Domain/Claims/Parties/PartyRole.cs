@@ -14,6 +14,11 @@ public enum PartyRoleKind
 public abstract record PartyRole(PartyRoleKind Marker) : Marked<PartyRoleKind>(Marker)
 {
     public virtual bool IsClaimant => false;
+
+    public static PartyRole From(PartyRoleKind kind)
+    {
+        return ClosedSet<PartyRole, PartyRoleKind>.From(kind);
+    }
 }
 
 public sealed record PartyClaimantRole() : PartyRole(PartyRoleKind.Claimant)

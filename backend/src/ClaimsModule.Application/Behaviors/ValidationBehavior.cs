@@ -1,3 +1,4 @@
+using ClaimsModule.Application.Results;
 using FluentValidation;
 using MediatR;
 
@@ -6,6 +7,7 @@ namespace ClaimsModule.Application.Behaviors;
 public sealed class ValidationBehavior<TRequest, TResponse>(IEnumerable<IValidator<TRequest>> validators)
     : IPipelineBehavior<TRequest, TResponse>
     where TRequest : notnull
+    where TResponse : IFailableResult<TResponse>
 {
     public async Task<TResponse> Handle(
         TRequest request,
@@ -21,7 +23,11 @@ public sealed class ValidationBehavior<TRequest, TResponse>(IEnumerable<IValidat
 
         if (failures.Count > 0)
         {
-            throw new ValidationException(failures);
+            var errors = failures
+                .Select(failure => Error.Validation(failure.ErrorCode, failure.ErrorMessage, failure.PropertyName))
+                .ToList();
+
+            return TResponse.Failure(errors);
         }
 
         return await next(cancellationToken);

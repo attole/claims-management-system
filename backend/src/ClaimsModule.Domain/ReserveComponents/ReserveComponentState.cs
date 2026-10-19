@@ -12,6 +12,11 @@ public abstract record ReserveComponentState(ReserveComponentStateKind Marker)
     : Marked<ReserveComponentStateKind>(Marker)
 {
     public virtual bool IsActive => false;
+
+    public static ReserveComponentState From(ReserveComponentStateKind kind)
+    {
+        return ClosedSet<ReserveComponentState, ReserveComponentStateKind>.From(kind);
+    }
 }
 
 public sealed record ReserveComponentActiveState() : ReserveComponentState(ReserveComponentStateKind.Active)

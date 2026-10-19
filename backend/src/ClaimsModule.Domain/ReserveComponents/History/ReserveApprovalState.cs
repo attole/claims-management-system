@@ -16,6 +16,11 @@ public abstract record ReserveApprovalState(ReserveApprovalStateKind Marker) : M
     public virtual bool IsApproved => false;
 
     public virtual bool IsRefused => false;
+
+    public static ReserveApprovalState From(ReserveApprovalStateKind kind)
+    {
+        return ClosedSet<ReserveApprovalState, ReserveApprovalStateKind>.From(kind);
+    }
 }
 
 public sealed record ReserveAutoApprovedState() : ReserveApprovalState(ReserveApprovalStateKind.AutoApproved)

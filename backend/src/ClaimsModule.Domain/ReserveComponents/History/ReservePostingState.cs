@@ -10,7 +10,13 @@ public enum ReservePostingStateKind
     Cancelled,
 }
 
-public abstract record ReservePostingState(ReservePostingStateKind Marker) : Marked<ReservePostingStateKind>(Marker);
+public abstract record ReservePostingState(ReservePostingStateKind Marker) : Marked<ReservePostingStateKind>(Marker)
+{
+    public static ReservePostingState From(ReservePostingStateKind kind)
+    {
+        return ClosedSet<ReservePostingState, ReservePostingStateKind>.From(kind);
+    }
+}
 
 public sealed record ReservePostingPendingState() : ReservePostingState(ReservePostingStateKind.Pending);
 

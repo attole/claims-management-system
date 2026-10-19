@@ -439,3 +439,39 @@ decisions: the user chose documents as an own root that refuses uploads on froze
 ai-errors: the AI invented a one-per-type rule, kept spec-foreign names, bundled unrelated facts, understated a concurrency race, and proposed a facts record that the existing inputs already made unnecessary; the user's questions caught each one.
 human-vs-ai: the user drove every structure and name through short why-questions; the AI read the spec and code, argued options and recorded the plan.
 refs: CORRECTION-024, CORRECTION-025, ASSESSMENT-010, PROMPT-009, SPLIT-005
+
+## CORRECTION-027 | p3 backend | 2026-10-19
+what: AI recommended per-input builder classes and a ClaimContextLoader, sketched a command returning the Domain Move, and showed outcome-to-result and finding-to-error as two steps every handler calls
+caught-by: user
+fix: pure mapping extension on the command, explicit injected readers, a ClaimStatusDto built by hand from the move, and one ToResult call with the finding conversion private inside it
+lesson: sketch one handler end to end before recommending an abstraction; a wrapper that saves two lines hides the loads and needs special cases
+
+## CORRECTION-028 | p1 domain | 2026-10-19
+what: AI left CauseCodes under Claims/Loss as if part of the loss, though the spec has its own reference table; its new enum also copied the spec member order, which the confidentiality check flagged
+caught-by: user
+fix: CauseOfLoss folder shaped like Policies with a plain CauseOfLossCode entity, PerilCategory enum and the value moved; 22 inputs re-imported, members reordered, tool layering updated
+lesson: map each shared list to its spec table before placing its type, and ask who owns a fact, not who uses it
+
+## PROMPT-010 | p3 backend | 2026-10-19
+purpose: recap the agreed Application decisions and outline the first pack before any code
+prompt: tell what we agreed at the application level and give the first pack details; later, merge the packs into fewer
+outcome: changed
+note: the recap exposed open questions, answered one by one with options; the six-step pack plan became four packs
+
+## SPLIT-006 | p1 domain | 2026-10-19
+item: cause-of-loss move: new folder and entity, 27 files re-imported, tests, check script, docs and notes
+who: hybrid
+note: the user decided the move and its shape; the AI wrote the entity, ran the scripted edits, fixed unused usings from build output and updated every doc
+
+## ASSESSMENT-011 | p1 domain | 2026-10-19
+area: scripted mass refactor (move a type, add the new using, delete usings the build reports as unused, loop until clean)
+helped: high
+note: 27 files in minutes with build, 650 tests and the workflow check all clean; only the enum-order confidentiality hit needed a manual fix
+
+## SUMMARY-017 | p3 backend | 2026-10-19
+topic: Application layer design before code
+story: the agreed decisions were recapped and each open point answered one at a time: one Result with warnings, an Error record behind the spec error body, explicit readers, mapping extensions on commands, a Domain closed-set From, DTO responses, an idempotency table and one request for a new reserve component. Cause of loss became its own Domain folder. The plan is four packs.
+decisions: the user chose option A for results, explicit readers over a loader, the shape of the reserve request, a button on every warning, the cause-of-loss move and four packs; the AI argued options and recorded them in the Application note
+ai-errors: over-abstracted sketches (builders, loader, a Domain type in a response) and a misplaced shared list; the user's why-questions caught each one
+human-vs-ai: the user drove by asking why each thing exists; the AI explained, checked claims against the code and spec, and executed the Domain move
+refs: CORRECTION-027, CORRECTION-028, PROMPT-010, SPLIT-006, ASSESSMENT-011

@@ -15,13 +15,7 @@ public abstract record UserRole(UserRoleKind Marker) : Marked<UserRoleKind>(Mark
 
     public static UserRole From(UserRoleKind kind)
     {
-        return kind switch
-        {
-            UserRoleKind.Handler => new UserHandlerRole(),
-            UserRoleKind.Supervisor => new UserSupervisorRole(),
-            UserRoleKind.Manager => new UserManagerRole(),
-            _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "Unknown role."),
-        };
+        return ClosedSet<UserRole, UserRoleKind>.From(kind);
     }
 
     public bool HasRightsOf(UserRole role)

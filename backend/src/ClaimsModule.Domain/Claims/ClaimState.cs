@@ -18,6 +18,11 @@ public abstract record ClaimState(ClaimStateKind Marker) : Marked<ClaimStateKind
     public virtual bool IsEditable => true;
 
     public virtual bool IsDraft => false;
+
+    public static ClaimState From(ClaimStateKind kind)
+    {
+        return ClosedSet<ClaimState, ClaimStateKind>.From(kind);
+    }
 }
 
 public sealed record ClaimDraftState() : ClaimState(ClaimStateKind.Draft)

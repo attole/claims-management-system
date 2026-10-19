@@ -15,6 +15,11 @@ public abstract record ReserveComponentType(ReserveComponentTypeKind Marker)
 {
     protected virtual bool CanGoNegative => false;
 
+    public static ReserveComponentType From(ReserveComponentTypeKind kind)
+    {
+        return ClosedSet<ReserveComponentType, ReserveComponentTypeKind>.From(kind);
+    }
+
     public bool CanHoldBalance(decimal balance)
     {
         bool canHold = CanGoNegative || balance >= 0m;

@@ -211,7 +211,7 @@ The Domain never loads, reads no clock for business times and knows no identity.
 - **Ids:** sequential GUIDs made in the Domain by `Ids.Next()`, which writes the current UTC time into the bytes SQL Server sorts by, so inserts land at the end of the index (a COMB-style generator; a GUID v7 puts its time in the bytes SQL Server compares last). It is the only clock read in the Domain: an id is a technical value, not business data.
 - **Business times and decisions:** `ResolvedAt` and `ResolvedBy` on an issue, `DeletedAt` on a risk object or a document, the row's `SubmittedAt` and the reserve review come from the input, and only the inputs whose step records one carry a time. They are Domain state, not audit columns: a later change modifies the row, so `UpdatedAt` and `UserModified` would overwrite who decided. An automatic clear records neither, because nobody decided it.
 - **Soft removal:** a removed party is deactivated (`IsActive`, the specification's soft remove) and stays on the claim; a removed risk object or document is soft-deleted with its `DeletedAt`. The `IsDeleted` and `DeletedAt` pair on rows with no removal step (the claim, the loss, issues, parties, the reserve component) is kept for Persistence to stamp and for the global query filter; no Domain step sets it. History rows are append-only and never deleted.
-- **Events and audit:** events carry business facts only; the Application wraps each in an envelope (event id, time, actor) at dispatch, and Persistence stamps the audit columns.
+- **Events and audit:** events carry business facts only; the Application wraps each in an event context (event id, time, actor) at dispatch, and Persistence stamps the audit columns.
 - **Closed sets:** a set that carries facts, or that a transition uses as a state, is a marker enum plus a record per value. A set with neither is a plain enum.
 - **Claim numbers:** `ClaimNumber.Create(year, sequence)` formats and validates; `ClaimNumber.From` parses a stored number. The Application takes the sequence from the database counter.
 
@@ -400,7 +400,7 @@ Inside the aggregate method, in order:
 
 Across the boundary, in the Application, driven by the events:
 
-- An approval or auto-approval: then the posting job after the commit.
+- An approval or auto-approval: then the posting job after the transaction.
 - A claim closed, withdrawn or reopened: the components close or reopen in the same Unit of Work.
 - Every domain event: then its audit entry.
 
@@ -431,7 +431,7 @@ No event: risk-object, loss, handler, severity, notes and policy-link edits, and
 - **Cross-aggregate rules by state, not by call.** A frozen claim closes its components through an event, so each aggregate guards itself from its own state; the one place with no state to read, creation, takes the claim's reference.
 - **No stored balance.** A reserve's balance is the sum of its approved rows, as the specification describes; a stored figure would need a second step to keep it in sync.
 - **No runtime rule engine.** Rules are classes declared in code; a settings-driven engine would hide them from review and tests.
-- **Events.** Raised in the success follow-ups; the Unit of Work publishes them before the commit for reactions in the same transaction and after it for effects outside.
+- **Events.** Raised in the success follow-ups; the Unit of Work publishes them in the transaction for reactions in the same transaction and after it for effects outside.
 
 ## What the next layers must do
 
@@ -439,7 +439,7 @@ The Domain's contract with the Application and Persistence, so nothing is redisc
 
 - **Handlers** load the aggregate and the outside facts, build the input (time stamped once, actor and role from the authenticated user), call one aggregate method, read the outcome, save in one Unit of Work, then dispatch events and enqueue jobs. An unknown child id is a not found before the call.
 - **Fact readers** return the Domain's own values: the claim's `PolicyPeriod` (from the policy) and `CauseCodes`, the reserve facts for close, withdraw and send to payment, the claim approved total, and the claim state or reference for reserve and document inputs.
-- **The Unit of Work** collects events from every tracked entity, roots and children (the history rows raise their own events), wraps each in an envelope and publishes before and after the commit.
+- **The Unit of Work** collects events from every tracked entity, roots and children (the history rows raise their own events), wraps each in an event context and publishes in the transaction and after it.
 - **A claim state-changed handler** closes or reopens the claim's reserve components in the same Unit of Work.
 - **Persistence** maps the details records as complex properties, the history rows as a child table of the component with a unique index on component and sequence, `Policy` to a seeded table, and keeps the table names of the specification. Soft delete, the tenant, the audit columns and the claim-row touch are stamped by the save interceptor.
 - **Jobs** call the posting steps with the job id; a sweep re-enqueues old Pending postings.

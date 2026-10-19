@@ -17,6 +17,11 @@ public abstract record IssueState(IssueStateKind Marker) : Marked<IssueStateKind
     public virtual bool IsCurrent => true;
 
     public virtual bool IsWaived => false;
+
+    public static IssueState From(IssueStateKind kind)
+    {
+        return ClosedSet<IssueState, IssueStateKind>.From(kind);
+    }
 }
 
 public sealed record IssueRaisedState() : IssueState(IssueStateKind.Raised)
