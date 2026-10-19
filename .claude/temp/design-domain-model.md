@@ -1,6 +1,6 @@
 status: done
 
-The Domain is finished: the claim with its children, the reserve component with its history rows, claim documents, policies, roles and the engine, with tests. The settled architecture, interpretations, schema departures and decisions live in docs/ARCHITECTURE.md; code shapes and conventions live in .claude/CLAUDE.md. This note keeps only what is not recorded there.
+The Domain is finished: the claim with its children, the reserve component with its history rows, claim documents, policies, cause-of-loss codes, roles and the engine, with tests. The settled architecture, interpretations, schema departures and decisions live in docs/ARCHITECTURE.md; code shapes and conventions live in .claude/CLAUDE.md. This note keeps only what is not recorded there.
 
 OPEN
 
@@ -15,7 +15,7 @@ DECISIONS
 
 ANALOGUE
 
-- The engine is `backend/src/ClaimsModule.Domain/Core`; the aggregates are `Claims/`, `ReserveComponents/` (with `History/`), `ClaimDocuments/` and `Policies/`.
+- The engine is `backend/src/ClaimsModule.Domain/Core`; the aggregates are `Claims/`, `ReserveComponents/` (with `History/`), `ClaimDocuments/`, `Policies/` and `CauseOfLoss/` (reference data, no operations).
 - `OpenClaimTransition` is the reference transition; `OpenReserveComponentOperation` and `UploadClaimDocumentOperation` are the reference creation operations with outside facts; `ReserveComponent.SubmitHistory` is the reference chained aggregate method on a child.
 - The layer structure and registration pattern follow `backend/src/ClaimsModule.Application/ApplicationServiceExtensions.cs`.
 

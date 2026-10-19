@@ -11,7 +11,7 @@ OPEN
 
 PROVISIONAL
 
-- Table names follow the specification through `ToTable`, while the Domain keeps its own type names: `ReserveComponent` to `ClaimReserveComponents` (state column `Status`), `ReserveHistory` to `ReserveHistory`, `ClaimDocument` to `ClaimDocuments`, `Policy` to `Policies`.
+- Table names follow the specification through `ToTable`, while the Domain keeps its own type names: `ReserveComponent` to `ClaimReserveComponents` (state column `Status`), `ReserveHistory` to `ReserveHistory`, `ClaimDocument` to `ClaimDocuments`, `Policy` to `Policies`, `CauseOfLossCode` to `CauseOfLossCodes` (seeded; the peril category is stored as text).
 - Claim number generation is an Application interface implemented in Persistence by a counter row per organisation and year, incremented with UPDATE ... OUTPUT inside the claim's transaction (S:CLAIMNO-Atomic), so there are no gaps; the Domain record only validates the format (S:BR-C-04). The format holds seven sequence digits, so the counter refuses past 9,999,999 per organisation and year with a conflict before ClaimNumber.Create would throw.
 - Draft-tolerant schema: the nullable loss date and the cause code without a foreign key are described in docs/ARCHITECTURE.md 'Schema departures from the spec'; this note covers the mapping only.
 - Primary keys are generated in the Domain; Persistence also declares the NEWSEQUENTIALID() default expression so the schema matches the spec.

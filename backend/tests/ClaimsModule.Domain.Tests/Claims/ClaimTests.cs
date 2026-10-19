@@ -1,3 +1,4 @@
+using ClaimsModule.Domain.CauseOfLoss;
 using ClaimsModule.Domain.Claims;
 using ClaimsModule.Domain.Claims.Events;
 using ClaimsModule.Domain.Claims.Inputs;

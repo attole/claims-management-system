@@ -1,6 +1,6 @@
-using ClaimsModule.Domain.Claims.Loss;
+using ClaimsModule.Domain.CauseOfLoss;
 
-namespace ClaimsModule.Domain.Tests.Claims.Loss;
+namespace ClaimsModule.Domain.Tests.CauseOfLoss;
 
 public sealed class CauseCodesTests
 {

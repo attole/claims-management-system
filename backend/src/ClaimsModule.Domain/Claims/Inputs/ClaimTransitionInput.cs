@@ -1,4 +1,4 @@
-using ClaimsModule.Domain.Claims.Loss;
+using ClaimsModule.Domain.CauseOfLoss;
 using ClaimsModule.Domain.Claims.StateChanges;
 using ClaimsModule.Domain.Policies;
 

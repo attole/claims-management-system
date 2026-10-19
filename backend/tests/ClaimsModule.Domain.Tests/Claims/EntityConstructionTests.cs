@@ -1,3 +1,4 @@
+using ClaimsModule.Domain.CauseOfLoss;
 using ClaimsModule.Domain.ClaimDocuments;
 using ClaimsModule.Domain.Claims;
 using ClaimsModule.Domain.Claims.Issues;
@@ -101,6 +102,17 @@ public sealed class EntityConstructionTests
         policy.ClientName.Should().BeEmpty();
         policy.Period.Should().Be(PolicyPeriod.Empty);
         policy.CoverageTypes.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void CauseOfLossCode_CanBeBuiltWithoutArgumentsWithEmptyValues()
+    {
+        var code = (CauseOfLossCode)Activator.CreateInstance(typeof(CauseOfLossCode), nonPublic: true)!;
+
+        code.Code.Should().BeEmpty();
+        code.Name.Should().BeEmpty();
+        code.PerilCategory.Should().Be(PerilCategory.General);
+        code.IsActive.Should().BeFalse();
     }
 
     [Fact]

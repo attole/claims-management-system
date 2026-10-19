@@ -1,5 +1,5 @@
+using ClaimsModule.Domain.CauseOfLoss;
 using ClaimsModule.Domain.Claims.Inputs;
-using ClaimsModule.Domain.Claims.Loss;
 using ClaimsModule.Domain.Common;
 using ClaimsModule.Domain.Policies;
 using ClaimsModule.Domain.Roles;

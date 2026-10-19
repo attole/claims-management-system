@@ -1,4 +1,4 @@
-namespace ClaimsModule.Domain.Claims.Loss;
+namespace ClaimsModule.Domain.CauseOfLoss;
 
 public sealed record CauseCodes(IReadOnlyCollection<string> Active)
 {

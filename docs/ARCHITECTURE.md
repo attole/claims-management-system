@@ -6,7 +6,7 @@ The final design of the claims module. The Domain is built and tested; the Appli
 
 | Layer | State |
 |---|---|
-| Domain | complete: the claim with its children, the reserve component with its history rows, claim documents, policies, roles and the generic engine, with tests |
+| Domain | complete: the claim with its children, the reserve component with its history rows, claim documents, policies, the cause-of-loss reference data, roles and the generic engine, with tests |
 | Application | not started; the obligations the Domain hands over are listed under 'What the next layers must do' |
 | Persistence, Infrastructure, API, frontend | not started; working notes are in `.claude/temp/notes-layer-application.md` and `.claude/temp/notes-layer-persistence.md` |
 
@@ -139,7 +139,7 @@ Clean Architecture with five projects, dependencies pointing inward: `API` -> `A
 
 ### The domain model
 
-The Domain is a domain-driven model of four aggregates and the roles they share:
+The Domain is a domain-driven model of four aggregates, the cause-of-loss reference data and the roles they share:
 
 | Aggregate | Root and children | Notes |
 |---|---|---|
@@ -147,9 +147,10 @@ The Domain is a domain-driven model of four aggregates and the roles they share:
 | Reserve component | `ReserveComponent` with `ReserveHistory` rows | one cost bucket of a claim; the rows carry the approval and posting states |
 | Claim document | `ClaimDocument` | metadata of an uploaded file; soft delete |
 | Policy | `Policy` | reference data from outside: number, one client name, period, coverage types; no operations |
+| Cause of loss | `CauseOfLossCode` and the `CauseCodes` value | reference data from outside: code, name, peril category, active flag; no operations |
 | Roles | `UserRole` and `HasMinimumRole` | shared by the aggregates |
 
-Aggregates refer to each other by id only. The Domain never holds another aggregate: it receives plain values on the input (see the table below), plus a few static facts on `Claim` (the reserve limit). The dependency direction is checked by the workflow check: `Claims` uses `Policies` and `Roles` only; `ReserveComponents` and `ClaimDocuments` use `Claims` (for its state, its reference and the limit facts) and never each other; `Policies` uses nothing.
+Aggregates refer to each other by id only. The Domain never holds another aggregate: it receives plain values on the input (see the table below), plus a few static facts on `Claim` (the reserve limit). The dependency direction is checked by the workflow check: `Claims` uses `Policies`, `CauseOfLoss` and `Roles` only; `ReserveComponents` and `ClaimDocuments` use `Claims` (for its state, its reference and the limit facts) and never each other; `Policies` and `CauseOfLoss` use nothing.
 
 Inside the aggregate methods every change runs through one small engine, which exists for error handling and order. A step checks all of its rules before it changes anything and returns the refusals as findings, all at once and never as exceptions, so a refused change leaves the aggregate untouched; it applies its change in one place, so "rules, then the change, then what follows" is the same order for every method. Rules are named classes, and a new one is a class plus the line that requires it. The engine knows nothing about claims or reserves.
 
@@ -380,6 +381,12 @@ A combined rule has a `Code` that names it but no finding of its own: it returns
 - A `Policy` is a plain entity: number, one client name, period, coverage types. Policies come from outside and are seeded; there is nothing to create, edit or validate here, so it has no operations, rules, inputs or events.
 - The claim holds a `PolicyId`. The Application reads the policy and passes only its `PolicyPeriod` on the claim inputs; the policy search and coverage endpoints read the seeded table directly.
 - `PolicyPeriod` knows its own dates (inclusive end, the cancellation date, `CanCover`) and `RequireFor(policyId)`. `LossDate.IsCoveredBy(period)` is the fact behind the policy-period warning.
+
+### Cause of loss
+
+- A `CauseOfLossCode` is a plain entity like `Policy`: code, name, peril category (a plain enum) and an active flag. The codes come from outside and are seeded, so there are no operations, rules, inputs or events.
+- The claim's loss holds one code as text. The Application reads the active codes and passes them on every claim input as `CauseCodes`, a value that knows whether a code is active (`IsActive`) and refuses to be built empty. The cause-of-loss list endpoint reads the seeded table directly.
+- The value lives with the reference data, not under the claim's loss, because the list is shared and owned by no claim.
 
 ### Events
 
