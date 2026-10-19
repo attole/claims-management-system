@@ -59,6 +59,43 @@ public static class ApplicationClaims
         return claim.Withdraw(input);
     }
 
+    public static Claim Draft()
+    {
+        return Created().Value;
+    }
+
+    public static Claim WithParties()
+    {
+        var claim = Draft();
+        var claimant = new PartyDetails(new PartyClaimantRole(), new PartyPersonType())
+        {
+            FirstName = "Ada",
+            LastName = "Stone",
+        };
+        var witness = new PartyDetails(new PartyWitnessRole(), new PartyPersonType())
+        {
+            FirstName = "Bo",
+            LastName = "Reed",
+        };
+
+        claim.AddParty(new AddPartyInput(claimant, PolicyPeriod.Empty, _codes));
+        claim.AddParty(new AddPartyInput(witness, PolicyPeriod.Empty, _codes));
+
+        return claim;
+    }
+
+    public static Claim WithRiskObjects()
+    {
+        var claim = Draft();
+        var kitchen = new RiskObjectDetails(AssetType.Property, "Kitchen");
+        var garage = new RiskObjectDetails(AssetType.Property, "Garage");
+
+        claim.AddRiskObject(new AddRiskObjectInput(kitchen, PolicyPeriod.Empty, _codes));
+        claim.AddRiskObject(new AddRiskObjectInput(garage, PolicyPeriod.Empty, _codes));
+
+        return claim;
+    }
+
     private static Claim Open()
     {
         var claim = Created().Value;

@@ -1,13 +1,13 @@
 # Architecture
 
-The final design of the claims module. The Domain is built and tested; the Application, Persistence, Infrastructure, API and frontend are next. This file holds the reasons and the decisions, `.claude/CLAUDE.md` holds the rules and code shapes.
+The final design of the claims module. The Domain is built and tested, and the Application has its foundations and the claim write use cases; the rest of the Application, Persistence, Infrastructure, API and frontend are next. This file holds the reasons and the decisions, `.claude/CLAUDE.md` holds the rules and code shapes.
 
 ## Status
 
 | Layer | State |
 |---|---|
 | Domain | complete: the claim with its children, the reserve component with its history rows, claim documents, policies, the cause-of-loss reference data, roles and the generic engine, with tests |
-| Application | not started; the obligations the Domain hands over are listed under 'What the next layers must do' |
+| Application | in progress: the foundations (results, command and query markers, event and audit contracts, closed-set `From`) and the claim write use cases (create claim, loss, parties, risk objects, policy link, handler, severity, notes, issues) are built with tests; state changes, reserves, documents, reads and the idempotency filter are next; the obligations the Domain hands over are listed under 'What the next layers must do' |
 | Persistence, Infrastructure, API, frontend | not started; working notes are in `.claude/temp/notes-layer-application.md` and `.claude/temp/notes-layer-persistence.md` |
 
 ## Configuration
@@ -132,7 +132,7 @@ Where the specification and the assessment disagree, the specification is used a
 Clean Architecture with five projects, dependencies pointing inward: `API` -> `Application` -> `Domain`. `Persistence` and `Infrastructure` implement interfaces that `Application` defines. The Domain has no project references and no packages.
 
 - **Domain:** the aggregates, their rules and events, and the small engine that runs a change.
-- **Application:** the use cases. It loads data, builds the input with the facts the rules need, calls one aggregate method, reads its outcome, saves through the Unit of Work, dispatches events and maps findings to responses.
+- **Application:** the use cases. It loads data, builds the input with the facts the rules need, calls one aggregate method, reads its outcome, saves through the Unit of Work, dispatches events and maps findings to responses; 'The Application layer' below describes how it is built.
 - **Persistence:** EF Core mapping, with a save interceptor for the audit columns, soft delete, the tenant and the root touch.
 - **Infrastructure:** Hangfire jobs and outside adapters.
 - **API:** controllers and startup.
@@ -400,7 +400,7 @@ Inside the aggregate method, in order:
 
 Across the boundary, in the Application, driven by the events:
 
-- An approval or auto-approval: then the posting job after the transaction.
+- An approval or auto-approval: then the posting job after the commit.
 - A claim closed, withdrawn or reopened: the components close or reopen in the same Unit of Work.
 - Every domain event: then its audit entry.
 
@@ -422,6 +422,16 @@ Each aggregate method has Domain tests; each event reaction has an Application t
 
 No event: risk-object, loss, handler, severity, notes and policy-link edits, and `ReserveComponent.Open`.
 
+### The Application layer
+
+- **One result type.** Every command and query returns `Result` or `Result<T>`: a success holds the value and the warnings, a failure holds errors and no value. `ICommand<TResponse>` and `IQuery<TResponse>` constrain the response to `IFailableResult<TResponse>`, so a request that returns anything else does not compile, and `ValidationBehavior` can return a failed result instead of throwing. `ToResult` is the only conversion from a Domain outcome: Critical findings become validation errors, Warning findings travel as warnings on a success. The API maps the error kind (validation 422, not found 404, forbidden 403, conflict 409); the specification fixes only the wire body.
+- **A use case is one file.** `UpdateNotesCommand.cs` holds the command with its `ToInput` method, its validator and its handler, so one file explains the use case. The folders mirror the Domain: the claim's own use cases are in `Claims/`, and each child entity has its folder (`Parties/`, `RiskObjects/`, `Loss/`, `Issues/`) with its DTO, request, mapping profile and use-case files.
+- **A handler's flow.** It loads the claim through `IClaimRepository` (an unknown id is a not-found result), checks that a child id exists on the claim before the Domain call (the Domain would throw on an unknown id), reads the policy period and the active cause codes through their readers, calls one aggregate method with the input built by `ToInput`, commits only on success and maps the DTO after the commit. Readers are explicit and injected; there is no loader that hides the loads.
+- **Create claim** builds the claim and all its parties, risk objects and loss details in one sequence that stops at the first refusal and stores nothing unless every step succeeded (S:INTAKE-SingleCall). The optional initial reserve joins it with the reserve use cases.
+- **Validation is shape only.** Ids not empty, enums known, required text not null, numbers the Domain would reject, maximum lengths from the specification's column sizes, and a name for each person or company party. Business rules stay in the Domain, unknown ids are the handlers' not found, and a null in optional text from outside becomes an empty string in the mapping to the Domain details.
+- **Events and audit.** Each Domain event is wrapped in an `EventContext` (event id, time, actor, correlation id) when the Unit of Work dispatches it. Handlers run either before the commit, in the same transaction (audit entries), or after it (the posting job); the Unit of Work and the dispatcher are built with Persistence.
+- **Closed sets** are created by one typed `From(kind)` per set, which a single reflection helper in the Domain finds once and caches; a test loops over every value of every set, so a new variant without its enum value fails the build.
+
 ### Design trade-offs
 
 - **Entities with behaviour, steps behind them.** The aggregate's public methods are the model's API; the engine behind them gives every method the same error handling and order. The cost is one more hop and a generic base with a self type; the gain is that no method hand-writes its checks, every rule has a name and a code, and a refusal can never half-apply.
@@ -431,7 +441,7 @@ No event: risk-object, loss, handler, severity, notes and policy-link edits, and
 - **Cross-aggregate rules by state, not by call.** A frozen claim closes its components through an event, so each aggregate guards itself from its own state; the one place with no state to read, creation, takes the claim's reference.
 - **No stored balance.** A reserve's balance is the sum of its approved rows, as the specification describes; a stored figure would need a second step to keep it in sync.
 - **No runtime rule engine.** Rules are classes declared in code; a settings-driven engine would hide them from review and tests.
-- **Events.** Raised in the success follow-ups; the Unit of Work publishes them in the transaction for reactions in the same transaction and after it for effects outside.
+- **Events.** Raised in the success follow-ups; the Unit of Work publishes them before the commit for reactions in the same transaction and after it for effects outside.
 
 ## What the next layers must do
 
@@ -439,7 +449,7 @@ The Domain's contract with the Application and Persistence, so nothing is redisc
 
 - **Handlers** load the aggregate and the outside facts, build the input (time stamped once, actor and role from the authenticated user), call one aggregate method, read the outcome, save in one Unit of Work, then dispatch events and enqueue jobs. An unknown child id is a not found before the call.
 - **Fact readers** return the Domain's own values: the claim's `PolicyPeriod` (from the policy) and `CauseCodes`, the reserve facts for close, withdraw and send to payment, the claim approved total, and the claim state or reference for reserve and document inputs.
-- **The Unit of Work** collects events from every tracked entity, roots and children (the history rows raise their own events), wraps each in an event context and publishes in the transaction and after it.
+- **The Unit of Work** collects events from every tracked entity, roots and children (the history rows raise their own events), wraps each in an event context and publishes before and after the commit.
 - **A claim state-changed handler** closes or reopens the claim's reserve components in the same Unit of Work.
 - **Persistence** maps the details records as complex properties, the history rows as a child table of the component with a unique index on component and sequence, `Policy` to a seeded table, and keeps the table names of the specification. Soft delete, the tenant, the audit columns and the claim-row touch are stamped by the save interceptor.
 - **Jobs** call the posting steps with the job id; a sweep re-enqueues old Pending postings.

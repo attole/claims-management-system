@@ -38,6 +38,30 @@ public sealed class ResultOfTTests
     }
 
     [Fact]
+    public void Map_OfASuccess_MapsTheValueAndKeepsTheWarnings()
+    {
+        var warning = new Warning("CODE", "message");
+        var success = Result<string>.Success("value", [warning]);
+
+        var result = success.Map(value => value.Length);
+
+        result.Value.Should().Be(5);
+        result.Warnings.Should().Equal(warning);
+    }
+
+    [Fact]
+    public void Map_OfAFailure_KeepsTheErrors()
+    {
+        var error = Error.Conflict("CODE", "message");
+        var failure = Result<string>.Failure([error]);
+
+        var result = failure.Map(value => value.Length);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().Equal(error);
+    }
+
+    [Fact]
     public void Failure_WithNoErrors_Throws()
     {
         Func<Result<string>> act = () => Result<string>.Failure([]);

@@ -35,6 +35,18 @@ public sealed class ResultTests
     }
 
     [Fact]
+    public void ToFailure_KeepsTheErrorsOnAnotherResultType()
+    {
+        var error = Error.NotFound("CODE", "message");
+        var failure = Result.Failure([error]);
+
+        var result = failure.ToFailure<string>();
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().Equal(error);
+    }
+
+    [Fact]
     public void Failure_WithNoErrors_Throws()
     {
         Func<Result> act = () => Result.Failure([]);

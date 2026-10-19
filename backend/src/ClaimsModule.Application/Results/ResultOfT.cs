@@ -23,4 +23,9 @@ public sealed class Result<TValue> : Result, IFailableResult<Result<TValue>>
     {
         return new Result<TValue>(default!, Required(errors), []);
     }
+
+    public Result<TOther> Map<TOther>(Func<TValue, TOther> map)
+    {
+        return IsSuccess ? Result<TOther>.Success(map(Value), Warnings) : Result<TOther>.Failure(Errors);
+    }
 }

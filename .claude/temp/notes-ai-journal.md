@@ -475,3 +475,28 @@ decisions: the user chose option A for results, explicit readers over a loader, 
 ai-errors: over-abstracted sketches (builders, loader, a Domain type in a response) and a misplaced shared list; the user's why-questions caught each one
 human-vs-ai: the user drove by asking why each thing exists; the AI explained, checked claims against the code and spec, and executed the Domain move
 refs: CORRECTION-027, CORRECTION-028, PROMPT-010, SPLIT-006, ASSESSMENT-011
+
+## CORRECTION-029 | p3 backend | 2026-10-19
+what: AI built each use case as four files (command, mapping extension, validator, handler) in its own folder, so following one change meant opening four files in a folder with nothing else
+caught-by: user
+fix: one file per use case holding the command with its ToInput method, validator and handler, placed flat in the entity folder, with a matching single test class; rule and checker docs updated
+lesson: group code by what a reader opens together, and do not give a folder to a single file
+
+## CORRECTION-030 | p3 backend | 2026-10-19
+what: the validation behavior threw an exception, and the AI's first answer to requests silently skipping it was a test that scans only requests with validators
+caught-by: user
+fix: command and query marker interfaces constrained to the result type so a wrong response does not compile, and the behavior returns a failed result
+lesson: prefer a rule the compiler enforces over a scanning test, and test the rule itself, not a subset of it
+
+## SPLIT-007 | p3 backend | 2026-10-19
+item: Application packs 1 and 2: closed-set From, results, command markers, event and audit contracts, 13 claim write use cases with tests
+who: hybrid
+note: the user decided the shapes (one result type, merged use-case files, flat folders, names) and the AI wrote the code by script, ran the review and fixed every finding
+
+## SUMMARY-018 | p3 backend | 2026-10-19
+topic: Application layer foundations and claim write use cases
+story: pack 1 added the typed From on all closed sets, one Result type with warnings, command and query markers, and the event and audit contracts. Pack 2 added 13 use cases for the claim, loss, parties, risk objects, policy link and issues, with readers, DTOs, validators and mapping. The layout was reworked into one file per use case, nested by child entity, and a review fixed 13 findings.
+decisions: the user chose one result type everywhere, handler names around the commit, merged use-case files and flat entity folders; the AI argued each option and recorded them in the Application note and the docs
+ai-errors: a four-file use case layout and a scan test where a compile-time rule fit; the user's why-questions caught both
+human-vs-ai: the user steered the structure by questioning each type and file; the AI generated the code in bulk, kept build, tests and the workflow check green and updated the notes
+refs: CORRECTION-029, CORRECTION-030, SPLIT-007

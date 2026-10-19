@@ -4,7 +4,7 @@ Vertical slice of a claims management system for a policy administration system:
 
 ## Solution overview
 
-The backend has five projects: `Domain`, `Application`, `Infrastructure`, `Persistence` and `API`. The Domain is built and tested: the claim with its parties, risk objects, loss, issues and state changes; the reserve component with its history rows (approval and posting states); claim documents; policies; the cause-of-loss codes; and the roles. The other layers and the frontend are not built yet. The decisions behind the model, the rules and the next steps for the other layers are in `docs/ARCHITECTURE.md`.
+The backend has five projects: `Domain`, `Application`, `Infrastructure`, `Persistence` and `API`. The Domain is built and tested: the claim with its parties, risk objects, loss, issues and state changes; the reserve component with its history rows (approval and posting states); claim documents; policies; the cause-of-loss codes; and the roles. The Application has its foundations and the claim write use cases; the other layers and the frontend are not built yet. The decisions behind the model, the rules and the next steps for the other layers are in `docs/ARCHITECTURE.md`.
 
 ## Local setup (backend)
 

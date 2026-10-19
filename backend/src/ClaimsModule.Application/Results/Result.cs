@@ -24,6 +24,11 @@ public class Result : IFailableResult<Result>
         return new Result(Required(errors), []);
     }
 
+    public Result<TOther> ToFailure<TOther>()
+    {
+        return Result<TOther>.Failure(Errors);
+    }
+
     protected static IReadOnlyList<Error> Required(IReadOnlyList<Error> errors)
     {
         if (errors.Count == 0)
