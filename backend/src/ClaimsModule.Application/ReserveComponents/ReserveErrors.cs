@@ -19,3 +19,8 @@ public static class ReserveErrors
         return Error.NotFound(HistoryNotFoundCode, message);
     }
 }
+
+public static class ReserveFieldLengths
+{
+    public const int ChangeReason = 500;
+}

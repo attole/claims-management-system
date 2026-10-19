@@ -1,9 +1,10 @@
 using System.Collections.Frozen;
 using ClaimsModule.Application.Abstractions;
 using ClaimsModule.Application.CauseOfLoss;
+using ClaimsModule.Application.Claims.Contracts;
 using ClaimsModule.Application.Messaging;
 using ClaimsModule.Application.Policies;
-using ClaimsModule.Application.ReserveComponents;
+using ClaimsModule.Application.ReserveComponents.Contracts;
 using ClaimsModule.Application.Results;
 using ClaimsModule.Domain.Claims;
 using ClaimsModule.Domain.Core.Flows;

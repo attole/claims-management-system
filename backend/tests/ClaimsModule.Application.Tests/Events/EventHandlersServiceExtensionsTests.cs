@@ -1,7 +1,8 @@
+using ClaimsModule.Application.Abstractions;
 using ClaimsModule.Application.Events;
-using ClaimsModule.Application.Jobs;
-using ClaimsModule.Application.ReserveComponents;
-using ClaimsModule.Application.ReserveComponents.History;
+using ClaimsModule.Application.ReserveComponents.Contracts;
+using ClaimsModule.Application.ReserveComponents.Handlers;
+using ClaimsModule.Application.ReserveComponents.History.Handlers;
 using ClaimsModule.Domain.Claims.Events;
 using ClaimsModule.Domain.ReserveComponents.History.Events;
 using Microsoft.Extensions.DependencyInjection;

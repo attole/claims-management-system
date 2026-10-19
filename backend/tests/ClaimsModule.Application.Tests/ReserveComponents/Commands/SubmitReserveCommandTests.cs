@@ -1,6 +1,7 @@
 using ClaimsModule.Application.Claims;
 using ClaimsModule.Application.ReserveComponents;
 using ClaimsModule.Application.ReserveComponents.Commands;
+using ClaimsModule.Application.ReserveComponents.Requests;
 using ClaimsModule.Application.Tests.Support.Claims;
 using ClaimsModule.Application.Tests.Support.ReserveComponents;
 using ClaimsModule.Domain.ReserveComponents;

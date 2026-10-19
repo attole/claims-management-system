@@ -1,4 +1,4 @@
-using ClaimsModule.Application.ReserveComponents;
+using ClaimsModule.Application.ReserveComponents.Contracts;
 using ClaimsModule.Domain.CauseOfLoss;
 using ClaimsModule.Domain.Claims.Inputs;
 using ClaimsModule.Domain.Claims.StateChanges;

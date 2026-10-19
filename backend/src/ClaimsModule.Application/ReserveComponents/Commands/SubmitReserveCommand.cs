@@ -1,8 +1,10 @@
 using AutoMapper;
 using ClaimsModule.Application.Abstractions;
-using ClaimsModule.Application.Claims;
+using ClaimsModule.Application.Claims.Contracts;
 using ClaimsModule.Application.Messaging;
-using ClaimsModule.Application.ReserveComponents.History;
+using ClaimsModule.Application.ReserveComponents.Contracts;
+using ClaimsModule.Application.ReserveComponents.History.Dtos;
+using ClaimsModule.Application.ReserveComponents.Requests;
 using ClaimsModule.Application.Results;
 using ClaimsModule.Domain.Claims;
 using ClaimsModule.Domain.ReserveComponents;

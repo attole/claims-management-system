@@ -11,3 +11,12 @@ public static class DocumentErrors
         return Error.NotFound(NotFoundCode, $"Document {documentId} does not exist on the claim.");
     }
 }
+
+public static class DocumentFieldLengths
+{
+    public const int DocumentType = 100;
+    public const int DocumentName = 255;
+    public const int ContentType = 100;
+    public const int BlobPath = 500;
+    public const int Notes = 500;
+}

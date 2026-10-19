@@ -1,6 +1,6 @@
 using ClaimsModule.Application.Claims;
 using ClaimsModule.Application.Claims.StateChanges;
-using ClaimsModule.Application.ReserveComponents;
+using ClaimsModule.Application.ReserveComponents.Contracts;
 using ClaimsModule.Application.Tests.Support.Claims;
 using ClaimsModule.Domain.Claims;
 using FluentValidation.TestHelper;

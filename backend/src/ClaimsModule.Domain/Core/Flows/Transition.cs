@@ -5,7 +5,7 @@ using ClaimsModule.Domain.Core.Rules;
 namespace ClaimsModule.Domain.Core.Flows;
 
 internal abstract class Transition<TSelf, TSubject, TState, TInput>
-    : Operation<TSelf, TSubject, TInput, Move<TState>>
+    : Operation<TSelf, TSubject, TInput, Move<TState>>, ITransition<TState>
     where TSelf : Transition<TSelf, TSubject, TState, TInput>, new()
     where TSubject : IStateful<TState>
     where TState : class, IMarked, IEquatable<TState>
@@ -19,6 +19,10 @@ internal abstract class Transition<TSelf, TSubject, TState, TInput>
     {
         _target = target;
     }
+
+    public TState Target => _target;
+
+    public IReadOnlyCollection<TState> Sources => _rulesBySource.Keys;
 
     protected RuleSet<TSubject, TInput> AllowedFrom(params TState[] sources)
     {

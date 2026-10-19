@@ -1,6 +1,8 @@
 using AutoMapper;
 using ClaimsModule.Application.Abstractions;
 using ClaimsModule.Application.CauseOfLoss;
+using ClaimsModule.Application.Claims.Contracts;
+using ClaimsModule.Application.Claims.Dtos;
 using ClaimsModule.Application.Messaging;
 using ClaimsModule.Application.Policies;
 using ClaimsModule.Application.Results;
