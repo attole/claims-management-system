@@ -2,6 +2,7 @@ using AutoMapper;
 using ClaimsModule.Application.Abstractions;
 using ClaimsModule.Application.CauseOfLoss;
 using ClaimsModule.Application.Claims;
+using ClaimsModule.Application.Jobs;
 using ClaimsModule.Application.Policies;
 using ClaimsModule.Application.ReserveComponents;
 using ClaimsModule.Application.Results;
@@ -24,7 +25,9 @@ public sealed class ClaimHandlerContext
     private readonly Mock<IClaimNumberGenerator> _numbers = new();
     private readonly Mock<IPolicyReader> _policies = new();
     private readonly Mock<IClaimReserveReader> _reserves = new();
+    private readonly List<ReserveComponent> _addedComponents = [];
     private readonly Mock<IReserveComponentRepository> _components = new();
+    private readonly Mock<IPostingScheduler> _scheduler = new();
     private readonly Mock<ICauseCodeReader> _causes = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<IClock> _clock = new();
@@ -45,6 +48,15 @@ public sealed class ClaimHandlerContext
             .ReturnsAsync(new ClaimReserveFacts(false, false, false, false, 0m));
         _components.Setup(mock => mock.ListByClaimAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
+        _components.Setup(mock => mock.AddAsync(It.IsAny<ReserveComponent>(), It.IsAny<CancellationToken>()))
+            .Callback<ReserveComponent, CancellationToken>((component, _) => _addedComponents.Add(component))
+            .Returns(Task.CompletedTask);
+        _scheduler.Setup(mock => mock.EnqueueAsync(
+                It.IsAny<Guid>(),
+                It.IsAny<Guid>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
         _unitOfWork.Setup(mock => mock.CommitAsync(It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
         _clock.SetupGet(mock => mock.UtcNow).Returns(Now);
@@ -68,6 +80,10 @@ public sealed class ClaimHandlerContext
     public IClaimReserveReader Reserves => _reserves.Object;
 
     public IReserveComponentRepository ReserveComponents => _components.Object;
+
+    public IPostingScheduler Scheduler => _scheduler.Object;
+
+    public IReadOnlyList<ReserveComponent> AddedComponents => _addedComponents;
 
     public IUnitOfWork UnitOfWork => _unitOfWork.Object;
 
@@ -125,6 +141,60 @@ public sealed class ClaimHandlerContext
             .ReturnsAsync(components);
 
         return this;
+    }
+
+    public ClaimHandlerContext WithComponent(ReserveComponent component)
+    {
+        _components.Setup(mock => mock.GetAsync(It.IsAny<Guid>(), component.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<ReserveComponent>.Success(component));
+
+        foreach (var history in component.History)
+        {
+            _components.Setup(mock => mock.GetByHistoryAsync(
+                    It.IsAny<Guid>(),
+                    history.Id,
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(Result<ReserveComponent>.Success(component));
+        }
+
+        return this;
+    }
+
+    public ClaimHandlerContext WithoutComponent(Guid componentId)
+    {
+        _components.Setup(mock => mock.GetAsync(It.IsAny<Guid>(), componentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<ReserveComponent>.Failure([ReserveErrors.ComponentNotFound(componentId)]));
+
+        return this;
+    }
+
+    public ClaimHandlerContext WithoutHistory(Guid reserveHistoryId)
+    {
+        _components.Setup(mock => mock.GetByHistoryAsync(
+                It.IsAny<Guid>(),
+                reserveHistoryId,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<ReserveComponent>.Failure([ReserveErrors.HistoryNotFound(reserveHistoryId)]));
+
+        return this;
+    }
+
+    public void VerifyEnqueued(Times times)
+    {
+        _scheduler.Verify(
+            mock => mock.EnqueueAsync(
+                It.IsAny<Guid>(),
+                It.IsAny<Guid>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()),
+            times);
+    }
+
+    public void VerifyEnqueuedWithJobId(string jobId)
+    {
+        _scheduler.Verify(
+            mock => mock.EnqueueAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), jobId, It.IsAny<CancellationToken>()),
+            Times.Once());
     }
 
     public void VerifyCommitted(Times times)

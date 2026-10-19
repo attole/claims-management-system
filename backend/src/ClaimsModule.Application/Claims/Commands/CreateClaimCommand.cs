@@ -6,6 +6,7 @@ using ClaimsModule.Application.Claims.Parties;
 using ClaimsModule.Application.Claims.RiskObjects;
 using ClaimsModule.Application.Messaging;
 using ClaimsModule.Application.Policies;
+using ClaimsModule.Application.ReserveComponents;
 using ClaimsModule.Application.Results;
 using ClaimsModule.Domain.CauseOfLoss;
 using ClaimsModule.Domain.Claims;
@@ -14,6 +15,8 @@ using ClaimsModule.Domain.Claims.Loss.Inputs;
 using ClaimsModule.Domain.Claims.Parties.Inputs;
 using ClaimsModule.Domain.Claims.RiskObjects.Inputs;
 using ClaimsModule.Domain.Policies;
+using ClaimsModule.Domain.ReserveComponents;
+using ClaimsModule.Domain.ReserveComponents.History;
 using FluentValidation;
 using MediatR;
 
@@ -26,6 +29,8 @@ public sealed record CreateClaimCommand(
     IReadOnlyList<PartyRequest> Parties,
     IReadOnlyList<RiskObjectRequest> RiskObjects) : ICommand<Result<ClaimDto>>
 {
+    public IReadOnlyList<ReserveRequest> Reserves { get; init; } = [];
+
     public CreateClaimInput ToInput(Guid organisationId, ClaimNumber claimNumber, DateTimeOffset now, CauseCodes codes)
     {
         return new CreateClaimInput(organisationId, claimNumber, ReportDate, now, PolicyPeriod.Empty, codes);
@@ -34,6 +39,8 @@ public sealed record CreateClaimCommand(
 
 public sealed class CreateClaimCommandValidator : AbstractValidator<CreateClaimCommand>
 {
+    private const string NewComponentRequiredMessage = "A new claim has no component to add to; give a component type.";
+
     public CreateClaimCommandValidator()
     {
         RuleFor(command => command.ReportDate).NotEmpty();
@@ -42,6 +49,11 @@ public sealed class CreateClaimCommandValidator : AbstractValidator<CreateClaimC
         RuleForEach(command => command.Parties).SetValidator(new PartyRequestValidator());
         RuleFor(command => command.RiskObjects).NotNull();
         RuleForEach(command => command.RiskObjects).SetValidator(new RiskObjectRequestValidator());
+        RuleFor(command => command.Reserves).NotNull();
+        RuleForEach(command => command.Reserves).SetValidator(new ReserveRequestValidator());
+        RuleForEach(command => command.Reserves)
+            .Must(reserve => reserve.IsNewComponent)
+            .WithMessage(NewComponentRequiredMessage);
     }
 }
 
@@ -49,6 +61,7 @@ public sealed class CreateClaimCommandHandler(
     IClaimRepository claims,
     IClaimNumberGenerator numbers,
     IPolicyReader policies,
+    IReserveComponentRepository components,
     ICauseCodeReader causes,
     IUnitOfWork unitOfWork,
     IClock clock,
@@ -82,11 +95,26 @@ public sealed class CreateClaimCommandHandler(
             return assembled.ToFailure<ClaimDto>();
         }
 
+        var opened = new List<ReserveComponent>();
+        var reserved = OpenReserves(assembled.Value, command, opened, user.Id, now);
+
+        if (!reserved.IsSuccess)
+        {
+            return reserved.ToFailure<ClaimDto>();
+        }
+
         await claims.AddAsync(assembled.Value, cancellationToken);
+
+        foreach (var component in opened)
+        {
+            await components.AddAsync(component, cancellationToken);
+        }
+
         await unitOfWork.CommitAsync(cancellationToken);
 
         var warnings = created.Warnings
             .Concat(assembled.Warnings)
+            .Concat(reserved.Warnings)
             .ToList();
 
         return Result<ClaimDto>.Success(mapper.Map<ClaimDto>(assembled.Value), warnings);
@@ -111,6 +139,46 @@ public sealed class CreateClaimCommandHandler(
         }
 
         return Result<Claim>.Success(claim, warnings);
+    }
+
+    private static Result OpenReserves(
+        Claim claim,
+        CreateClaimCommand command,
+        List<ReserveComponent> opened,
+        Guid actorId,
+        DateTimeOffset now)
+    {
+        var warnings = new List<Warning>();
+        decimal approvedTotal = 0m;
+
+        foreach (var reserve in command.Reserves)
+        {
+            var component = ReserveComponent.Open(reserve.ToOpenInput(claim.Reference)).ToResult();
+
+            if (!component.IsSuccess)
+            {
+                return component;
+            }
+
+            var input = reserve.ToSubmitInput(claim, approvedTotal, actorId, now);
+            var submitted = component.Value.SubmitHistory(input).ToResult();
+
+            if (!submitted.IsSuccess)
+            {
+                return submitted;
+            }
+
+            opened.Add(component.Value);
+            warnings.AddRange(submitted.Warnings);
+            approvedTotal += ApprovedAmount(submitted.Value);
+        }
+
+        return Result.Success(warnings);
+    }
+
+    private static decimal ApprovedAmount(ReserveHistory history)
+    {
+        return history.ApprovalState.IsApproved ? history.Details.Amount : 0m;
     }
 
     private static IEnumerable<Result> Populate(

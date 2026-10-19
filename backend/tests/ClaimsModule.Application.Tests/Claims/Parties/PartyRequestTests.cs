@@ -1,9 +1,8 @@
-using ClaimsModule.Application.Claims.Parties;
 using ClaimsModule.Application.Tests.Support.Claims;
 
 namespace ClaimsModule.Application.Tests.Claims.Parties;
 
-public sealed class PartyRequestExtensionsTests
+public sealed class PartyRequestTests
 {
     [Fact]
     public void ToDetails_MapsTheClosedSetsAndTheNames()

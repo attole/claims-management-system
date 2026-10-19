@@ -1,9 +1,8 @@
-using ClaimsModule.Application.Claims.RiskObjects;
 using ClaimsModule.Application.Tests.Support.Claims;
 
 namespace ClaimsModule.Application.Tests.Claims.RiskObjects;
 
-public sealed class RiskObjectRequestExtensionsTests
+public sealed class RiskObjectRequestTests
 {
     [Fact]
     public void ToDetails_MapsTheAssetAndThePrimaryFlag()

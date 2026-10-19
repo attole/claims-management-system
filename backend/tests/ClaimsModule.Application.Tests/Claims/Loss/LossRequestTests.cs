@@ -1,9 +1,8 @@
-using ClaimsModule.Application.Claims.Loss;
 using ClaimsModule.Application.Tests.Support.Claims;
 
 namespace ClaimsModule.Application.Tests.Claims.Loss;
 
-public sealed class LossRequestExtensionsTests
+public sealed class LossRequestTests
 {
     [Fact]
     public void ToDetails_WithoutAnEstimate_LeavesTheEstimateUnset()
