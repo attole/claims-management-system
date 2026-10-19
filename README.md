@@ -1,10 +1,10 @@
 # Claims Management System
 
-Vertical slice of a claims management system for a policy administration system: .NET 9 backend (Clean Architecture, CQRS) and Angular frontend. Design notes are in `docs/ARCHITECTURE.md`.
+Vertical slice of a claims management system for a policy administration system: .NET 9 backend (Clean Architecture, CQRS) and Angular frontend. Design notes are in `docs/ARCHITECTURE.md`; the code shapes are in `docs/DOMAIN-STANDARDS.md` and `docs/APPLICATION-STANDARDS.md`.
 
 ## Solution overview
 
-The backend has five projects: `Domain`, `Application`, `Infrastructure`, `Persistence` and `API`. The Domain is built and tested: the claim with its parties, risk objects, loss, issues and state changes; the reserve component with its history rows (approval and posting states); claim documents; policies; the cause-of-loss codes; and the roles. The Application has its foundations and the claim write use cases; the other layers and the frontend are not built yet. The decisions behind the model, the rules and the next steps for the other layers are in `docs/ARCHITECTURE.md`.
+The backend has five projects: `Domain`, `Application`, `Infrastructure`, `Persistence` and `API`. The Domain is built and tested: the claim with its parties, risk objects, loss, issues and state changes; the reserve component with its history rows (approval and posting states); claim documents; policies; the cause-of-loss codes; and the roles. The Application is built except for audit, event dispatch and idempotency; Persistence, Infrastructure, the API and the frontend are not built yet. The decisions behind the model, the rules and the next steps for the other layers are in `docs/ARCHITECTURE.md`.
 
 ## Local setup (backend)
 

@@ -32,7 +32,8 @@ Spawn prompt:
 Perform a code review. Scope: <uncommitted (default) | branch <name> vs origin/<base> | PR>.
 Areas changed: <backend | frontend | both>. Follow the Procedure subsections Collect, Contract review,
 Per-file review and Confidence filter, and the Output section, of .claude/skills/code-review/SKILL.md.
-Read .claude/CLAUDE.md in full. Read-only: no checkout, no git writes, no file edits. Return only findings.
+Read .claude/CLAUDE.md in full, and docs/DOMAIN-STANDARDS.md or docs/APPLICATION-STANDARDS.md when that layer changed. Read-only: no checkout, no git
+writes, no file edits. Return only findings.
 ```
 
 ### Scope

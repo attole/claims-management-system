@@ -1,13 +1,13 @@
 # Architecture
 
-The final design of the claims module. The Domain is built and tested, and the Application has its foundations and the claim write use cases; the rest of the Application, Persistence, Infrastructure, API and frontend are next. This file holds the reasons and the decisions, `.claude/CLAUDE.md` holds the rules and code shapes.
+The final design of the claims module. The Domain is built and tested, and the Application is built except for events, audit and idempotency; Persistence, Infrastructure, API and frontend are next. This file holds the reasons and the decisions, `.claude/CLAUDE.md` holds the rules and `docs/DOMAIN-STANDARDS.md` and `docs/APPLICATION-STANDARDS.md` the code shapes.
 
 ## Status
 
 | Layer | State |
 |---|---|
 | Domain | complete: the claim with its children, the reserve component with its history rows, claim documents, policies, the cause-of-loss reference data, roles and the generic engine, with tests |
-| Application | in progress: the foundations (results, command and query markers, event and audit contracts, closed-set `From`) and the claim write use cases (create claim, loss, parties, risk objects, policy link, handler, severity, notes, issues) are built with tests; state changes, reserves, documents, reads and the idempotency filter are next; the obligations the Domain hands over are listed under 'What the next layers must do' |
+| Application | built with tests: results, command and query markers, closed-set `From`, the claim, reserve and document use cases, status changes and all reads; the audit handlers, the event dispatcher and Unit of Work contract and the idempotency contract are next; the obligations the Domain hands over are listed under 'What the next layers must do' |
 | Persistence, Infrastructure, API, frontend | not started; working notes are in `.claude/temp/notes-layer-application.md` and `.claude/temp/notes-layer-persistence.md` |
 
 ## Configuration
