@@ -47,6 +47,9 @@ Required settings are validated at startup; a missing one stops the app and name
 | `StorageProvider` (`LocalFileSystem` default, or `AzureBlob`) | `appsettings.json` | app settings |
 | `LocalBaseUrl`, `LocalSigningKey` (secret), for `LocalFileSystem`; `LocalRoot` is optional | URL in `appsettings.Development.json`, key in user-secrets | not used |
 | `AzureConnectionString` (secret, with an account key), for `AzureBlob` | not used | Key Vault |
+| `Hangfire:PostingSweep:MinimumAge` (optional, default `00:10:00`, must be positive) | `appsettings.json` | app settings |
+| `Hangfire:PostingSweep:IntervalMinutes` (optional, default 5, must divide 60 evenly) | `appsettings.json` | app settings |
+| `Hangfire:SlaBreach:IntervalMinutes` (optional, default 15, must divide 60 evenly) | `appsettings.json` | app settings |
 
 Feature switches are booleans that default to false and do not depend on the environment; `appsettings.Development.json` turns all three on.
 

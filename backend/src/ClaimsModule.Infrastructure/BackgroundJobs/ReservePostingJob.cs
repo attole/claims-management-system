@@ -31,12 +31,12 @@ public sealed class ReservePostingJob(IServiceScopeFactory scopeFactory)
         try
         {
             var posted = new MarkReservePostedCommand(claimId, reserveHistoryId, recordedJobId);
-            ThrowIfFailed(await SendInNewScopeAsync(organisationId, posted, cancellationToken));
+            JobResult.ThrowIfFailed(await SendInNewScopeAsync(organisationId, posted, cancellationToken));
         }
         catch (Exception exception) when (isLastAttempt && exception is not OperationCanceledException)
         {
             var failed = new MarkReservePostingFailedCommand(claimId, reserveHistoryId, recordedJobId, FailureReason);
-            ThrowIfFailed(await SendInNewScopeAsync(organisationId, failed, cancellationToken));
+            JobResult.ThrowIfFailed(await SendInNewScopeAsync(organisationId, failed, cancellationToken));
         }
     }
 
@@ -52,15 +52,5 @@ public sealed class ReservePostingJob(IServiceScopeFactory scopeFactory)
         var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
 
         return await mediator.Send(command, cancellationToken);
-    }
-
-    private static void ThrowIfFailed(Result result)
-    {
-        if (!result.IsSuccess)
-        {
-            string codes = string.Join(", ", result.Errors.Select(error => error.Code));
-
-            throw new InvalidOperationException($"The posting command was refused: {codes}.");
-        }
     }
 }

@@ -1,4 +1,5 @@
 using ClaimsModule.Infrastructure.BackgroundJobs;
+using ClaimsModule.Infrastructure.BackgroundJobs.Recurring;
 using ClaimsModule.Infrastructure.Clock;
 using ClaimsModule.Infrastructure.Identity;
 using ClaimsModule.Infrastructure.Storage;
@@ -15,11 +16,12 @@ public static class InfrastructureServiceExtensions
             .AddClock()
             .AddIdentity()
             .AddStorage()
-            .AddBackgroundJobs();
+            .AddBackgroundJobs()
+            .AddRecurringJobs();
     }
 
     public static IApplicationBuilder UseInfrastructure(this IApplicationBuilder app)
     {
-        return app.UseBackgroundJobsDashboard();
+        return app.UseRecurringJobs().UseBackgroundJobsDashboard();
     }
 }
