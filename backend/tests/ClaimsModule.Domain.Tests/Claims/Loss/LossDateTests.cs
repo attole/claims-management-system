@@ -62,19 +62,19 @@ public sealed class LossDateTests
     }
 
     [Theory]
+    [InlineData(-1, false)]
     [InlineData(0, false)]
-    [InlineData(5, false)]
-    [InlineData(24, true)]
-    public void IsAfterDay_ComparesCalendarDaysOnly(int hoursAfterStart, bool isExpected)
+    [InlineData(1, true)]
+    public void IsAfter_ComparesTheInstants(int hoursAfterStart, bool isExpected)
     {
         var lossDate = new LossDate(TestClaims.Start.AddHours(hoursAfterStart));
 
-        lossDate.IsAfterDay(TestClaims.ReportDay).Should().Be(isExpected);
+        lossDate.IsAfter(TestClaims.Start).Should().Be(isExpected);
     }
 
     [Fact]
-    public void IsAfterDay_WithoutADate_IsFalse()
+    public void IsAfter_WithoutADate_IsFalse()
     {
-        LossDate.Empty.IsAfterDay(DateOnly.MinValue).Should().BeFalse();
+        LossDate.Empty.IsAfter(DateTimeOffset.MinValue).Should().BeFalse();
     }
 }

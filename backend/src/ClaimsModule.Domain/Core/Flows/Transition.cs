@@ -10,7 +10,7 @@ internal abstract class Transition<TSelf, TSubject, TState, TInput>
     where TSubject : IStateful<TState>
     where TState : class, IMarked, IEquatable<TState>
 {
-    public const string NotPermittedCode = "TRANSITION_NOT_PERMITTED";
+    public const string NotPermittedCode = TransitionCodes.NotPermitted;
 
     private readonly Dictionary<TState, RuleSet<TSubject, TInput>> _rulesBySource = [];
     private readonly TState _target;

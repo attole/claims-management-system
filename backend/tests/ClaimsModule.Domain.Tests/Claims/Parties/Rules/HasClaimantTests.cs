@@ -27,4 +27,16 @@ public sealed class HasClaimantTests
 
         result.Findings.Should().BeEmpty();
     }
+
+    [Fact]
+    [Trait("Rule", "S:V-Messages")]
+    public void Check_WithoutAnyParty_ReturnsTheSpecMessage()
+    {
+        var claim = TestClaims.Empty();
+
+        var result = new HasClaimant().Check(claim);
+
+        var finding = result.Findings.Should().ContainSingle().Subject;
+        finding.Message.Should().Be("At least one Claimant party is required to open a claim.");
+    }
 }

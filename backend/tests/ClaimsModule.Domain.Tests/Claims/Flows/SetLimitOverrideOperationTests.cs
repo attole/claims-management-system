@@ -14,7 +14,13 @@ public sealed class SetLimitOverrideOperationTests
     public void Run_ByAManager_SetsTheFlag()
     {
         var claim = TestClaims.Empty();
-        var input = new SetLimitOverrideInput(true, TestClaims.Manager, 0m, TestClaims.Period(), TestClaims.Codes());
+        var input = new SetLimitOverrideInput(
+            true,
+            TestClaims.Manager,
+            0m,
+            TestClaims.Period(),
+            TestClaims.Codes(),
+            TestClaims.Start);
 
         var outcome = SetLimitOverrideOperation.Run(claim, input);
 
@@ -27,7 +33,13 @@ public sealed class SetLimitOverrideOperationTests
     public void Run_ByAManagerWithFalse_ClearsTheFlag()
     {
         var claim = TestClaims.WithLimitOverride();
-        var input = new SetLimitOverrideInput(false, TestClaims.Manager, 0m, TestClaims.Period(), TestClaims.Codes());
+        var input = new SetLimitOverrideInput(
+            false,
+            TestClaims.Manager,
+            0m,
+            TestClaims.Period(),
+            TestClaims.Codes(),
+            TestClaims.Start);
 
         SetLimitOverrideOperation.Run(claim, input);
 
@@ -39,7 +51,13 @@ public sealed class SetLimitOverrideOperationTests
     public void Run_ByASupervisor_ReturnsTheFindingAndKeepsTheFlag()
     {
         var claim = TestClaims.Empty();
-        var input = new SetLimitOverrideInput(true, TestClaims.Supervisor, 0m, TestClaims.Period(), TestClaims.Codes());
+        var input = new SetLimitOverrideInput(
+            true,
+            TestClaims.Supervisor,
+            0m,
+            TestClaims.Period(),
+            TestClaims.Codes(),
+            TestClaims.Start);
 
         var outcome = SetLimitOverrideOperation.Run(claim, input);
 
@@ -52,7 +70,13 @@ public sealed class SetLimitOverrideOperationTests
     public void Run_OnAClosedClaim_ReturnsTheFindingAndKeepsTheFlag()
     {
         var claim = TestClaims.InState<ClaimClosedState>();
-        var input = new SetLimitOverrideInput(true, TestClaims.Manager, 0m, TestClaims.Period(), TestClaims.Codes());
+        var input = new SetLimitOverrideInput(
+            true,
+            TestClaims.Manager,
+            0m,
+            TestClaims.Period(),
+            TestClaims.Codes(),
+            TestClaims.Start);
 
         var outcome = SetLimitOverrideOperation.Run(claim, input);
 
@@ -70,7 +94,8 @@ public sealed class SetLimitOverrideOperationTests
             TestClaims.Manager,
             12_000_000m,
             TestClaims.Period(),
-            TestClaims.Codes());
+            TestClaims.Codes(),
+            TestClaims.Start);
 
         var outcome = SetLimitOverrideOperation.Run(claim, input);
 

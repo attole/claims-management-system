@@ -18,6 +18,7 @@ public sealed class AssignHandlerCommandTests
             context.Policies,
             context.Causes,
             context.UnitOfWork,
+            context.Clock,
             context.Mapper);
         var command = new AssignHandlerCommand(claim.Id, handlerId);
 
@@ -38,6 +39,7 @@ public sealed class AssignHandlerCommandTests
             context.Policies,
             context.Causes,
             context.UnitOfWork,
+            context.Clock,
             context.Mapper);
         var command = new AssignHandlerCommand(claimId, Guid.NewGuid());
 

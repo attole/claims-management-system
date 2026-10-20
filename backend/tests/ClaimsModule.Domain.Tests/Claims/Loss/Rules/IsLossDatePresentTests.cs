@@ -26,4 +26,15 @@ public sealed class IsLossDatePresentTests
 
         result.Findings.Should().BeEmpty();
     }
+
+    [Fact]
+    [Trait("Rule", "S:V-Messages")]
+    public void Check_WithoutALossDate_ReturnsTheSpecMessage()
+    {
+        var claim = TestClaims.Empty();
+
+        var result = new IsLossDatePresent().Check(claim.LossEvent.Details);
+
+        result.Findings.Should().ContainSingle().Which.Message.Should().Be("Loss date is required.");
+    }
 }

@@ -14,3 +14,4 @@ PROPOSAL: shared base for the soft-delete block (IsDeleted, DeletedAt) if its si
 TOPIC: check indexes on columns inside a complex type before relying on one (notes-layer-persistence.md)
 NEXT: docs update - state in ARCHITECTURE that business rules stay in the Domain only and FluentValidation checks request shape only (assessment says rules also as validators); explain for the live review
 NEXT: docs update - state that primary keys are sequential GUIDs generated in the Domain, and that Persistence also declares the NEWSEQUENTIALID() default expression to match spec 15.2
+NEXT: Infrastructure sweep that removes blobs no document row refers to (an uploaded blob is stored before the commit, so a failed commit leaves an orphan)

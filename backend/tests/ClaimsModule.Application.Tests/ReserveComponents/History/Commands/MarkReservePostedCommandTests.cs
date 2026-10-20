@@ -28,6 +28,25 @@ public sealed class MarkReservePostedCommandTests
     }
 
     [Fact]
+    [Trait("Rule", "S:JOB-GL-Idempotent")]
+    public async Task Handle_ForARowThatIsAlreadyPosted_SucceedsWithoutChangingOrCommitting()
+    {
+        var claim = ApplicationClaims.Opened();
+        var component = ApplicationReserves.Component(claim);
+        var history = ApplicationReserves.Submit(component, claim, 5000m, ClaimHandlerContext.UserId);
+        var context = new ClaimHandlerContext().WithComponent(component);
+        var handler = CreateHandler(context);
+        await handler.Handle(new MarkReservePostedCommand(claim.Id, history.Id, "job-7"), CancellationToken.None);
+        var command = new MarkReservePostedCommand(claim.Id, history.Id, "job-8");
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        result.Value.Should().Be(new ReserveHistoryStatusDto(history.Id, "Posted", "Posted"));
+        history.PostingDetails.JobId.Should().Be("job-7");
+        context.VerifyCommitted(Times.Once());
+    }
+
+    [Fact]
     public async Task Handle_WithoutAJobId_ReturnsTheRuleErrorAndDoesNotCommit()
     {
         var claim = ApplicationClaims.Opened();

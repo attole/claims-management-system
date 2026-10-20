@@ -42,7 +42,7 @@ public static class ApplicationClaims
     public static Outcome<Move<ClaimState>> OpenedWithoutDetails()
     {
         var claim = Created().Value;
-        var input = new ClaimTransitionInput(PolicyPeriod.Empty, _codes);
+        var input = new ClaimTransitionInput(PolicyPeriod.Empty, _codes, ClaimHandlerContext.Now);
 
         return claim.Open(input);
     }
@@ -50,7 +50,7 @@ public static class ApplicationClaims
     public static Outcome<Move<ClaimState>> WithdrawnWithOpenBalance()
     {
         var claim = Opened();
-        var input = new FreezeClaimInput(false, false, true, _period, _codes)
+        var input = new FreezeClaimInput(false, false, true, _period, _codes, ClaimHandlerContext.Now)
         {
             Reason = new StateChangeReason("WITHDRAWN", "Reported in error"),
             Note = "Open balance reviewed",
@@ -78,8 +78,8 @@ public static class ApplicationClaims
             LastName = "Reed",
         };
 
-        claim.AddParty(new AddPartyInput(claimant, PolicyPeriod.Empty, _codes));
-        claim.AddParty(new AddPartyInput(witness, PolicyPeriod.Empty, _codes));
+        claim.AddParty(new AddPartyInput(claimant, PolicyPeriod.Empty, _codes, ClaimHandlerContext.Now));
+        claim.AddParty(new AddPartyInput(witness, PolicyPeriod.Empty, _codes, ClaimHandlerContext.Now));
 
         return claim;
     }
@@ -90,8 +90,8 @@ public static class ApplicationClaims
         var kitchen = new RiskObjectDetails(AssetType.Property, "Kitchen");
         var garage = new RiskObjectDetails(AssetType.Property, "Garage");
 
-        claim.AddRiskObject(new AddRiskObjectInput(kitchen, PolicyPeriod.Empty, _codes));
-        claim.AddRiskObject(new AddRiskObjectInput(garage, PolicyPeriod.Empty, _codes));
+        claim.AddRiskObject(new AddRiskObjectInput(kitchen, PolicyPeriod.Empty, _codes, ClaimHandlerContext.Now));
+        claim.AddRiskObject(new AddRiskObjectInput(garage, PolicyPeriod.Empty, _codes, ClaimHandlerContext.Now));
 
         return claim;
     }
@@ -105,7 +105,7 @@ public static class ApplicationClaims
     {
         var claim = ReadyDraft();
 
-        claim.Open(new ClaimTransitionInput(_period, _codes));
+        claim.Open(new ClaimTransitionInput(_period, _codes, ClaimHandlerContext.Now));
 
         return claim;
     }
@@ -114,7 +114,7 @@ public static class ApplicationClaims
     {
         var claim = Opened();
 
-        claim.Investigate(new ClaimTransitionInput(_period, _codes));
+        claim.Investigate(new ClaimTransitionInput(_period, _codes, ClaimHandlerContext.Now));
 
         return claim;
     }
@@ -123,7 +123,7 @@ public static class ApplicationClaims
     {
         var claim = Opened();
 
-        claim.Close(new FreezeClaimInput(false, false, false, _period, _codes));
+        claim.Close(new FreezeClaimInput(false, false, false, _period, _codes, ClaimHandlerContext.Now));
 
         return claim;
     }
@@ -139,11 +139,11 @@ public static class ApplicationClaims
         };
         var riskObject = new RiskObjectDetails(AssetType.Property, "Kitchen");
 
-        claim.LinkPolicy(new LinkPolicyInput(_policy, _period, _codes));
-        claim.UpdateLossDetails(new UpdateLossDetailsInput(loss, _period, _codes));
-        claim.AddRiskObject(new AddRiskObjectInput(riskObject, _period, _codes));
-        claim.AssignHandler(new AssignHandlerInput(_handler, _period, _codes));
-        claim.AddParty(new AddPartyInput(person, _period, _codes));
+        claim.LinkPolicy(new LinkPolicyInput(_policy, _period, _codes, ClaimHandlerContext.Now));
+        claim.UpdateLossDetails(new UpdateLossDetailsInput(loss, _period, _codes, ClaimHandlerContext.Now));
+        claim.AddRiskObject(new AddRiskObjectInput(riskObject, _period, _codes, ClaimHandlerContext.Now));
+        claim.AssignHandler(new AssignHandlerInput(_handler, _period, _codes, ClaimHandlerContext.Now));
+        claim.AddParty(new AddPartyInput(person, _period, _codes, ClaimHandlerContext.Now));
 
         return claim;
     }

@@ -46,6 +46,16 @@ public sealed class MarkReservePostedCommandHandler(
             return loaded.ToFailure<ReserveHistoryStatusDto>();
         }
 
+        var history = loaded.Value.History.Single(row => row.Id == command.ReserveHistoryId);
+
+        if (history.PostingState.IsPosted)
+        {
+            string posted = history.PostingState.Name;
+            var unchanged = new ReserveHistoryStatusDto(history.Id, posted, posted);
+
+            return Result<ReserveHistoryStatusDto>.Success(unchanged);
+        }
+
         var input = command.ToInput();
         var result = loaded.Value.MarkHistoryPosted(input).ToResult();
 

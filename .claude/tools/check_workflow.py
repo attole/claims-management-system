@@ -13,7 +13,8 @@ from pathlib import Path
 ROOT = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else Path(__file__).resolve().parents[2]
 SKIP_DIRS = {".git", "node_modules", "bin", "obj", "dist", ".angular", ".vs", ".idea"}
 MESSAGE_ALLOWED = re.compile(
-    r"^backend/src/ClaimsModule\.Domain/(.+/Rules/[^/]+|Core/Flows/Transition)\.cs$")
+    r"^backend/src/ClaimsModule\.Domain/(.+/Rules/[^/]+|Core/Flows/Transition)\.cs$"
+    r"|^backend/tests/ClaimsModule\.Domain\.Tests/(.+/Rules/[^/]+Tests|Claims/Flows/CloseClaimTransitionTests)\.cs$")
 TEXT_SUFFIXES = {".md", ".json", ".py", ".ts", ".cs", ".html", ".scss", ".yml", ".yaml", ".editorconfig"}
 LOCAL_DOCS = ["docs/spec.local.md", "docs/assessment.local.md"]
 REGISTER = "docs/rules.local.md"
@@ -435,6 +436,29 @@ def check_domain(files):
                 fail("naming", f"{DOMAIN}/{rel}: a rule class must expose a Code constant")
 
 
+def check_application_names(rel):
+    parts = rel.split("/")
+    if parts[0] != "ClaimsModule.Application" or len(parts) < 3:
+        return
+    stem = Path(rel).stem
+    folders = parts[1:-1]
+    expected = {"Dtos": ("Dto", "MappingProfile"), "Requests": ("Request",), "Commands": ("Command",)}
+    for folder, suffixes in expected.items():
+        if folder in folders and not stem.endswith(suffixes):
+            fail("naming", f"backend/src/{rel}: a file in {folder}/ is named ...{' or ...'.join(suffixes)} (S:DATA-Naming)")
+    if "Queries" in folders and not re.match(r"^(Get|List)[A-Z]\w*Query$", stem):
+        fail("naming", f"backend/src/{rel}: a file in Queries/ is named GetNounQuery or ListNounsQuery (S:DATA-Naming)")
+
+
+GUID_LITERAL = re.compile(r"[\"'][0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}[\"']")
+
+
+def check_hard_guids(rel, text):
+    for number, line in enumerate(text.splitlines(), 1):
+        if GUID_LITERAL.search(line):
+            fail("code", f"backend/src/{rel}:{number} has a hard-coded GUID (S:DATA-NoHardGuids)")
+
+
 def check_code_layout():
     max_line = line_limit()
     for base in ("backend/src", "backend/tests"):
@@ -443,6 +467,8 @@ def check_code_layout():
             check_using_order(base, rel, text)
     for rel, text in cs_files("backend/src"):
         check_names(rel, text)
+        check_hard_guids(rel, text)
+        check_application_names(rel)
     src_root = ROOT / "backend/src"
     for project_dir in sorted(src_root.glob("ClaimsModule.*")) if src_root.exists() else []:
         project = project_dir.name

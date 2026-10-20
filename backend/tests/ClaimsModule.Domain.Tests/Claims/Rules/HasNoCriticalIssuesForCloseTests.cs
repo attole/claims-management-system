@@ -28,4 +28,17 @@ public sealed class HasNoCriticalIssuesForCloseTests
 
         result.Findings.Should().ContainSingle().Which.Code.Should().Be(HasNoCriticalIssuesForClose.Code);
     }
+
+    [Fact]
+    [Trait("Rule", "S:V-Messages")]
+    public void Check_WhenACriticalIssueIsUnresolved_ReturnsTheSpecMessage()
+    {
+        var claim = TestClaims.WithLoss(TestClaims.Start.AddDays(2));
+        var rule = new HasNoCriticalIssuesForClose();
+
+        var result = rule.Check(claim);
+
+        result.Findings.Should().ContainSingle().Which.Message.Should()
+            .StartWith("Claim cannot be closed - ").And.EndWith(" is not satisfied.");
+    }
 }

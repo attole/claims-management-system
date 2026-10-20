@@ -4,7 +4,7 @@ using ClaimsModule.Domain.Policies;
 
 namespace ClaimsModule.Domain.Claims.Loss.Rules;
 
-internal sealed class HasValidLossDetails(DateOnly reportDay, PolicyPeriod period, CauseCodes causeCodes)
+internal sealed class HasValidLossDetails(DateTimeOffset now, PolicyPeriod period, CauseCodes causeCodes)
     : IRule<LossDetails>
 {
     public const string Code = "LOSS_DETAILS_VALID";
@@ -15,7 +15,7 @@ internal sealed class HasValidLossDetails(DateOnly reportDay, PolicyPeriod perio
         CheckResult[] results =
         [
             new IsLossDatePresent().Check(loss),
-            new IsLossDateNotAfterReport(reportDay).Check(loss),
+            new IsLossDateNotInFuture(now).Check(loss),
             new IsDescriptionLongEnough().Check(loss),
             new IsCauseCodeActive(isActiveCauseCode).Check(loss),
             new IsLossDateWithinPolicyPeriod(period).Check(loss),

@@ -19,6 +19,7 @@ public sealed class RemovePartyCommandTests
             context.Policies,
             context.Causes,
             context.UnitOfWork,
+            context.Clock,
             context.Mapper);
         var command = new RemovePartyCommand(claim.Id, witness.Id);
 
@@ -39,6 +40,7 @@ public sealed class RemovePartyCommandTests
             context.Policies,
             context.Causes,
             context.UnitOfWork,
+            context.Clock,
             context.Mapper);
         var command = new RemovePartyCommand(claimId, Guid.NewGuid());
 
@@ -59,6 +61,7 @@ public sealed class RemovePartyCommandTests
             context.Policies,
             context.Causes,
             context.UnitOfWork,
+            context.Clock,
             context.Mapper);
         var command = new RemovePartyCommand(claim.Id, unknownId);
 
@@ -80,6 +83,7 @@ public sealed class RemovePartyCommandTests
             context.Policies,
             context.Causes,
             context.UnitOfWork,
+            context.Clock,
             context.Mapper);
         var command = new RemovePartyCommand(claim.Id, claimant.Id);
 

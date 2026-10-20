@@ -15,7 +15,7 @@ public sealed class RemovePartyOnClaimOperationTests
         var claim = TestClaims.Create(TestClaims.Claimant(), TestClaims.Witness());
         claim.PopEvents();
         var witness = claim.Parties[1];
-        var input = new RemovePartyInput(witness.Id, TestClaims.Period(), TestClaims.Codes());
+        var input = new RemovePartyInput(witness.Id, TestClaims.Period(), TestClaims.Codes(), TestClaims.Start);
 
         var outcome = RemovePartyOnClaimOperation.Run(claim, input);
 
@@ -29,7 +29,7 @@ public sealed class RemovePartyOnClaimOperationTests
     {
         var claim = TestClaims.Create(TestClaims.Claimant(), TestClaims.Witness());
         var claimant = claim.Parties[0];
-        var input = new RemovePartyInput(claimant.Id, TestClaims.Period(), TestClaims.Codes());
+        var input = new RemovePartyInput(claimant.Id, TestClaims.Period(), TestClaims.Codes(), TestClaims.Start);
 
         var outcome = RemovePartyOnClaimOperation.Run(claim, input);
 
@@ -42,7 +42,7 @@ public sealed class RemovePartyOnClaimOperationTests
     public void Run_UnknownParty_Throws()
     {
         var claim = TestClaims.Create(TestClaims.Claimant());
-        var input = new RemovePartyInput(Guid.NewGuid(), TestClaims.Period(), TestClaims.Codes());
+        var input = new RemovePartyInput(Guid.NewGuid(), TestClaims.Period(), TestClaims.Codes(), TestClaims.Start);
 
         Action act = () => RemovePartyOnClaimOperation.Run(claim, input);
 
@@ -54,7 +54,11 @@ public sealed class RemovePartyOnClaimOperationTests
     public void Run_WhenTheClaimIsClosed_Fails()
     {
         var claim = TestClaims.InState<ClaimClosedState>();
-        var input = new RemovePartyInput(claim.Parties[0].Id, TestClaims.Period(), TestClaims.Codes());
+        var input = new RemovePartyInput(
+            claim.Parties[0].Id,
+            TestClaims.Period(),
+            TestClaims.Codes(),
+            TestClaims.Start);
 
         var outcome = RemovePartyOnClaimOperation.Run(claim, input);
 

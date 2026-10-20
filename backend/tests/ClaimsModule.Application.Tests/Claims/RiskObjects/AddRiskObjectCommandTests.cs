@@ -18,6 +18,7 @@ public sealed class AddRiskObjectCommandTests
             context.Policies,
             context.Causes,
             context.UnitOfWork,
+            context.Clock,
             context.Mapper);
         var command = new AddRiskObjectCommand(claim.Id, ApplicationRequests.Kitchen());
 
@@ -39,6 +40,7 @@ public sealed class AddRiskObjectCommandTests
             context.Policies,
             context.Causes,
             context.UnitOfWork,
+            context.Clock,
             context.Mapper);
         var command = new AddRiskObjectCommand(claimId, ApplicationRequests.Kitchen());
 

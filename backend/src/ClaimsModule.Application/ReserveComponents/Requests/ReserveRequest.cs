@@ -21,9 +21,7 @@ public sealed record ReserveRequest(ReserveTransactionType TransactionType, deci
 
     public OpenReserveComponentInput ToOpenInput(ClaimReference claim)
     {
-        var componentType = ReserveComponentType.From(ComponentType.GetValueOrDefault());
-
-        return new OpenReserveComponentInput(claim, componentType, Notes ?? string.Empty);
+        return new OpenReserveComponentInput(claim, ComponentType.GetValueOrDefault(), Notes ?? string.Empty);
     }
 
     public SubmitHistoryInput ToSubmitInput(Claim claim, decimal approvedTotal, Guid actorId, DateTimeOffset now)
@@ -47,7 +45,6 @@ public sealed class ReserveRequestValidator : AbstractValidator<ReserveRequest>
     public ReserveRequestValidator()
     {
         RuleFor(request => request.TransactionType).IsInEnum();
-        RuleFor(request => request.ComponentType).IsInEnum().When(request => request.IsNewComponent);
         RuleFor(request => request.ChangeReason).NotNull().MaximumLength(ReserveFieldLengths.ChangeReason);
         RuleFor(request => request.ComponentId)
             .Must((request, _) => request.IsNewComponent != request.HasComponentId)

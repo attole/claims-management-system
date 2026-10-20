@@ -31,14 +31,37 @@ public static class ClaimErrors
         return Error.NotFound(IssueNotFoundCode, $"Issue {issueId} does not exist on the claim.");
     }
 
-    public static Error StatusUnsupported(string targetStatus)
+    public static Error StatusUnsupported(string targetStatus, IReadOnlyList<string> nextStatuses)
     {
-        return Error.Validation(StatusUnsupportedCode, $"A claim cannot be moved to {targetStatus}.", "TargetStatus");
+        string message = $"A claim cannot be moved to {targetStatus}. {NextStatusesText(nextStatuses)}";
+
+        return Error.Validation(StatusUnsupportedCode, message, "TargetStatus");
+    }
+
+    public static Error WithNextStatuses(Error refusal, IReadOnlyList<string> nextStatuses)
+    {
+        string message = $"{refusal.Message} {NextStatusesText(nextStatuses)}";
+
+        return Error.Validation(refusal.Code, message, "TargetStatus");
     }
 
     public static Error PolicyNotFound(Guid policyId)
     {
         return Error.NotFound(PolicyNotFoundCode, $"Policy {policyId} does not exist.");
+    }
+
+    public static Warning PolicyNotFoundWarning(Guid policyId)
+    {
+        string message = $"Policy {policyId} does not exist; the claim has no policy linked.";
+
+        return new Warning(PolicyNotFoundCode, message, "PolicyId");
+    }
+
+    private static string NextStatusesText(IReadOnlyList<string> nextStatuses)
+    {
+        string next = nextStatuses.Count == 0 ? "none" : string.Join(", ", nextStatuses);
+
+        return $"Valid next statuses: {next}.";
     }
 }
 

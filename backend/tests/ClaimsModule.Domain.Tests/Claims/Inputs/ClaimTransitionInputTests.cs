@@ -11,7 +11,7 @@ public sealed class ClaimTransitionInputTests
     [InlineData("Settled outside the system", true)]
     public void HasNote_IsTrueOnlyForAWrittenNote(string note, bool isExpected)
     {
-        var input = new ClaimTransitionInput(TestClaims.Period(), TestClaims.Codes()) { Note = note };
+        var input = new ClaimTransitionInput(TestClaims.Period(), TestClaims.Codes(), TestClaims.Start) { Note = note };
 
         input.HasNote.Should().Be(isExpected);
     }

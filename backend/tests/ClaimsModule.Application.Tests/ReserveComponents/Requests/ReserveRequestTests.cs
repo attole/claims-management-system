@@ -20,7 +20,7 @@ public sealed class ReserveRequestTests
 
         var result = request.ToOpenInput(claim.Reference);
 
-        result.ComponentType.Name.Should().Be("Alae");
+        result.ComponentTypeKind.Should().Be(ReserveComponentTypeKind.Alae);
         result.Claim.ClaimId.Should().Be(claim.Id);
     }
 

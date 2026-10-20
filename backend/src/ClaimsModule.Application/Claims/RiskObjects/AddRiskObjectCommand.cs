@@ -15,9 +15,9 @@ namespace ClaimsModule.Application.Claims.RiskObjects;
 
 public sealed record AddRiskObjectCommand(Guid ClaimId, RiskObjectRequest RiskObject) : ICommand<Result<RiskObjectDto>>
 {
-    public AddRiskObjectInput ToInput(PolicyPeriod period, CauseCodes codes)
+    public AddRiskObjectInput ToInput(PolicyPeriod period, CauseCodes codes, DateTimeOffset now)
     {
-        return new AddRiskObjectInput(RiskObject.ToDetails(), period, codes);
+        return new AddRiskObjectInput(RiskObject.ToDetails(), period, codes, now);
     }
 }
 
@@ -35,6 +35,7 @@ public sealed class AddRiskObjectCommandHandler(
     IPolicyReader policies,
     ICauseCodeReader causes,
     IUnitOfWork unitOfWork,
+    IClock clock,
     IMapper mapper) : IRequestHandler<AddRiskObjectCommand, Result<RiskObjectDto>>
 {
     public async Task<Result<RiskObjectDto>> Handle(AddRiskObjectCommand command, CancellationToken cancellationToken)
@@ -49,7 +50,7 @@ public sealed class AddRiskObjectCommandHandler(
         var claim = loaded.Value;
         var period = await policies.GetPeriodAsync(claim.PolicyId, cancellationToken);
         var codes = await causes.GetActiveAsync(cancellationToken);
-        var outcome = claim.AddRiskObject(command.ToInput(period, codes));
+        var outcome = claim.AddRiskObject(command.ToInput(period, codes, clock.UtcNow));
         var result = outcome.ToResult();
 
         if (result.IsSuccess)

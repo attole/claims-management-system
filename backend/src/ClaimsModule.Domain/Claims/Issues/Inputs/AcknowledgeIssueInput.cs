@@ -10,9 +10,7 @@ public sealed record AcknowledgeIssueInput(
     Guid ActorId,
     DateTimeOffset Now,
     PolicyPeriod PolicyPeriod,
-    CauseCodes CauseCodes) : ClaimBaseOperationInput(PolicyPeriod, CauseCodes)
+    CauseCodes CauseCodes) : ClaimBaseOperationInput(PolicyPeriod, CauseCodes, Now)
 {
     public Guid ActorId { get; } = InputActor.Required(ActorId);
-
-    public DateTimeOffset Now { get; } = InputTime.Required(Now);
 }

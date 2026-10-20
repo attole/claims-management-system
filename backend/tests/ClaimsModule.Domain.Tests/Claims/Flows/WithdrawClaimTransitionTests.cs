@@ -118,6 +118,12 @@ public sealed class WithdrawClaimTransitionTests
 
     private static FreezeClaimInput CreateInput()
     {
-        return new FreezeClaimInput(false, false, false, TestClaims.Period(), TestClaims.Codes()) { Reason = _reason };
+        return new FreezeClaimInput(
+            false,
+            false,
+            false,
+            TestClaims.Period(),
+            TestClaims.Codes(),
+            TestClaims.Start) { Reason = _reason };
     }
 }

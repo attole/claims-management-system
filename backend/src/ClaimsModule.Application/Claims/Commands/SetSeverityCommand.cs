@@ -17,9 +17,9 @@ namespace ClaimsModule.Application.Claims.Commands;
 
 public sealed record SetSeverityCommand(Guid ClaimId, ClaimSeverity Severity) : ICommand<Result<ClaimDto>>
 {
-    public SetSeverityInput ToInput(PolicyPeriod period, CauseCodes codes)
+    public SetSeverityInput ToInput(PolicyPeriod period, CauseCodes codes, DateTimeOffset now)
     {
-        return new SetSeverityInput(Severity, period, codes);
+        return new SetSeverityInput(Severity, period, codes, now);
     }
 }
 
@@ -37,6 +37,7 @@ public sealed class SetSeverityCommandHandler(
     IPolicyReader policies,
     ICauseCodeReader causes,
     IUnitOfWork unitOfWork,
+    IClock clock,
     IMapper mapper) : IRequestHandler<SetSeverityCommand, Result<ClaimDto>>
 {
     public async Task<Result<ClaimDto>> Handle(SetSeverityCommand command, CancellationToken cancellationToken)
@@ -51,7 +52,7 @@ public sealed class SetSeverityCommandHandler(
         var claim = loaded.Value;
         var period = await policies.GetPeriodAsync(claim.PolicyId, cancellationToken);
         var codes = await causes.GetActiveAsync(cancellationToken);
-        var outcome = claim.SetSeverity(command.ToInput(period, codes));
+        var outcome = claim.SetSeverity(command.ToInput(period, codes, clock.UtcNow));
         var result = outcome.ToResult();
 
         if (result.IsSuccess)

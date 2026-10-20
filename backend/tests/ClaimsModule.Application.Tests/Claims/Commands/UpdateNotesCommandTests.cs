@@ -17,6 +17,7 @@ public sealed class UpdateNotesCommandTests
             context.Policies,
             context.Causes,
             context.UnitOfWork,
+            context.Clock,
             context.Mapper);
         var command = new UpdateNotesCommand(claim.Id, "Called the insured");
 
@@ -37,6 +38,7 @@ public sealed class UpdateNotesCommandTests
             context.Policies,
             context.Causes,
             context.UnitOfWork,
+            context.Clock,
             context.Mapper);
         var command = new UpdateNotesCommand(claimId, "Called the insured");
 

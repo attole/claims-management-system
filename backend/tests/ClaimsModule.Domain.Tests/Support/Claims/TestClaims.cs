@@ -19,7 +19,6 @@ public static class TestClaims
 
     public static readonly DateTimeOffset Start = new(2026, 10, 12, 8, 0, 0, TimeSpan.Zero);
     public static readonly DateTimeOffset Later = Start.AddHours(1);
-    public static readonly DateOnly ReportDay = DateOnly.FromDateTime(Start.UtcDateTime);
     public static readonly Guid Organisation = Guid.Parse("11111111-1111-1111-1111-111111111111");
     public static readonly Guid Actor = Guid.Parse("22222222-2222-2222-2222-222222222222");
     public static readonly UserRole Handler = new UserHandlerRole();
@@ -31,7 +30,7 @@ public static class TestClaims
     public static Claim Empty()
     {
         var claim = WithoutPolicy();
-        claim.LinkPolicy(new LinkPolicyInput(Policy, Period(), Codes()));
+        claim.LinkPolicy(new LinkPolicyInput(Policy, Period(), Codes(), TestClaims.Start));
 
         return claim;
     }
@@ -70,12 +69,12 @@ public static class TestClaims
         var riskObject = new RiskObjectDetails(AssetType.Property, "Kitchen");
 
         SetLoss(claim, Loss(Start.AddDays(-3), Description));
-        claim.AddRiskObject(new AddRiskObjectInput(riskObject, Period(), Codes()));
-        claim.AssignHandler(new AssignHandlerInput(Actor, Period(), Codes()));
+        claim.AddRiskObject(new AddRiskObjectInput(riskObject, Period(), Codes(), TestClaims.Start));
+        claim.AssignHandler(new AssignHandlerInput(Actor, Period(), Codes(), TestClaims.Start));
 
         foreach (var party in parties)
         {
-            claim.AddParty(new AddPartyInput(party, Period(), Codes()));
+            claim.AddParty(new AddPartyInput(party, Period(), Codes(), TestClaims.Start));
         }
 
         claim.PopEvents();
@@ -86,7 +85,7 @@ public static class TestClaims
     public static Claim WithLimitOverride()
     {
         var claim = Empty();
-        claim.SetLimitOverride(new SetLimitOverrideInput(true, Manager, 0m, Period(), Codes()));
+        claim.SetLimitOverride(new SetLimitOverrideInput(true, Manager, 0m, Period(), Codes(), TestClaims.Start));
 
         return claim;
     }
@@ -112,7 +111,7 @@ public static class TestClaims
     public static void MoveTo<TState>(Claim claim)
         where TState : ClaimState, new()
     {
-        var input = new ClaimTransitionInput(Period(), Codes());
+        var input = new ClaimTransitionInput(Period(), Codes(), TestClaims.Start);
         SampleMoveClaimTransition<TState>.Run(claim, input);
         claim.PopEvents();
     }
@@ -125,7 +124,7 @@ public static class TestClaims
     public static ClaimRiskObject AddPrimaryRiskObject(Claim claim)
     {
         var van = new RiskObjectDetails(AssetType.Vehicle, "Van") { IsPrimary = true };
-        var input = new AddRiskObjectInput(van, Period(), Codes());
+        var input = new AddRiskObjectInput(van, Period(), Codes(), TestClaims.Start);
 
         return claim.AddRiskObject(input).Value;
     }
@@ -162,7 +161,7 @@ public static class TestClaims
 
     public static void SetLoss(Claim claim, LossDetails loss)
     {
-        claim.UpdateLossDetails(new UpdateLossDetailsInput(loss, Period(), Codes()));
+        claim.UpdateLossDetails(new UpdateLossDetailsInput(loss, Period(), Codes(), TestClaims.Start));
     }
 
     public static LossDetails Loss(DateTimeOffset lossDate, string description)

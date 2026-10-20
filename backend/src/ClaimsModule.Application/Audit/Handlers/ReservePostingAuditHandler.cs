@@ -34,7 +34,14 @@ public sealed class ReservePostingAuditHandler(IAuditLogService audit)
         return new AuditEntry(domainEvent.ClaimId, eventType, description)
         {
             OldValue = AuditJson.From(new { Status = domainEvent.From }),
-            NewValue = AuditJson.From(new { Status = domainEvent.To, domainEvent.JobId, domainEvent.FailureReason }),
+            NewValue = AuditJson.From(new
+            {
+                Status = domainEvent.To,
+                domainEvent.JobId,
+                domainEvent.Amount,
+                domainEvent.ReserveComponentId,
+                domainEvent.FailureReason,
+            }),
             RelatedEntityId = domainEvent.ReserveHistoryId,
             RelatedEntityType = nameof(ReserveHistory),
         };

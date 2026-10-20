@@ -69,7 +69,8 @@ public sealed class CreateClaimCommandTests
     }
 
     [Fact]
-    public async Task Handle_WhenThePolicyDoesNotExist_ReturnsNotFoundAndStoresNothing()
+    [Trait("Rule", "S:INTAKE-NoPolicy")]
+    public async Task Handle_WhenThePolicyDoesNotExist_CreatesTheClaimWithoutAPolicyAndWarns()
     {
         var policyId = Guid.NewGuid();
         var context = new ClaimHandlerContext().WithoutPolicy(policyId);
@@ -78,9 +79,10 @@ public sealed class CreateClaimCommandTests
 
         var result = await handler.Handle(command, CancellationToken.None);
 
-        result.Errors.Should().Equal(ClaimErrors.PolicyNotFound(policyId));
-        context.VerifyAdded(Times.Never());
-        context.VerifyCommitted(Times.Never());
+        result.Value.PolicyId.Should().Be(Guid.Empty);
+        result.Warnings.Should().Contain(ClaimErrors.PolicyNotFoundWarning(policyId));
+        context.VerifyAdded(Times.Once());
+        context.VerifyCommitted(Times.Once());
     }
 
     [Fact]

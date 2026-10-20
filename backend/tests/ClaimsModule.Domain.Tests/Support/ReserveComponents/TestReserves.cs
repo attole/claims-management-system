@@ -26,7 +26,7 @@ public static class TestReserves
     {
         var input = new OpenReserveComponentInput(
             Claim(new ClaimOpenState()),
-            new ReserveIndemnityComponentType(),
+            ReserveComponentTypeKind.Indemnity,
             string.Empty);
 
         return ReserveComponent.Open(input).Value;

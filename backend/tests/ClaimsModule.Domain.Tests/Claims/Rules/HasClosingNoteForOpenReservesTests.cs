@@ -40,4 +40,17 @@ public sealed class HasClosingNoteForOpenReservesTests
 
         result.Findings.Should().ContainSingle().Which.Code.Should().Be(HasClosingNoteForOpenReserves.Code);
     }
+
+    [Fact]
+    [Trait("Rule", "S:V-Messages")]
+    public void Check_WhenABalanceIsOpenWithoutANote_ReturnsTheSpecMessage()
+    {
+        var claim = TestClaims.Create(TestClaims.Claimant());
+        var rule = new HasClosingNoteForOpenReserves(true, false);
+
+        var result = rule.Check(claim);
+
+        result.Findings.Should().ContainSingle().Which.Message.Should()
+            .StartWith("Claim cannot be closed - ").And.EndWith(" is not satisfied.");
+    }
 }

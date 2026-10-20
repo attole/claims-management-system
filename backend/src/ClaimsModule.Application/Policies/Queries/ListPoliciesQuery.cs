@@ -6,22 +6,22 @@ using MediatR;
 
 namespace ClaimsModule.Application.Policies.Queries;
 
-public sealed record SearchPoliciesQuery(string Text, int Page, int PageSize)
+public sealed record ListPoliciesQuery(string Text, int Page, int PageSize)
     : IQuery<Result<PagedResult<PolicyDto>>>, IPagedQuery;
 
-public sealed class SearchPoliciesQueryValidator : PagedQueryValidator<SearchPoliciesQuery>
+public sealed class ListPoliciesQueryValidator : PagedQueryValidator<ListPoliciesQuery>
 {
-    public SearchPoliciesQueryValidator()
+    public ListPoliciesQueryValidator()
     {
         RuleFor(query => query.Text).NotNull().MaximumLength(PolicyFieldLengths.SearchText);
     }
 }
 
-public sealed class SearchPoliciesQueryHandler(IPolicyReader policies)
-    : IRequestHandler<SearchPoliciesQuery, Result<PagedResult<PolicyDto>>>
+public sealed class ListPoliciesQueryHandler(IPolicyReader policies)
+    : IRequestHandler<ListPoliciesQuery, Result<PagedResult<PolicyDto>>>
 {
     public async Task<Result<PagedResult<PolicyDto>>> Handle(
-        SearchPoliciesQuery query,
+        ListPoliciesQuery query,
         CancellationToken cancellationToken)
     {
         var found = await policies.SearchAsync(query.Text, PageWindow.From(query), cancellationToken);

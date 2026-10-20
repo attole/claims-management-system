@@ -3,5 +3,8 @@ using ClaimsModule.Domain.Policies;
 
 namespace ClaimsModule.Domain.Claims.Inputs;
 
-public sealed record LinkPolicyInput(Guid PolicyId, PolicyPeriod PolicyPeriod, CauseCodes CauseCodes)
-    : ClaimBaseOperationInput(PolicyPeriod, CauseCodes);
+public sealed record LinkPolicyInput(
+    Guid PolicyId,
+    PolicyPeriod PolicyPeriod,
+    CauseCodes CauseCodes,
+    DateTimeOffset Now) : ClaimBaseOperationInput(PolicyPeriod, CauseCodes, Now);

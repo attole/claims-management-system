@@ -11,7 +11,11 @@ public sealed class UpdateNotesOperationTests
     public void Run_ReplacesTheNotes()
     {
         var claim = TestClaims.Create(TestClaims.Claimant());
-        var input = new UpdateNotesInput("called the insured", TestClaims.Period(), TestClaims.Codes());
+        var input = new UpdateNotesInput(
+            "called the insured",
+            TestClaims.Period(),
+            TestClaims.Codes(),
+            TestClaims.Start);
 
         UpdateNotesOperation.Run(claim, input);
 
@@ -28,7 +32,7 @@ public sealed class UpdateNotesOperationTests
     [MemberData(nameof(FrozenClaims))]
     public void Run_WhenTheClaimIsClosedOrWithdrawn_ReplacesTheNotes(Claim claim)
     {
-        var input = new UpdateNotesInput("late call", TestClaims.Period(), TestClaims.Codes());
+        var input = new UpdateNotesInput("late call", TestClaims.Period(), TestClaims.Codes(), TestClaims.Start);
 
         var outcome = UpdateNotesOperation.Run(claim, input);
 

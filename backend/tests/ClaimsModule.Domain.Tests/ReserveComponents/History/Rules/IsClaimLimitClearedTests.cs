@@ -43,4 +43,17 @@ public sealed class IsClaimLimitClearedTests
 
         result.Findings.Should().BeEmpty();
     }
+
+    [Fact]
+    [Trait("Rule", "S:V-Messages")]
+    public void Check_WhenTheTotalPassesTheLimitWithoutAnOverride_ReturnsTheSpecMessage()
+    {
+        var history = TestReserves.Submit(50_000m);
+        var rule = new IsClaimLimitCleared(9_990_000m, false);
+
+        var result = rule.Check(history);
+
+        var finding = result.Findings.Should().ContainSingle().Subject;
+        finding.Message.Should().Be("Total reserves will exceed $10,000,000. Manager override required.");
+    }
 }

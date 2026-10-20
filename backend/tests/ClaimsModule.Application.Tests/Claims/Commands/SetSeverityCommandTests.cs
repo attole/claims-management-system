@@ -18,6 +18,7 @@ public sealed class SetSeverityCommandTests
             context.Policies,
             context.Causes,
             context.UnitOfWork,
+            context.Clock,
             context.Mapper);
         var command = new SetSeverityCommand(claim.Id, ClaimSeverity.Standard);
 
@@ -38,6 +39,7 @@ public sealed class SetSeverityCommandTests
             context.Policies,
             context.Causes,
             context.UnitOfWork,
+            context.Clock,
             context.Mapper);
         var command = new SetSeverityCommand(claimId, ClaimSeverity.Standard);
 

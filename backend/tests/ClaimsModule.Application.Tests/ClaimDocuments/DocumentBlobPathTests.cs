@@ -5,7 +5,7 @@ namespace ClaimsModule.Application.Tests.ClaimDocuments;
 public sealed class DocumentBlobPathTests
 {
     [Fact]
-    [Trait("Rule", "S:DOC-Storage")]
+    [Trait("Rule", "S:BR-D-01")]
     public void Build_UsesTheOrganisationTheClaimTheUploadIdAndTheFileName()
     {
         var organisationId = Guid.NewGuid();

@@ -20,6 +20,11 @@ public sealed class ReserveHistoryMappingProfile : Profile
             .ForMember(
                 dto => dto.ChangeSequence,
                 options => options.MapFrom(history => history.Details.ChangeSequence))
+            .ForMember(dto => dto.HasBalances, options => options.MapFrom(history => history.Balances.IsSet))
+            .ForMember(
+                dto => dto.PreviousBalance,
+                options => options.MapFrom(history => history.Balances.PreviousBalance))
+            .ForMember(dto => dto.NewBalance, options => options.MapFrom(history => history.Balances.NewBalance))
             .ForMember(dto => dto.ApprovalStatus, options => options.MapFrom(history => history.ApprovalState.Name))
             .ForMember(dto => dto.PostingStatus, options => options.MapFrom(history => history.PostingState.Name))
             .ForMember(dto => dto.ReviewedBy, options => options.MapFrom(history => history.Review.ReviewedBy))

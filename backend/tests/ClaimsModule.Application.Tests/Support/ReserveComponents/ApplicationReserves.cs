@@ -14,7 +14,7 @@ public static class ApplicationReserves
 
     public static ReserveComponent Component(Claim claim)
     {
-        var input = new OpenReserveComponentInput(claim.Reference, new ReserveIndemnityComponentType(), string.Empty);
+        var input = new OpenReserveComponentInput(claim.Reference, ReserveComponentTypeKind.Indemnity, string.Empty);
 
         return ReserveComponent.Open(input).Value;
     }

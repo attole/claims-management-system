@@ -28,11 +28,24 @@ public sealed class ReserveApprovalAuditHandlerTests
 
     [Fact]
     [Trait("Rule", "S:AUD-Events")]
-    public async Task HandleAsync_WhenRejected_KeepsTheReasonInTheNewValue()
+    public async Task HandleAsync_WhenRejected_KeepsTheReasonInTheOldValue()
     {
         var log = new RecordingAuditLog();
         var handler = new ReserveApprovalAuditHandler(log);
         var domainEvent = CreateEvent("Rejected");
+
+        await handler.HandleAsync(domainEvent, EventContexts.For(domainEvent), CancellationToken.None);
+
+        log.Entries.Single().OldValue.Should().Contain("Too high");
+    }
+
+    [Fact]
+    [Trait("Rule", "S:AUD-Events")]
+    public async Task HandleAsync_WhenApproved_KeepsTheReasonInTheNewValue()
+    {
+        var log = new RecordingAuditLog();
+        var handler = new ReserveApprovalAuditHandler(log);
+        var domainEvent = CreateEvent("Approved");
 
         await handler.HandleAsync(domainEvent, EventContexts.For(domainEvent), CancellationToken.None);
 

@@ -15,9 +15,9 @@ namespace ClaimsModule.Application.Claims.Parties;
 
 public sealed record AddPartyCommand(Guid ClaimId, PartyRequest Party) : ICommand<Result<PartyDto>>
 {
-    public AddPartyInput ToInput(PolicyPeriod period, CauseCodes codes)
+    public AddPartyInput ToInput(PolicyPeriod period, CauseCodes codes, DateTimeOffset now)
     {
-        return new AddPartyInput(Party.ToDetails(), period, codes);
+        return new AddPartyInput(Party.ToDetails(), period, codes, now);
     }
 }
 
@@ -35,6 +35,7 @@ public sealed class AddPartyCommandHandler(
     IPolicyReader policies,
     ICauseCodeReader causes,
     IUnitOfWork unitOfWork,
+    IClock clock,
     IMapper mapper) : IRequestHandler<AddPartyCommand, Result<PartyDto>>
 {
     public async Task<Result<PartyDto>> Handle(AddPartyCommand command, CancellationToken cancellationToken)
@@ -49,7 +50,7 @@ public sealed class AddPartyCommandHandler(
         var claim = loaded.Value;
         var period = await policies.GetPeriodAsync(claim.PolicyId, cancellationToken);
         var codes = await causes.GetActiveAsync(cancellationToken);
-        var outcome = claim.AddParty(command.ToInput(period, codes));
+        var outcome = claim.AddParty(command.ToInput(period, codes, clock.UtcNow));
         var result = outcome.ToResult();
 
         if (result.IsSuccess)

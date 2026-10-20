@@ -17,6 +17,7 @@ public sealed class UpdateLossDetailsCommandTests
             context.Policies,
             context.Causes,
             context.UnitOfWork,
+            context.Clock,
             context.Mapper);
         var command = new UpdateLossDetailsCommand(claim.Id, ApplicationRequests.Loss());
 
@@ -38,6 +39,7 @@ public sealed class UpdateLossDetailsCommandTests
             context.Policies,
             context.Causes,
             context.UnitOfWork,
+            context.Clock,
             context.Mapper);
         var command = new UpdateLossDetailsCommand(claimId, ApplicationRequests.Loss());
 

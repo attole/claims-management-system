@@ -35,6 +35,36 @@ public sealed class ReserveHistoryMappingProfileTests
         result.PostingStatus.Should().Be("Pending");
     }
 
+    [Fact]
+    [Trait("Rule", "S:RES-History")]
+    public void Map_History_WithApprovedBalances_GivesThePreviousAndTheNewBalance()
+    {
+        var mapper = CreateConfiguration().CreateMapper();
+        var claim = ApplicationClaims.Opened();
+        var component = ApplicationReserves.Component(claim);
+        var history = ApplicationReserves.Submit(component, claim, 5000m, ApplicationReserves.Submitter);
+
+        var result = mapper.Map<ReserveHistoryDto>(history);
+
+        result.HasBalances.Should().BeTrue();
+        result.PreviousBalance.Should().Be(0m);
+        result.NewBalance.Should().Be(5000m);
+    }
+
+    [Fact]
+    [Trait("Rule", "S:RES-History")]
+    public void Map_History_BeforeAnApproval_HasNoBalances()
+    {
+        var mapper = CreateConfiguration().CreateMapper();
+        var claim = ApplicationClaims.Opened();
+        var component = ApplicationReserves.Component(claim);
+        var history = ApplicationReserves.Submit(component, claim, 5_000_000m, ApplicationReserves.Submitter);
+
+        var result = mapper.Map<ReserveHistoryDto>(history);
+
+        result.HasBalances.Should().BeFalse();
+    }
+
     private static MapperConfiguration CreateConfiguration()
     {
         return new MapperConfiguration(configuration => configuration.AddProfile<ReserveHistoryMappingProfile>());

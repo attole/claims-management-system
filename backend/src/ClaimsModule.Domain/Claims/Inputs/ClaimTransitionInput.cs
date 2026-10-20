@@ -4,8 +4,10 @@ using ClaimsModule.Domain.Policies;
 
 namespace ClaimsModule.Domain.Claims.Inputs;
 
-public record ClaimTransitionInput(PolicyPeriod PolicyPeriod, CauseCodes CauseCodes)
-    : ClaimBaseOperationInput(PolicyPeriod, CauseCodes)
+public record ClaimTransitionInput(
+    PolicyPeriod PolicyPeriod,
+    CauseCodes CauseCodes,
+    DateTimeOffset Now) : ClaimBaseOperationInput(PolicyPeriod, CauseCodes, Now)
 {
     public StateChangeReason Reason { get; init; } = StateChangeReason.Empty;
 

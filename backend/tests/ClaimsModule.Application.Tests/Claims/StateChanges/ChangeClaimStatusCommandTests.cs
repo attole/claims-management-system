@@ -3,6 +3,7 @@ using ClaimsModule.Application.Claims.StateChanges;
 using ClaimsModule.Application.ReserveComponents.Contracts;
 using ClaimsModule.Application.Tests.Support.Claims;
 using ClaimsModule.Domain.Claims;
+using ClaimsModule.Domain.Core.Flows;
 using FluentValidation.TestHelper;
 
 namespace ClaimsModule.Application.Tests.Claims.StateChanges;
@@ -128,7 +129,26 @@ public sealed class ChangeClaimStatusCommandTests
 
         var result = await handler.Handle(command, CancellationToken.None);
 
-        result.Errors.Should().Equal(ClaimErrors.StatusUnsupported("Draft"));
+        var error = result.Errors.Should().ContainSingle().Subject;
+        error.Code.Should().Be(ClaimErrors.StatusUnsupportedCode);
+        error.Message.Should().Contain("Valid next statuses: Open");
+        context.VerifyCommitted(Times.Never());
+    }
+
+    [Fact]
+    [Trait("Rule", "S:BR-ST-01")]
+    public async Task Handle_ForAMoveTheStateMachineDoesNotAllow_ListsTheValidNextStatuses()
+    {
+        var claim = ApplicationClaims.ReadyDraft();
+        var context = CreateContext(claim);
+        var handler = CreateHandler(context);
+        var command = new ChangeClaimStatusCommand(claim.Id, ClaimStateKind.Closed);
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        var error = result.Errors.Should().ContainSingle().Subject;
+        error.Code.Should().Be(TransitionCodes.NotPermitted);
+        error.Message.Should().Contain("Valid next statuses: Open");
         context.VerifyCommitted(Times.Never());
     }
 
@@ -194,6 +214,7 @@ public sealed class ChangeClaimStatusCommandTests
             context.Policies,
             context.Causes,
             context.UnitOfWork,
+            context.Clock,
             context.User);
     }
 }

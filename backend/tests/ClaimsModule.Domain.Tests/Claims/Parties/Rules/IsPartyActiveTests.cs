@@ -24,7 +24,7 @@ public sealed class IsPartyActiveTests
     {
         var claim = TestClaims.Create(TestClaims.Claimant(), TestClaims.Witness());
         var witness = claim.Parties[1];
-        var input = new RemovePartyInput(witness.Id, TestClaims.Period(), TestClaims.Codes());
+        var input = new RemovePartyInput(witness.Id, TestClaims.Period(), TestClaims.Codes(), TestClaims.Start);
         RemovePartyOnClaimOperation.Run(claim, input);
 
         var result = new IsPartyActive().Check(witness);

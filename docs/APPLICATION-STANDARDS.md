@@ -4,7 +4,7 @@ Reference for writing and reviewing Application code: layout, the shape of each 
 
 ## Layout
 
-One folder per aggregate root (`Claims`, `ReserveComponents`, `ClaimDocuments`) or read-only feature (`Audit`, `Policies`, `CauseOfLoss`); a use case never gets a folder of its own.
+One folder per aggregate root (`Claims`, `ReserveComponents`, `ClaimDocuments`), read-only feature (`Audit`, `Policies`, `CauseOfLoss`) or background-job feature (`Sla`, with its command, reader contract and DTO flat inside); a use case never gets a folder of its own.
 
 - A root past about six loose files uses role folders, each created with its first file: `Commands/` (writes), `Queries/` (reads), `Dtos/` (DTOs and the mapping profile that maps to them), `Contracts/` (repository and reader interfaces and the records only they use, such as a list filter or a facts record), `Requests/` (shared request records), `Handlers/` (event handlers).
 - The errors and the field lengths of a feature share one file named after the errors class (`ClaimErrors.cs` holds `ClaimErrors` and `ClaimFieldLengths`).
@@ -17,7 +17,7 @@ One folder per aggregate root (`Claims`, `ReserveComponents`, `ClaimDocuments`) 
 One file named after the command (`AssignHandlerCommand.cs`) holds, in this order:
 
 - **The command record** implementing `ICommand<Result<TDto>>`, with a `ToInput(...)` method that builds the Domain input from the request data and the facts the handler passes in (policy period, cause codes, actor, role, time). A request maps itself with a method on its own record (`ToInput`, `ToDetails`), never an extension class.
-- **The validator** (`<Command>Validator : AbstractValidator<Command>`): shape only. Ids not empty, enums known, required text not null, maximum lengths from the column sizes (`<Feature>FieldLengths`), numbers the Domain would reject. No business rule, no existence check.
+- **The validator** (`<Command>Validator : AbstractValidator<Command>`; a command with no input has an empty one): shape only. Ids not empty, enums known, required text not null, maximum lengths from the column sizes (`<Feature>FieldLengths`), numbers the Domain would reject. No business rule, no existence check.
 - **The handler** (`<Command>Handler`, primary-constructor injection) implementing `IRequestHandler`.
 
 ## Handler flow
@@ -25,7 +25,7 @@ One file named after the command (`AssignHandlerCommand.cs`) holds, in this orde
 1. Load the aggregate through the repository. A `Result` failure (not found) is returned with `ToFailure<TDto>()`.
 2. Check that a child id exists on the aggregate before the Domain call (the Domain would throw on an unknown id) and return the feature's not-found error.
 3. Read the outside facts through explicit readers (policy period, active cause codes, reserve facts); there is no loader that hides the reads.
-4. Build the input with `command.ToInput(...)`; read the clock once; take actor and role from `ICurrentUser`, never from the request.
+4. Build the input with `command.ToInput(..., clock.UtcNow)` (every claim input carries the time); read the clock once; take actor and role from `ICurrentUser`, never from the request.
 5. Call one aggregate method and convert its outcome with `outcome.ToResult()`.
 6. Commit through `IUnitOfWork` only on success.
 7. Map the DTO after the commit with `result.Map(...)` (AutoMapper for one flat entity, by hand for a `Move` or several things).
@@ -63,6 +63,12 @@ Repository and reader interfaces are defined in the Application and implemented 
 ## Event handlers
 
 `IBeforeCommitEventHandler<TEvent>` runs in the same transaction (audit, components following the claim); `IAfterCommitEventHandler<TEvent>` runs after the commit (enqueue a job). They are registered by assembly scan (`AddEvents`, which also registers the dispatcher and the Unit of Work) and live in the feature's `Handlers/` folder. A handler reads the event context, not the Domain event alone, for the id, time, actor and correlation id.
+
+## Naming checks (S:DATA-Naming)
+
+- A command is `<Verb><Noun>Command` with the verb from the list in `ICommandTests`; a query is `Get<Noun>Query` or `List<Nouns>Query` with a plural noun (`IQueryTests`). Both are reflection tests, so a new verb is added to the list on purpose.
+- The workflow check requires a file in `Dtos/` to end with `Dto` or `MappingProfile`, in `Requests/` with `Request`, in `Commands/` with `Command` and in `Queries/` with the query name shape.
+- Table, column, entity and route names are checked in the Persistence and API packs (tests over the EF model and the route table).
 
 ## Tests
 

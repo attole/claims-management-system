@@ -2,4 +2,7 @@ using ClaimsModule.Domain.Claims;
 
 namespace ClaimsModule.Domain.ReserveComponents.Inputs;
 
-public sealed record OpenReserveComponentInput(ClaimReference Claim, ReserveComponentType ComponentType, string Notes);
+public sealed record OpenReserveComponentInput(
+    ClaimReference Claim,
+    ReserveComponentTypeKind ComponentTypeKind,
+    string Notes);

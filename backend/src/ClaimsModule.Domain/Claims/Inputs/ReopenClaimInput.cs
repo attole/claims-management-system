@@ -4,5 +4,8 @@ using ClaimsModule.Domain.Roles;
 
 namespace ClaimsModule.Domain.Claims.Inputs;
 
-public sealed record ReopenClaimInput(UserRole ActorRole, PolicyPeriod PolicyPeriod, CauseCodes CauseCodes)
-    : ClaimTransitionInput(PolicyPeriod, CauseCodes);
+public sealed record ReopenClaimInput(
+    UserRole ActorRole,
+    PolicyPeriod PolicyPeriod,
+    CauseCodes CauseCodes,
+    DateTimeOffset Now) : ClaimTransitionInput(PolicyPeriod, CauseCodes, Now);

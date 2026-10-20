@@ -142,7 +142,8 @@ public sealed class ReserveHistory : Entity, IStateful<ReserveApprovalState>, IS
             move.From.Name,
             move.To.Name,
             PostingDetails.JobId,
-            PostingDetails.FailureReason);
+            PostingDetails.FailureReason,
+            Details.Amount);
         Raise(changed);
     }
 }

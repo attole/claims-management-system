@@ -29,4 +29,16 @@ public sealed class IsDescriptionLongEnoughTests
         finding.Code.Should().Be(IsDescriptionLongEnough.Code);
         finding.Evidence.Should().Be("Leak");
     }
+
+    [Fact]
+    [Trait("Rule", "S:V-Messages")]
+    public void Check_ForAShortDescription_ReturnsTheSpecMessage()
+    {
+        var loss = TestClaims.Loss(TestClaims.Start, "Leak");
+
+        var result = new IsDescriptionLongEnough().Check(loss);
+
+        var finding = result.Findings.Should().ContainSingle().Subject;
+        finding.Message.Should().Be("Loss description is required and must be at least 20 characters.");
+    }
 }

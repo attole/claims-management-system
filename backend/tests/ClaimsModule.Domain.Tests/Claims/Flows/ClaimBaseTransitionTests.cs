@@ -11,7 +11,7 @@ public sealed class ClaimBaseTransitionTests
     public void Run_FromADeclaredSource_MovesTheClaim()
     {
         var claim = TestClaims.Create(TestClaims.Claimant());
-        var input = new ClaimTransitionInput(TestClaims.Period(), TestClaims.Codes());
+        var input = new ClaimTransitionInput(TestClaims.Period(), TestClaims.Codes(), TestClaims.Start);
 
         var outcome = SampleClaimTransition.Run(claim, input);
 
@@ -23,7 +23,7 @@ public sealed class ClaimBaseTransitionTests
     public void Run_WhenARuleFails_KeepsTheState()
     {
         var claim = TestClaims.Create(TestClaims.Claimant());
-        var input = new ClaimTransitionInput(TestClaims.Period(), TestClaims.Codes());
+        var input = new ClaimTransitionInput(TestClaims.Period(), TestClaims.Codes(), TestClaims.Start);
 
         var outcome = FailingSampleClaimTransition.Run(claim, input);
 
@@ -37,7 +37,7 @@ public sealed class ClaimBaseTransitionTests
     public void Run_FromAnUndeclaredSource_ReturnsTheFindingAndKeepsTheState()
     {
         var claim = TestClaims.Create(TestClaims.Claimant());
-        var input = new ClaimTransitionInput(TestClaims.Period(), TestClaims.Codes());
+        var input = new ClaimTransitionInput(TestClaims.Period(), TestClaims.Codes(), TestClaims.Start);
         SampleClaimTransition.Run(claim, input);
 
         var outcome = SampleClaimTransition.Run(claim, input);
@@ -51,7 +51,7 @@ public sealed class ClaimBaseTransitionTests
     public void Run_AddsOneStateChangeWithTheReason()
     {
         var claim = TestClaims.Create(TestClaims.Claimant());
-        var input = new ClaimTransitionInput(TestClaims.Period(), TestClaims.Codes())
+        var input = new ClaimTransitionInput(TestClaims.Period(), TestClaims.Codes(), TestClaims.Start)
         {
             Reason = new StateChangeReason("CODE", "text"),
         };

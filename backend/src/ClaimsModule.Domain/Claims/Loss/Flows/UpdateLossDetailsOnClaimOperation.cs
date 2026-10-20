@@ -11,7 +11,7 @@ internal sealed class UpdateLossDetailsOnClaimOperation
     public UpdateLossDetailsOnClaimOperation()
     {
         Require(new IsClaimEditable());
-        Require(input => new IsLossCompleteAfterDraft(input.Loss, input.PolicyPeriod, input.CauseCodes));
+        Require(input => new IsLossCompleteAfterDraft(input.Loss, input.PolicyPeriod, input.CauseCodes, input.Now));
     }
 
     protected override Outcome<LossEvent> Apply(Claim claim, UpdateLossDetailsInput input)

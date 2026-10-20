@@ -21,7 +21,7 @@ public sealed class ReservePostingAuditHandlerTests
 
         var entry = log.Entries.Should().ContainSingle().Subject;
         entry.EventType.Should().Be(eventType);
-        entry.NewValue.Should().Contain("job-1").And.Contain("gateway down");
+        entry.NewValue.Should().Contain("job-1").And.Contain("gateway down").And.Contain("2500");
     }
 
     [Theory]
@@ -48,6 +48,7 @@ public sealed class ReservePostingAuditHandlerTests
             "Pending",
             target,
             "job-1",
-            "gateway down");
+            "gateway down",
+            2500m);
     }
 }

@@ -16,9 +16,9 @@ namespace ClaimsModule.Application.Claims.Commands;
 
 public sealed record LinkPolicyCommand(Guid ClaimId, Guid PolicyId) : ICommand<Result<ClaimDto>>
 {
-    public LinkPolicyInput ToInput(PolicyPeriod period, CauseCodes codes)
+    public LinkPolicyInput ToInput(PolicyPeriod period, CauseCodes codes, DateTimeOffset now)
     {
-        return new LinkPolicyInput(PolicyId, period, codes);
+        return new LinkPolicyInput(PolicyId, period, codes, now);
     }
 }
 
@@ -36,6 +36,7 @@ public sealed class LinkPolicyCommandHandler(
     IPolicyReader policies,
     ICauseCodeReader causes,
     IUnitOfWork unitOfWork,
+    IClock clock,
     IMapper mapper) : IRequestHandler<LinkPolicyCommand, Result<ClaimDto>>
 {
     public async Task<Result<ClaimDto>> Handle(LinkPolicyCommand command, CancellationToken cancellationToken)
@@ -58,7 +59,7 @@ public sealed class LinkPolicyCommandHandler(
 
         var period = await policies.GetPeriodAsync(command.PolicyId, cancellationToken);
         var codes = await causes.GetActiveAsync(cancellationToken);
-        var outcome = claim.LinkPolicy(command.ToInput(period, codes));
+        var outcome = claim.LinkPolicy(command.ToInput(period, codes, clock.UtcNow));
         var result = outcome.ToResult();
 
         if (result.IsSuccess)

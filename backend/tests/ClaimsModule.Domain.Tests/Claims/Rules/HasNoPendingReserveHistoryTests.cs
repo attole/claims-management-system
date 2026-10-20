@@ -28,4 +28,17 @@ public sealed class HasNoPendingReserveHistoryTests
 
         result.Findings.Should().ContainSingle().Which.Code.Should().Be(HasNoPendingReserveHistory.Code);
     }
+
+    [Fact]
+    [Trait("Rule", "S:V-Messages")]
+    public void Check_WhenAReserveHistoryIsPending_ReturnsTheSpecMessage()
+    {
+        var claim = TestClaims.Create(TestClaims.Claimant());
+        var rule = new HasNoPendingReserveHistory(true);
+
+        var result = rule.Check(claim);
+
+        result.Findings.Should().ContainSingle().Which.Message.Should()
+            .StartWith("Claim cannot be closed - ").And.EndWith(" is not satisfied.");
+    }
 }

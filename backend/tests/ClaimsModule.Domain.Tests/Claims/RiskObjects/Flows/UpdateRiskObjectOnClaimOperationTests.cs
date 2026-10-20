@@ -19,7 +19,8 @@ public sealed class UpdateRiskObjectOnClaimOperationTests
             claim.RiskObjects[0].Id,
             details,
             TestClaims.Period(),
-            TestClaims.Codes());
+            TestClaims.Codes(),
+            TestClaims.Start);
 
         var outcome = UpdateRiskObjectOnClaimOperation.Run(claim, input);
 
@@ -31,7 +32,12 @@ public sealed class UpdateRiskObjectOnClaimOperationTests
     {
         var claim = TestClaims.Create(TestClaims.Claimant());
         var details = new RiskObjectDetails(AssetType.Equipment, "Pump");
-        var input = new UpdateRiskObjectInput(Guid.NewGuid(), details, TestClaims.Period(), TestClaims.Codes());
+        var input = new UpdateRiskObjectInput(
+            Guid.NewGuid(),
+            details,
+            TestClaims.Period(),
+            TestClaims.Codes(),
+            TestClaims.Start);
 
         Action act = () => UpdateRiskObjectOnClaimOperation.Run(claim, input);
 
@@ -48,7 +54,8 @@ public sealed class UpdateRiskObjectOnClaimOperationTests
             claim.RiskObjects[0].Id,
             details,
             TestClaims.Period(),
-            TestClaims.Codes());
+            TestClaims.Codes(),
+            TestClaims.Start);
 
         var outcome = UpdateRiskObjectOnClaimOperation.Run(claim, input);
 
@@ -66,7 +73,8 @@ public sealed class UpdateRiskObjectOnClaimOperationTests
             claim.RiskObjects[0].Id,
             details,
             TestClaims.Period(),
-            TestClaims.Codes());
+            TestClaims.Codes(),
+            TestClaims.Start);
 
         var outcome = UpdateRiskObjectOnClaimOperation.Run(claim, input);
 

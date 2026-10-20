@@ -57,6 +57,8 @@ Where the specification and the assessment disagree, the specification is used a
 
 ### Schema departures from the spec
 
+Table names are the spec's (section 9): `Claims`, `LossEvents`, `ClaimParties`, `ClaimRiskObjects`, `ClaimReserveComponents`, `ReserveHistory`, `ClaimDocuments`, `ClaimAuditLog`, `CauseOfLossCodes`, `Policies`. The entity classes keep their Domain names and map to these tables with `ToTable`.
+
 | Change | Departure | Why |
 |---|---|---|
 | Loss date, cause code | nullable loss date, cause code as text without a foreign key | a Draft may be incomplete; an unknown code is a stored issue (S:BR-C-05) |
@@ -80,8 +82,8 @@ Where the specification and the assessment disagree, the specification is used a
 
 - **Liability determined:** the status-change request carries an explicit confirmation, required for the move to PendingPayment and written to the audit entry; nothing is stored on the claim. The frontend needs a matching control.
 - **Withdrawal and reopen reasons:** valid only with both a code and a text, stricter than the documents so every reason is reportable. The code is free text until a list exists.
-- **Loss date after the report date:** a Critical issue (`LOSS_DATE_AFTER_REPORT`) when the loss falls on a later UTC calendar day than the report; a loss later on the report day passes, as intake may send the report date as a date only. The documents only forbid a date in the future (S:BR-C-01); since the report date is never later than the creation time, this rule covers S:BR-C-01 and replaces it, so the loss checks need no clock. The cost: a future loss date reports this code and message, not the spec's own.
-- **Report date in the future:** creation is refused (`LOSS_REPORT_DATE_IN_FUTURE`) when the formal report date is later than the creation time. The documents state no such rule; it keeps the report date a safe upper bound for the loss date.
+- **Loss date in the future:** a Critical issue (`S:BR-C-01`, with the spec's own message) when the loss date is later than the time of the change. Every claim input carries that time (`Now` on `ClaimBaseOperationInput`, guarded by `InputTime`), because every claim method re-evaluates the issues. The finding's evidence is the loss date only, so an issue does not churn as the clock moves.
+
 - **Negative estimated loss:** refused by the value (an out-of-range exception), and the API validates it.
 - **No risk object:** a Warning issue (`CLAIM_NO_RISK_OBJECT`).
 - **Edits after Draft:** once the claim is past Draft, a loss update that would leave a Critical loss issue is refused (`IsLossCompleteAfterDraft`), so a claim never falls back below what Open required. The rule takes the proposed details, the policy period and the cause codes from the input and runs the same loss checks as the issue evaluation, so the issues and the refusal share codes and messages. A problem whose issue was waived (same code and evidence) stays allowed; a new problem of the same code is refused. Only the loss has such a guard; the last-claimant rule already protects the claimant.
@@ -107,7 +109,7 @@ Where the specification and the assessment disagree, the specification is used a
 - **Withdraw settles the reserves first:** a withdraw is refused while a history row awaits approval (`CLAIM_WITHDRAW_PENDING_RESERVE`) or an approved row is not yet posted (`RESERVE_HISTORY_NOT_POSTED`), and with an open reserve balance it needs a note (`CLAIM_WITHDRAW_NOTE_REQUIRED`) and returns a warning (`CLAIM_WITHDRAWN_WITH_OPEN_BALANCE`). Without these, a row approved after the withdraw would post onto a withdrawn claim.
 - **Close waits for postings:** a close is refused while an approved row is not yet posted, Pending or Failed (`RESERVE_HISTORY_NOT_POSTED`), so the ledger matches the closed balance. This makes the posting re-enqueue sweep a requirement: a job lost between commit and enqueue would otherwise block the close for good.
 - **Decreases and the claim limit:** a change that does not increase the total passes the claim limit, at approval and at submit, so exposure can always be reduced. The manager override cannot be removed while the approved total is above the limit (`CLAIM_OVERRIDE_STILL_NEEDED`). The limit lives on the claim, next to the override flag: `Claim.IsWithinReserveLimit` for a total and `Claim.IsReserveHistoryWithinLimit` for a change.
-- **What counts as an approved reserve for payment:** a reserve of a non-recoverable type with an approved balance above zero, not any approved row, so a claim whose only approval is a recovery, or whose reserve was reversed to zero, cannot move to payment. The Application query owns this definition.
+- **What counts as an approved reserve for payment:** the spec's wording, any reserve transaction of the claim that is Approved or AutoApproved. A narrower reading (a non-recoverable type, a balance above zero) was dropped because no document states it. The Application reader owns this definition.
 - **Transaction types are labels:** Add, Adjust and Reverse are recorded as the user picks them; the signed amount alone drives balances, limits and tiers.
 - **Tiers use the size of the change:** the auto-approval limit and the approval tiers compare the absolute amount, so a large decrease needs the same approver as a large increase.
 - **Auto-approval has no reviewer:** its review keeps the time and an empty reviewer; the AutoApproved state says the system decided, so the history never shows the submitter as an approver (S:BR-R-03).
@@ -125,6 +127,22 @@ Where the specification and the assessment disagree, the specification is used a
 - **Audited changes:** the events cover the specification's fixed audit list, plus `AggregateLimitOverrideChangedEvent` for the limit override, `ReserveComponentStateChangedEvent` and the two document events. The policy link, the handler, severity, notes, loss and risk-object edits and opening a reserve raise no event; their trace is the audit columns.
 - **Business times and actors are guarded:** a review earlier than the row's submission, a document removal earlier than its upload, or a waiver, acknowledgement or risk-object removal earlier than the claim's reported date, throws (`InputTime.NotBefore`), and a decision input without an actor or a time throws (`InputActor.Required`, `InputTime.Required`). The Application stamps both, so a failure is a programming error, not a refusal.
 - **Unspecified cases** (authentication failures, not found, concurrent edits, oversized uploads, idempotency-key replays) are decided when the API pack is designed and recorded here.
+
+**Reads and constants**
+
+- **Errors without a field** go under the key `General` in the error body, set in the API's one error mapper (S:API-ErrorShape).
+- **The claim list's date range** filters the claim's reported date (`ClaimListFilter.DateFrom` and `DateTo`, open bounds when absent).
+- **Constants without a source in the documents:** 10 recent audit entries on the claim detail, and a page size cap of 100 (`PageLimits.MaxPageSize`). The sweep age for stale postings is given by the job that sends the command, not fixed in the Application.
+
+**Conditions the documents do not state** (each is a decision of this repo, listed so the user can confirm or remove it)
+
+- Opening: a handler is required (`CLAIM_HANDLER_REQUIRED`) and cannot be removed after Draft (`CLAIM_HANDLER_NOT_KEPT`); the loss report date is required (`LOSS_REPORT_DATE_REQUIRED`); after Draft a loss update may not leave a Critical loss issue (`LOSS_INCOMPLETE_AFTER_DRAFT`).
+- Frozen claims: a closed or withdrawn claim refuses edits to its data, reserves and documents (`CLAIM_NOT_EDITABLE`, `RESERVE_CLAIM_NOT_EDITABLE`, `DOCUMENT_CLAIM_NOT_EDITABLE`), and its reserve components close and reopen with it.
+- Close and withdraw: refused while an approved reserve row is unposted (`RESERVE_HISTORY_NOT_POSTED`); withdraw is also refused while a row awaits approval (`CLAIM_WITHDRAW_PENDING_RESERVE`) and, with an open balance, needs a note (`CLAIM_WITHDRAW_NOTE_REQUIRED`) and warns (`CLAIM_WITHDRAWN_WITH_OPEN_BALANCE`).
+- Issues: waiving needs a supervisor, and a missing loss date, an inactive cause code and a missing claimant can never be waived (`ISSUE_MUST_BE_FIXED`).
+- Risk objects: only one primary risk object (`RISK_OBJECT_PRIMARY_EXISTS`).
+- Reserves: tiers compare the absolute amount, a change that would pass the claim limit is never auto-approved, a decrease passes the claim limit, the override cannot be removed while the total is over the limit (`CLAIM_OVERRIDE_STILL_NEEDED`), a handler may submit any amount, and a posting move names its job (`RESERVE_POSTING_JOB_REQUIRED`).
+- Policy: the coverage window ends at the cancellation date when that is earlier than the expiration.
 
 ## Backend architecture
 
@@ -210,7 +228,7 @@ The Domain never loads, reads no clock for business times and knows no identity.
 - **Entity data in one record,** replaced whole, so an edit cannot half-apply and EF maps it as a complex property.
 - **No null:** a value that may be missing is a record with an `Empty` instance and an `IsSet` flag, because EF cannot map a struct to a nullable column.
 - **Ids:** sequential GUIDs made in the Domain by `Ids.Next()`, which writes the current UTC time into the bytes SQL Server sorts by, so inserts land at the end of the index (a COMB-style generator; a GUID v7 puts its time in the bytes SQL Server compares last). It is the only clock read in the Domain: an id is a technical value, not business data.
-- **Business times and decisions:** `ResolvedAt` and `ResolvedBy` on an issue, `DeletedAt` on a risk object or a document, the row's `SubmittedAt` and the reserve review come from the input, and only the inputs whose step records one carry a time. They are Domain state, not audit columns: a later change modifies the row, so `UpdatedAt` and `UserModified` would overwrite who decided. An automatic clear records neither, because nobody decided it.
+- **Business times and decisions:** `ResolvedAt` and `ResolvedBy` on an issue, `DeletedAt` on a risk object or a document, the row's `SubmittedAt` and the reserve review come from the input; every claim input carries a time (`Now` on `ClaimBaseOperationInput`), and the reserve history inputs carry their own. They are Domain state, not audit columns: a later change modifies the row, so `UpdatedAt` and `UserModified` would overwrite who decided. An automatic clear records neither, because nobody decided it.
 - **Soft removal:** a removed party is deactivated (`IsActive`, the specification's soft remove) and stays on the claim; a removed risk object or document is soft-deleted with its `DeletedAt`. The `IsDeleted` and `DeletedAt` pair on rows with no removal step (the claim, the loss, issues, parties, the reserve component) is kept for Persistence to stamp and for the global query filter; no Domain step sets it. History rows are append-only and never deleted.
 - **Events and audit:** events carry business facts only; the Application wraps each in an event context (event id, time, actor) at dispatch, and Persistence stamps the audit columns.
 - **Closed sets:** a set that carries facts, or that a transition uses as a state, is a marker enum plus a record per value. A set with neither is a plain enum.
@@ -230,7 +248,7 @@ The engine lives in `Domain/Core`, layered so that each folder uses only the lay
 - A transition is configured by a target and the source states it is allowed from, each with its rules; a move from an undeclared state returns one finding without running any rule. The engine returns the `Move`; the aggregate's transition base sets the state (and on the claim writes the history row). Who may make a move is a rule on the transition. A transition runs on any subject with a state, so a child row can have its own state machines (a history row has two).
 - `EvaluateIssuesOperation` reconciles the stored issues with their rules by code and evidence: a new finding raises an issue, a fixed problem clears its issue, a waived or acknowledged one stays resolved while the same finding remains. It is idempotent, runs in every claim method's `Settle` (before and after a move), and requires an editable claim.
 - Rule failures are findings; a broken invariant throws. Not found, forbidden and conflict belong to the Application. The engine loads nothing, saves nothing and decides nobody's permission.
-- Transitions are internal; how the Application lists the valid next states for a refused move is open (`.claude/temp/notes-layer-application.md`).
+- Transitions are internal. A refused move keeps the Domain's own message and the Application appends the valid next statuses from `ClaimTransitions.NextFrom` (S:BR-ST-01); the same list is added when the target status is not supported.
 
 Extending: a new state is a record; a new move is a transition class; a new rule is a class plus a line that requires it; a new action is an operation and its input. The recipes are in `.claude/CLAUDE.md` 'Extending the Domain'.
 
@@ -258,7 +276,7 @@ Extending: a new state is a record; a new move is a transition class; a new rule
 
 **Issue rules.**
 
-- Critical: loss date present, loss date not after the report date (covers S:BR-C-01), description long enough, a claimant, and an active cause of loss code (S:BR-C-05).
+- Critical: loss date present, loss date not in the future (S:BR-C-01), description long enough, a claimant, and an active cause of loss code (S:BR-C-05).
 - Warning: no policy linked, no risk object (`CLAIM_NO_RISK_OBJECT`), and loss date outside the policy period (S:BR-C-02).
 - The policy period ends at the earlier of the expiration and the cancellation date; both ends are inclusive.
 - A claim holds its policy id; `LinkPolicyOperation` sets it, and the Application looks the policy up.
@@ -269,7 +287,7 @@ Extending: a new state is a record; a new move is a transition class; a new rule
 | Rule | Code | Used by |
 |---|---|---|
 | HasOrganisation, HasClaimNumber | CLAIM_ORGANISATION_REQUIRED, CLAIM_NUMBER_REQUIRED | create |
-| HasReportDate, IsReportDateNotInFuture | LOSS_REPORT_DATE_REQUIRED, LOSS_REPORT_DATE_IN_FUTURE | create |
+| HasReportDate | LOSS_REPORT_DATE_REQUIRED | create |
 | IsClaimEditable | CLAIM_NOT_EDITABLE | every edit, waive, acknowledge, the issue evaluation |
 | HasValidLossDetails (combined) | LOSS_DETAILS_VALID | the issue evaluation |
 | IsLossCompleteAfterDraft (combined) | LOSS_INCOMPLETE_AFTER_DRAFT | the loss update |
@@ -434,7 +452,7 @@ No event: risk-object, loss, handler, severity, notes and policy-link edits, and
 - **Reads** are queries in each aggregate's `Queries/` folder. They load no entity: a reader interface that Persistence implements projects straight into the DTO, and the claim detail is composed by its handler from the separate readers, so the reserves, documents and audit endpoints reuse the same parts. Every list is paged by a page and a page size from the request, with the size capped at 100, and a read scoped to a claim answers not found for an unknown claim. The list of statuses with their valid next statuses is not a table: the Domain's `ClaimTransitions` finds the claim transition classes by reflection, as the closed sets are found, and asks each one which states it allows from a given state, so a change to a transition changes the list. Download links are made on read through the storage interface with a one-hour lifetime.
 - **Create claim** builds the claim and all its parties, risk objects and loss details in one sequence that stops at the first refusal and stores nothing unless every step succeeded (S:INTAKE-SingleCall). The optional initial reserve joins it with the reserve use cases.
 - **Validation is shape only.** Ids not empty, enums known, required text not null, numbers the Domain would reject, maximum lengths from the specification's column sizes, and a name for each person or company party. Business rules stay in the Domain, unknown ids are the handlers' not found, and a null in optional text from outside becomes an empty string in the mapping to the Domain details.
-- **Events and audit.** Each Domain event is wrapped in an `EventContext` (event id, time, actor, correlation id) when the Unit of Work dispatches it. Handlers run either before the commit, in the same transaction (audit entries), or after it (the posting job); the Unit of Work and the dispatcher are built with Persistence.
+- **Events and audit.** Each Domain event is wrapped in an `EventContext` (event id, time, actor, correlation id) when the Unit of Work dispatches it. Handlers run either before the commit, in the same transaction (audit entries), or after it (the posting job); the dispatcher is built (`AddEvents`) and the Unit of Work is built with Persistence. The audit service takes an `AuditContext` (time, actor, correlation id); an `EventContext` is one, and the jobs build their own with the system actor.
 - **Closed sets** are created by one typed `From(kind)` per set, which a single reflection helper in the Domain finds once and caches; a test loops over every value of every set, so a new variant without its enum value fails the build.
 
 ### Design trade-offs

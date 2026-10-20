@@ -28,4 +28,16 @@ public sealed class IsNotSelfApprovalTests
 
         result.Findings.Should().ContainSingle().Which.Code.Should().Be(IsNotSelfApproval.Code);
     }
+
+    [Fact]
+    [Trait("Rule", "S:V-Messages")]
+    public void Check_WhenTheSubmitterApproves_ReturnsTheSpecMessage()
+    {
+        var history = TestReserves.Submit(50_000m);
+        var rule = new IsNotSelfApproval(TestReserves.Submitter);
+
+        var result = rule.Check(history);
+
+        result.Findings.Should().ContainSingle().Which.Message.Should().Be("Self-approval is not permitted.");
+    }
 }

@@ -16,9 +16,9 @@ namespace ClaimsModule.Application.Claims.Commands;
 
 public sealed record AssignHandlerCommand(Guid ClaimId, Guid HandlerId) : ICommand<Result<ClaimDto>>
 {
-    public AssignHandlerInput ToInput(PolicyPeriod period, CauseCodes codes)
+    public AssignHandlerInput ToInput(PolicyPeriod period, CauseCodes codes, DateTimeOffset now)
     {
-        return new AssignHandlerInput(HandlerId, period, codes);
+        return new AssignHandlerInput(HandlerId, period, codes, now);
     }
 }
 
@@ -36,6 +36,7 @@ public sealed class AssignHandlerCommandHandler(
     IPolicyReader policies,
     ICauseCodeReader causes,
     IUnitOfWork unitOfWork,
+    IClock clock,
     IMapper mapper) : IRequestHandler<AssignHandlerCommand, Result<ClaimDto>>
 {
     public async Task<Result<ClaimDto>> Handle(AssignHandlerCommand command, CancellationToken cancellationToken)
@@ -50,7 +51,7 @@ public sealed class AssignHandlerCommandHandler(
         var claim = loaded.Value;
         var period = await policies.GetPeriodAsync(claim.PolicyId, cancellationToken);
         var codes = await causes.GetActiveAsync(cancellationToken);
-        var outcome = claim.AssignHandler(command.ToInput(period, codes));
+        var outcome = claim.AssignHandler(command.ToInput(period, codes, clock.UtcNow));
         var result = outcome.ToResult();
 
         if (result.IsSuccess)

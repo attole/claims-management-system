@@ -16,9 +16,9 @@ namespace ClaimsModule.Application.Claims.Commands;
 
 public sealed record UpdateNotesCommand(Guid ClaimId, string Notes) : ICommand<Result<ClaimDto>>
 {
-    public UpdateNotesInput ToInput(PolicyPeriod period, CauseCodes codes)
+    public UpdateNotesInput ToInput(PolicyPeriod period, CauseCodes codes, DateTimeOffset now)
     {
-        return new UpdateNotesInput(Notes, period, codes);
+        return new UpdateNotesInput(Notes, period, codes, now);
     }
 }
 
@@ -36,6 +36,7 @@ public sealed class UpdateNotesCommandHandler(
     IPolicyReader policies,
     ICauseCodeReader causes,
     IUnitOfWork unitOfWork,
+    IClock clock,
     IMapper mapper) : IRequestHandler<UpdateNotesCommand, Result<ClaimDto>>
 {
     public async Task<Result<ClaimDto>> Handle(UpdateNotesCommand command, CancellationToken cancellationToken)
@@ -50,7 +51,7 @@ public sealed class UpdateNotesCommandHandler(
         var claim = loaded.Value;
         var period = await policies.GetPeriodAsync(claim.PolicyId, cancellationToken);
         var codes = await causes.GetActiveAsync(cancellationToken);
-        var outcome = claim.UpdateNotes(command.ToInput(period, codes));
+        var outcome = claim.UpdateNotes(command.ToInput(period, codes, clock.UtcNow));
         var result = outcome.ToResult();
 
         if (result.IsSuccess)

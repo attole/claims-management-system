@@ -14,7 +14,7 @@ public sealed class OpenReserveComponentOperationTests
     [Trait("Rule", "S:RES-Components")]
     public void Run_CreatesAnActiveComponentOfTheRequestedType()
     {
-        var type = new ReserveExpenseComponentType();
+        var type = ReserveComponentTypeKind.Expense;
         var claim = TestReserves.Claim(new ClaimOpenState());
         var input = new OpenReserveComponentInput(claim, type, "Expert fees");
 
@@ -22,7 +22,7 @@ public sealed class OpenReserveComponentOperationTests
 
         outcome.IsSuccess.Should().BeTrue();
         outcome.Value.ClaimId.Should().Be(TestReserves.ClaimId);
-        outcome.Value.ComponentType.Should().Be(type);
+        outcome.Value.ComponentType.Marker.Should().Be(type);
         outcome.Value.State.Should().BeOfType<ReserveComponentActiveState>();
         outcome.Value.Notes.Should().Be("Expert fees");
         outcome.Value.OrganisationId.Should().Be(TestClaims.Organisation);
@@ -32,7 +32,7 @@ public sealed class OpenReserveComponentOperationTests
     [Trait("Rule", "S:RES-Components")]
     public void Run_Twice_CreatesASecondComponentOfTheSameType()
     {
-        var type = new ReserveIndemnityComponentType();
+        var type = ReserveComponentTypeKind.Indemnity;
         var claim = TestReserves.Claim(new ClaimOpenState());
         var input = new OpenReserveComponentInput(claim, type, string.Empty);
         var first = OpenReserveComponentOperation.Run(input).Value;
@@ -46,12 +46,24 @@ public sealed class OpenReserveComponentOperationTests
     [Trait("Rule", IsClaimAcceptingReserves.Code)]
     public void Run_OnAClosedOrWithdrawnClaim_ReturnsTheFinding()
     {
-        var type = new ReserveExpenseComponentType();
+        var type = ReserveComponentTypeKind.Expense;
         var claim = TestReserves.Claim(new ClaimClosedState());
         var input = new OpenReserveComponentInput(claim, type, "Expert fees");
 
         var outcome = OpenReserveComponentOperation.Run(input);
 
         outcome.CriticalFindings.Should().ContainSingle().Which.Code.Should().Be(IsClaimAcceptingReserves.Code);
+    }
+
+    [Fact]
+    [Trait("Rule", IsComponentTypeKnown.Code)]
+    public void Run_WithAnUnknownComponentType_ReturnsTheFinding()
+    {
+        var claim = TestReserves.Claim(new ClaimOpenState());
+        var input = new OpenReserveComponentInput(claim, (ReserveComponentTypeKind)99, string.Empty);
+
+        var outcome = OpenReserveComponentOperation.Run(input);
+
+        outcome.CriticalFindings.Should().ContainSingle().Which.Code.Should().Be(IsComponentTypeKnown.Code);
     }
 }

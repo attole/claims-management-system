@@ -92,24 +92,6 @@ public sealed class CreateClaimOperationTests
     }
 
     [Fact]
-    [Trait("Rule", IsReportDateNotInFuture.Code)]
-    public void Run_WithAReportDateAfterTheCreationTime_Fails()
-    {
-        var number = ClaimNumber.From("CLM-2026-0000001");
-        var input = new CreateClaimInput(
-            TestClaims.Organisation,
-            number,
-            TestClaims.Later,
-            TestClaims.Start,
-            TestClaims.Period(),
-            TestClaims.Codes());
-
-        var outcome = CreateClaimOperation.Run(input);
-
-        outcome.CriticalFindings.Should().ContainSingle().Which.Code.Should().Be(IsReportDateNotInFuture.Code);
-    }
-
-    [Fact]
     public void Run_StoresTheGivenReportDateOnTheLossAndTheTimeAsReceived()
     {
         var reportDate = TestClaims.Start.AddDays(-2);

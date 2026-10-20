@@ -304,7 +304,7 @@ public sealed class Claim : AggregateRoot, ISoftDeletable, IStateful<ClaimState>
 
     private void Settle(ClaimBaseOperationInput input)
     {
-        var evaluation = new EvaluateIssuesInput(input.PolicyPeriod, input.CauseCodes);
+        var evaluation = new EvaluateIssuesInput(input.PolicyPeriod, input.CauseCodes, input.Now);
         EvaluateIssues(evaluation);
     }
 
@@ -315,7 +315,7 @@ public sealed class Claim : AggregateRoot, ISoftDeletable, IStateful<ClaimState>
 
     private void OpenAfterReopen(ReopenClaimInput input)
     {
-        var open = new ClaimTransitionInput(input.PolicyPeriod, input.CauseCodes);
+        var open = new ClaimTransitionInput(input.PolicyPeriod, input.CauseCodes, input.Now);
         OpenClaimTransition.Run(this, open).OnSuccess(move => RecordMove(move, open));
     }
 

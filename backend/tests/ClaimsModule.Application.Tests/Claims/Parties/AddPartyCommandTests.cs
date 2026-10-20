@@ -18,6 +18,7 @@ public sealed class AddPartyCommandTests
             context.Policies,
             context.Causes,
             context.UnitOfWork,
+            context.Clock,
             context.Mapper);
         var command = new AddPartyCommand(claim.Id, ApplicationRequests.Claimant());
 
@@ -39,6 +40,7 @@ public sealed class AddPartyCommandTests
             context.Policies,
             context.Causes,
             context.UnitOfWork,
+            context.Clock,
             context.Mapper);
         var command = new AddPartyCommand(claimId, ApplicationRequests.Claimant());
 

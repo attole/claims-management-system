@@ -13,7 +13,7 @@ public sealed class LinkPolicyOperationTests
     public void Run_WithAPolicyId_LinksThePolicy()
     {
         var claim = TestClaims.WithoutPolicy();
-        var input = new LinkPolicyInput(TestClaims.Policy, TestClaims.Period(), TestClaims.Codes());
+        var input = new LinkPolicyInput(TestClaims.Policy, TestClaims.Period(), TestClaims.Codes(), TestClaims.Start);
 
         var outcome = LinkPolicyOperation.Run(claim, input);
 
@@ -26,7 +26,7 @@ public sealed class LinkPolicyOperationTests
     public void Run_WithoutAPolicyId_ReturnsTheFindingAndKeepsTheClaim()
     {
         var claim = TestClaims.WithoutPolicy();
-        var input = new LinkPolicyInput(Guid.Empty, TestClaims.Period(), TestClaims.Codes());
+        var input = new LinkPolicyInput(Guid.Empty, TestClaims.Period(), TestClaims.Codes(), TestClaims.Start);
 
         var outcome = LinkPolicyOperation.Run(claim, input);
 
@@ -39,7 +39,7 @@ public sealed class LinkPolicyOperationTests
     public void Run_OnAClosedClaim_ReturnsTheFinding()
     {
         var claim = TestClaims.InState<ClaimClosedState>();
-        var input = new LinkPolicyInput(TestClaims.Policy, TestClaims.Period(), TestClaims.Codes());
+        var input = new LinkPolicyInput(TestClaims.Policy, TestClaims.Period(), TestClaims.Codes(), TestClaims.Start);
 
         var outcome = LinkPolicyOperation.Run(claim, input);
 

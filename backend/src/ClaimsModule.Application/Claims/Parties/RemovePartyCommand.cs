@@ -15,9 +15,9 @@ namespace ClaimsModule.Application.Claims.Parties;
 
 public sealed record RemovePartyCommand(Guid ClaimId, Guid PartyId) : ICommand<Result<PartyDto>>
 {
-    public RemovePartyInput ToInput(PolicyPeriod period, CauseCodes codes)
+    public RemovePartyInput ToInput(PolicyPeriod period, CauseCodes codes, DateTimeOffset now)
     {
-        return new RemovePartyInput(PartyId, period, codes);
+        return new RemovePartyInput(PartyId, period, codes, now);
     }
 }
 
@@ -35,6 +35,7 @@ public sealed class RemovePartyCommandHandler(
     IPolicyReader policies,
     ICauseCodeReader causes,
     IUnitOfWork unitOfWork,
+    IClock clock,
     IMapper mapper) : IRequestHandler<RemovePartyCommand, Result<PartyDto>>
 {
     public async Task<Result<PartyDto>> Handle(RemovePartyCommand command, CancellationToken cancellationToken)
@@ -57,7 +58,7 @@ public sealed class RemovePartyCommandHandler(
 
         var period = await policies.GetPeriodAsync(claim.PolicyId, cancellationToken);
         var codes = await causes.GetActiveAsync(cancellationToken);
-        var outcome = claim.RemoveParty(command.ToInput(period, codes));
+        var outcome = claim.RemoveParty(command.ToInput(period, codes, clock.UtcNow));
         var result = outcome.ToResult();
 
         if (result.IsSuccess)

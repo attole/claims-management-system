@@ -10,6 +10,7 @@ internal sealed class OpenReserveComponentOperation
 {
     public OpenReserveComponentOperation()
     {
+        Require(input => new IsComponentTypeKnown(input.ComponentTypeKind));
         Require(input => new IsClaimAcceptingReserves(input.Claim.State));
     }
 
@@ -19,7 +20,7 @@ internal sealed class OpenReserveComponentOperation
             Ids.Next(),
             input.Claim.ClaimId,
             input.Claim.OrganisationId,
-            input.ComponentType,
+            ReserveComponentType.From(input.ComponentTypeKind),
             input.Notes);
 
         return Done(component);

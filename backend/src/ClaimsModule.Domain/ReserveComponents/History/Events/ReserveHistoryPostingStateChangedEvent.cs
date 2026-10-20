@@ -9,4 +9,5 @@ public sealed record ReserveHistoryPostingStateChangedEvent(
     string From,
     string To,
     string JobId,
-    string FailureReason) : DomainEvent;
+    string FailureReason,
+    decimal Amount) : DomainEvent;

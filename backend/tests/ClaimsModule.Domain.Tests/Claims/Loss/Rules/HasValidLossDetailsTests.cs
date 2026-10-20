@@ -28,15 +28,14 @@ public sealed class HasValidLossDetailsTests
     }
 
     [Fact]
-    [Trait("Rule", "S:BR-C-01")]
-    [Trait("Rule", "A:BR-C-01")]
-    public void Check_ForALossAfterTheReport_ReportsOneDateProblem()
+    [Trait("Rule", IsLossDateNotInFuture.Code)]
+    public void Check_ForALossInTheFuture_ReportsOneDateProblem()
     {
-        var loss = TestClaims.Loss(TestClaims.Later.AddDays(1), TestClaims.Description);
+        var loss = TestClaims.Loss(TestClaims.Start.AddDays(1), TestClaims.Description);
 
         var result = CreateRule().Check(loss);
 
-        result.CriticalFindings.Should().ContainSingle().Which.Code.Should().Be(IsLossDateNotAfterReport.Code);
+        result.CriticalFindings.Should().ContainSingle().Which.Code.Should().Be(IsLossDateNotInFuture.Code);
     }
 
     [Fact]
@@ -51,6 +50,6 @@ public sealed class HasValidLossDetailsTests
 
     private static HasValidLossDetails CreateRule()
     {
-        return new HasValidLossDetails(TestClaims.ReportDay, TestClaims.Period(), TestClaims.Codes());
+        return new HasValidLossDetails(TestClaims.Start, TestClaims.Period(), TestClaims.Codes());
     }
 }

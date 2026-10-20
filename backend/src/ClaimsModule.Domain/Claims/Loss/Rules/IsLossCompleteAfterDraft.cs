@@ -4,8 +4,11 @@ using ClaimsModule.Domain.Policies;
 
 namespace ClaimsModule.Domain.Claims.Loss.Rules;
 
-internal sealed class IsLossCompleteAfterDraft(LossDetails loss, PolicyPeriod period, CauseCodes causeCodes)
-    : IRule<Claim>
+internal sealed class IsLossCompleteAfterDraft(
+    LossDetails loss,
+    PolicyPeriod period,
+    CauseCodes causeCodes,
+    DateTimeOffset now) : IRule<Claim>
 {
     public const string Code = "LOSS_INCOMPLETE_AFTER_DRAFT";
 
@@ -13,7 +16,7 @@ internal sealed class IsLossCompleteAfterDraft(LossDetails loss, PolicyPeriod pe
     {
         bool isDraft = claim.State.IsDraft;
         var requiredPeriod = period.RequireFor(claim.PolicyId);
-        var lossCheck = new HasValidLossDetails(claim.LossEvent.ReportDay, requiredPeriod, causeCodes);
+        var lossCheck = new HasValidLossDetails(now, requiredPeriod, causeCodes);
         var unwaivedCritical = lossCheck.Check(loss).CriticalFindings
             .Where(finding => !claim.HasWaivedFinding(finding))
             .ToList();

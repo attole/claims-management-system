@@ -32,4 +32,17 @@ public sealed class IsLossDateWithinPolicyPeriodTests
         finding.Severity.Should().Be(FindingSeverity.Warning);
         finding.Evidence.Should().Be("2025-12-31|2026-01-01|2026-12-31");
     }
+
+    [Fact]
+    [Trait("Rule", "S:V-Messages")]
+    public void Check_ForALossOutsideThePeriod_ReturnsTheSpecMessage()
+    {
+        var loss = TestClaims.Loss(TestClaims.OutsidePolicyPeriod, TestClaims.Description);
+        var rule = new IsLossDateWithinPolicyPeriod(TestClaims.Period());
+
+        var result = rule.Check(loss);
+
+        var finding = result.Findings.Should().ContainSingle().Subject;
+        finding.Message.Should().Be("Loss date is outside the policy effective period.");
+    }
 }

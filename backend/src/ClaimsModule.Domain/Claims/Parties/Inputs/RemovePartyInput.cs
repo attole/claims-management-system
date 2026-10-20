@@ -4,5 +4,8 @@ using ClaimsModule.Domain.Policies;
 
 namespace ClaimsModule.Domain.Claims.Parties.Inputs;
 
-public sealed record RemovePartyInput(Guid PartyId, PolicyPeriod PolicyPeriod, CauseCodes CauseCodes)
-    : ClaimBaseOperationInput(PolicyPeriod, CauseCodes);
+public sealed record RemovePartyInput(
+    Guid PartyId,
+    PolicyPeriod PolicyPeriod,
+    CauseCodes CauseCodes,
+    DateTimeOffset Now) : ClaimBaseOperationInput(PolicyPeriod, CauseCodes, Now);

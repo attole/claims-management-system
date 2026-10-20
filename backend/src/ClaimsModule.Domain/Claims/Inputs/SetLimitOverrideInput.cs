@@ -9,4 +9,5 @@ public sealed record SetLimitOverrideInput(
     UserRole ActorRole,
     decimal ClaimApprovedTotal,
     PolicyPeriod PolicyPeriod,
-    CauseCodes CauseCodes) : ClaimBaseOperationInput(PolicyPeriod, CauseCodes);
+    CauseCodes CauseCodes,
+    DateTimeOffset Now) : ClaimBaseOperationInput(PolicyPeriod, CauseCodes, Now);

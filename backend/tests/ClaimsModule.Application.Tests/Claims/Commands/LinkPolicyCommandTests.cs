@@ -23,6 +23,7 @@ public sealed class LinkPolicyCommandTests
             context.Policies,
             context.Causes,
             context.UnitOfWork,
+            context.Clock,
             context.Mapper);
         var command = new LinkPolicyCommand(claim.Id, period.PolicyId);
 
@@ -43,6 +44,7 @@ public sealed class LinkPolicyCommandTests
             context.Policies,
             context.Causes,
             context.UnitOfWork,
+            context.Clock,
             context.Mapper);
         var command = new LinkPolicyCommand(claimId, Guid.NewGuid());
 
@@ -63,6 +65,7 @@ public sealed class LinkPolicyCommandTests
             context.Policies,
             context.Causes,
             context.UnitOfWork,
+            context.Clock,
             context.Mapper);
         var command = new LinkPolicyCommand(claim.Id, unknownId);
 

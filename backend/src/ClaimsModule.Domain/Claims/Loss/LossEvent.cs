@@ -28,8 +28,6 @@ public sealed class LossEvent : Entity, ISoftDeletable
 
     public DateTimeOffset ReportDate { get; private set; } = DateTimeOffset.MinValue;
 
-    public DateOnly ReportDay => DateOnly.FromDateTime(ReportDate.UtcDateTime);
-
     public bool IsDeleted { get; private set; } = false;
 
     public DateTimeOffset DeletedAt { get; private set; } = DateTimeOffset.MinValue;

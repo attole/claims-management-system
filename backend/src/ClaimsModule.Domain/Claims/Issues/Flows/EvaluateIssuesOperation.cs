@@ -58,7 +58,7 @@ internal sealed class EvaluateIssuesOperation
         var period = input.PolicyPeriod.RequireFor(claim.PolicyId);
         CheckResult[] results =
         [
-            new HasValidLossDetails(loss.ReportDay, period, input.CauseCodes).Check(loss.Details),
+            new HasValidLossDetails(input.Now, period, input.CauseCodes).Check(loss.Details),
             new HasClaimant().Check(claim),
             new HasLinkedPolicy().Check(claim),
             new HasRiskObject().Check(claim),

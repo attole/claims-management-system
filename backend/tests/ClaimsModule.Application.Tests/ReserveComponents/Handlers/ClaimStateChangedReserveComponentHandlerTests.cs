@@ -57,7 +57,7 @@ public sealed class ClaimStateChangedReserveComponentHandlerTests
     private static ReserveComponent OpenComponent()
     {
         var claim = ApplicationClaims.Opened();
-        var input = new OpenReserveComponentInput(claim.Reference, new ReserveIndemnityComponentType(), string.Empty);
+        var input = new OpenReserveComponentInput(claim.Reference, ReserveComponentTypeKind.Indemnity, string.Empty);
 
         return ReserveComponent.Open(input).Value;
     }

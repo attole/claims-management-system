@@ -32,11 +32,14 @@ public sealed class ReserveApprovalAuditHandler(IAuditLogService audit)
     private static AuditEntry CreateEntry(ReserveHistoryApprovalStateChangedEvent domainEvent, string eventType)
     {
         var description = $"Reserve approval changed from {domainEvent.From} to {domainEvent.To}.";
+        bool isRejection = eventType == AuditEventTypes.ReserveRejected;
+        string oldReason = isRejection ? domainEvent.Reason : string.Empty;
+        string newReason = isRejection ? string.Empty : domainEvent.Reason;
 
         return new AuditEntry(domainEvent.ClaimId, eventType, description)
         {
-            OldValue = AuditJson.From(new { Status = domainEvent.From }),
-            NewValue = AuditJson.From(new { Status = domainEvent.To, domainEvent.Reason }),
+            OldValue = AuditJson.From(new { Status = domainEvent.From, Reason = oldReason }),
+            NewValue = AuditJson.From(new { Status = domainEvent.To, Reason = newReason }),
             RelatedEntityId = domainEvent.ReserveHistoryId,
             RelatedEntityType = nameof(ReserveHistory),
         };

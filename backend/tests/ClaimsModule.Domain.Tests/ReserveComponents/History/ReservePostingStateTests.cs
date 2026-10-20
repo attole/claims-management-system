@@ -24,4 +24,12 @@ public sealed class ReservePostingStateTests
         _pairs.Should().OnlyContain(
             pair => pair.State.Marker == pair.Kind && pair.State.Name == pair.Kind.ToString());
     }
+
+    [Fact]
+    public void IsPosted_IsTrueOnlyForThePostedState()
+    {
+        var result = _pairs.Where(pair => pair.State.IsPosted).Select(pair => pair.Kind);
+
+        result.Should().Equal(ReservePostingStateKind.Posted);
+    }
 }

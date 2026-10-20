@@ -43,7 +43,8 @@ public sealed class ReservePostingRetriedHandlerTests
             from,
             to,
             "retry-token",
-            string.Empty);
+            string.Empty,
+            100m);
     }
 
     private static EventContext CreateContext(ReserveHistoryPostingStateChangedEvent domainEvent)

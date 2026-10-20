@@ -21,6 +21,7 @@ public static class ClaimStatusContexts
             ApplicationClaims.LinkedPeriod(),
             new CauseCodes(["WATER"]),
             facts,
-            new UserManagerRole());
+            new UserManagerRole(),
+            ClaimHandlerContext.Now);
     }
 }

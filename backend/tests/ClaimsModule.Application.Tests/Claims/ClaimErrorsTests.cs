@@ -36,9 +36,31 @@ public sealed class ClaimErrorsTests
     [Fact]
     public void StatusUnsupported_IsAValidationErrorOnTheTargetStatus()
     {
-        var error = ClaimErrors.StatusUnsupported("Draft");
+        var error = ClaimErrors.StatusUnsupported("Draft", ["Open"]);
 
         error.Kind.Should().Be(ErrorKind.Validation);
         error.Field.Should().Be("TargetStatus");
+    }
+
+    [Fact]
+    public void WithNextStatuses_KeepsTheRefusalAndListsTheValidNextStatuses()
+    {
+        var refusal = Error.Validation("TRANSITION_NOT_PERMITTED", "Not permitted.");
+
+        var error = ClaimErrors.WithNextStatuses(refusal, ["Open", "Withdrawn"]);
+
+        error.Code.Should().Be("TRANSITION_NOT_PERMITTED");
+        error.Message.Should().Be("Not permitted. Valid next statuses: Open, Withdrawn.");
+        error.Field.Should().Be("TargetStatus");
+    }
+
+    [Fact]
+    public void WithNextStatuses_WithoutAnyNextStatus_SaysNone()
+    {
+        var refusal = Error.Validation("TRANSITION_NOT_PERMITTED", "Not permitted.");
+
+        var error = ClaimErrors.WithNextStatuses(refusal, []);
+
+        error.Message.Should().EndWith("Valid next statuses: none.");
     }
 }

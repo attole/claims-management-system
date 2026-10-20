@@ -8,7 +8,7 @@ public sealed class PageWindowTests
     [Fact]
     public void From_TakesThePageAndTheSizeOfAPagedQuery()
     {
-        var query = new ListClaimAuditQuery(Guid.NewGuid(), 3, 25);
+        var query = new ListClaimAuditEntriesQuery(Guid.NewGuid(), 3, 25);
 
         var result = PageWindow.From(query);
 

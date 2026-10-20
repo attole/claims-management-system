@@ -67,6 +67,7 @@ public sealed class SetLimitOverrideCommandTests
             context.Policies,
             context.Causes,
             context.UnitOfWork,
+            context.Clock,
             context.User,
             context.Mapper);
     }

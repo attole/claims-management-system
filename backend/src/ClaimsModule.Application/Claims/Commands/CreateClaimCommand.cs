@@ -73,25 +73,19 @@ public sealed class CreateClaimCommandHandler(
 {
     public async Task<Result<ClaimDto>> Handle(CreateClaimCommand command, CancellationToken cancellationToken)
     {
-        bool isPolicyKnown = await IsPolicyKnownAsync(command, cancellationToken);
-
-        if (!isPolicyKnown)
-        {
-            return Result<ClaimDto>.Failure([ClaimErrors.PolicyNotFound(command.PolicyId)]);
-        }
-
+        var (intake, policyWarnings) = await ResolvePolicyAsync(command, cancellationToken);
         var now = clock.UtcNow;
         var number = await numbers.NextAsync(now.Year, cancellationToken);
-        var period = await policies.GetPeriodAsync(command.PolicyId, cancellationToken);
+        var period = await policies.GetPeriodAsync(intake.PolicyId, cancellationToken);
         var codes = await causes.GetActiveAsync(cancellationToken);
-        var created = Claim.Create(command.ToInput(user.OrganisationId, number, now, codes)).ToResult();
+        var created = Claim.Create(intake.ToInput(user.OrganisationId, number, now, codes)).ToResult();
 
         if (!created.IsSuccess)
         {
             return created.ToFailure<ClaimDto>();
         }
 
-        var assembled = Assemble(created.Value, command, period, codes);
+        var assembled = Assemble(created.Value, intake, period, codes, now);
 
         if (!assembled.IsSuccess)
         {
@@ -99,7 +93,7 @@ public sealed class CreateClaimCommandHandler(
         }
 
         var opened = new List<ReserveComponent>();
-        var reserved = OpenReserves(assembled.Value, command, opened, user.Id, now);
+        var reserved = OpenReserves(assembled.Value, intake, opened, user.Id, now);
 
         if (!reserved.IsSuccess)
         {
@@ -115,7 +109,8 @@ public sealed class CreateClaimCommandHandler(
 
         await unitOfWork.CommitAsync(cancellationToken);
 
-        var warnings = created.Warnings
+        var warnings = policyWarnings
+            .Concat(created.Warnings)
             .Concat(assembled.Warnings)
             .Concat(reserved.Warnings)
             .ToList();
@@ -127,11 +122,12 @@ public sealed class CreateClaimCommandHandler(
         Claim claim,
         CreateClaimCommand command,
         PolicyPeriod period,
-        CauseCodes codes)
+        CauseCodes codes,
+        DateTimeOffset now)
     {
         var warnings = new List<Warning>();
 
-        foreach (var step in Populate(claim, command, period, codes))
+        foreach (var step in Populate(claim, command, period, codes, now))
         {
             if (!step.IsSuccess)
             {
@@ -188,38 +184,44 @@ public sealed class CreateClaimCommandHandler(
         Claim claim,
         CreateClaimCommand command,
         PolicyPeriod period,
-        CauseCodes codes)
+        CauseCodes codes,
+        DateTimeOffset now)
     {
         if (command.PolicyId != Guid.Empty)
         {
-            var policyInput = new LinkPolicyInput(command.PolicyId, period, codes);
+            var policyInput = new LinkPolicyInput(command.PolicyId, period, codes, now);
 
             yield return claim.LinkPolicy(policyInput).ToResult();
         }
 
-        var lossInput = new UpdateLossDetailsInput(command.Loss.ToDetails(), period, codes);
+        var lossInput = new UpdateLossDetailsInput(command.Loss.ToDetails(), period, codes, now);
 
         yield return claim.UpdateLossDetails(lossInput).ToResult();
 
         foreach (var riskObject in command.RiskObjects)
         {
-            var riskObjectInput = new AddRiskObjectInput(riskObject.ToDetails(), period, codes);
+            var riskObjectInput = new AddRiskObjectInput(riskObject.ToDetails(), period, codes, now);
 
             yield return claim.AddRiskObject(riskObjectInput).ToResult();
         }
 
         foreach (var party in command.Parties)
         {
-            var partyInput = new AddPartyInput(party.ToDetails(), period, codes);
+            var partyInput = new AddPartyInput(party.ToDetails(), period, codes, now);
 
             yield return claim.AddParty(partyInput).ToResult();
         }
     }
 
-    private async Task<bool> IsPolicyKnownAsync(CreateClaimCommand command, CancellationToken cancellationToken)
+    private async Task<(CreateClaimCommand Intake, IReadOnlyList<Warning> Warnings)> ResolvePolicyAsync(
+        CreateClaimCommand command,
+        CancellationToken cancellationToken)
     {
         bool hasNoPolicy = command.PolicyId == Guid.Empty;
+        bool isKnown = hasNoPolicy || await policies.ExistsAsync(command.PolicyId, cancellationToken);
 
-        return hasNoPolicy || await policies.ExistsAsync(command.PolicyId, cancellationToken);
+        return isKnown
+            ? (command, [])
+            : (command with { PolicyId = Guid.Empty }, [ClaimErrors.PolicyNotFoundWarning(command.PolicyId)]);
     }
 }

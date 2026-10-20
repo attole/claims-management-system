@@ -18,6 +18,7 @@ public sealed class UpdateRiskObjectCommandTests
             context.Policies,
             context.Causes,
             context.UnitOfWork,
+            context.Clock,
             context.Mapper);
         var command = new UpdateRiskObjectCommand(claim.Id, riskObject.Id, ApplicationRequests.Garage());
 
@@ -38,6 +39,7 @@ public sealed class UpdateRiskObjectCommandTests
             context.Policies,
             context.Causes,
             context.UnitOfWork,
+            context.Clock,
             context.Mapper);
         var command = new UpdateRiskObjectCommand(claimId, Guid.NewGuid(), ApplicationRequests.Garage());
 
@@ -58,6 +60,7 @@ public sealed class UpdateRiskObjectCommandTests
             context.Policies,
             context.Causes,
             context.UnitOfWork,
+            context.Clock,
             context.Mapper);
         var command = new UpdateRiskObjectCommand(claim.Id, unknownId, ApplicationRequests.Garage());
 

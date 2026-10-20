@@ -8,4 +8,5 @@ public sealed record UpdateRiskObjectInput(
     Guid RiskObjectId,
     RiskObjectDetails Details,
     PolicyPeriod PolicyPeriod,
-    CauseCodes CauseCodes) : ClaimBaseOperationInput(PolicyPeriod, CauseCodes);
+    CauseCodes CauseCodes,
+    DateTimeOffset Now) : ClaimBaseOperationInput(PolicyPeriod, CauseCodes, Now);

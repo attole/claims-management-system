@@ -4,5 +4,5 @@ using ClaimsModule.Domain.Policies;
 
 namespace ClaimsModule.Domain.Claims.Issues.Inputs;
 
-public sealed record EvaluateIssuesInput(PolicyPeriod PolicyPeriod, CauseCodes CauseCodes)
-    : ClaimBaseOperationInput(PolicyPeriod, CauseCodes);
+public sealed record EvaluateIssuesInput(PolicyPeriod PolicyPeriod, CauseCodes CauseCodes, DateTimeOffset Now)
+    : ClaimBaseOperationInput(PolicyPeriod, CauseCodes, Now);

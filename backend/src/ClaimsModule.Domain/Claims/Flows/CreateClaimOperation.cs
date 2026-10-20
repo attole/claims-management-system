@@ -13,7 +13,6 @@ internal sealed class CreateClaimOperation : CreationOperation<CreateClaimOperat
         Require(input => new HasOrganisation(input.OrganisationId));
         Require(input => new HasClaimNumber(input.ClaimNumber));
         Require(input => new HasReportDate(input.ReportDate));
-        Require(input => new IsReportDateNotInFuture(input.ReportDate, input.Now));
     }
 
     protected override Outcome<Claim> Apply(CreateClaimInput input)

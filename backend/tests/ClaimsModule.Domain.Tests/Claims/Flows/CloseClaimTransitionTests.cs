@@ -146,8 +146,21 @@ public sealed class CloseClaimTransitionTests
         outcome.CriticalFindings.Should().ContainSingle().Which.Code.Should().Be(CloseClaimTransition.NotPermittedCode);
     }
 
+    [Fact]
+    [Trait("Rule", "S:V-Messages")]
+    public void Run_FromADraft_ReturnsTheSpecMessageWithBothStatuses()
+    {
+        var claim = TestClaims.Create(TestClaims.Claimant());
+        var input = CreateInput();
+
+        var outcome = CloseClaimTransition.Run(claim, input);
+
+        outcome.CriticalFindings.Should().ContainSingle()
+            .Which.Message.Should().Be("Transition from Draft to Closed is not permitted.");
+    }
+
     private static FreezeClaimInput CreateInput()
     {
-        return new FreezeClaimInput(false, false, false, TestClaims.Period(), TestClaims.Codes());
+        return new FreezeClaimInput(false, false, false, TestClaims.Period(), TestClaims.Codes(), TestClaims.Start);
     }
 }

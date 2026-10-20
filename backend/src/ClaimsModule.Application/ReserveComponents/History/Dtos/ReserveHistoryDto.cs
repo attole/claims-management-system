@@ -18,6 +18,12 @@ public sealed record ReserveHistoryDto
 
     public int ChangeSequence { get; init; } = 0;
 
+    public bool HasBalances { get; init; } = false;
+
+    public decimal PreviousBalance { get; init; } = 0m;
+
+    public decimal NewBalance { get; init; } = 0m;
+
     public string ApprovalStatus { get; init; } = string.Empty;
 
     public string PostingStatus { get; init; } = string.Empty;

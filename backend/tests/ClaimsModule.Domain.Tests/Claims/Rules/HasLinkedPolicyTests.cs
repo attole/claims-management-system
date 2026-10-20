@@ -31,4 +31,16 @@ public sealed class HasLinkedPolicyTests
         finding.Code.Should().Be(HasLinkedPolicy.Code);
         finding.Severity.Should().Be(FindingSeverity.Warning);
     }
+
+    [Fact]
+    [Trait("Rule", "S:V-Messages")]
+    public void Check_WhenNoPolicyIsLinked_ReturnsTheSpecMessage()
+    {
+        var claim = TestClaims.WithoutPolicy();
+
+        var result = new HasLinkedPolicy().Check(claim);
+
+        var finding = result.Findings.Should().ContainSingle().Subject;
+        finding.Message.Should().Be("No policy linked. Policy must be associated before reserves can be set.");
+    }
 }

@@ -10,9 +10,9 @@ public sealed record LossDate(DateTimeOffset Value)
 
     public DateOnly UtcDay => DateOnly.FromDateTime(Value.UtcDateTime);
 
-    public bool IsAfterDay(DateOnly day)
+    public bool IsAfter(DateTimeOffset time)
     {
-        bool isAfter = IsSet && UtcDay > day;
+        bool isAfter = IsSet && Value > time;
 
         return isAfter;
     }

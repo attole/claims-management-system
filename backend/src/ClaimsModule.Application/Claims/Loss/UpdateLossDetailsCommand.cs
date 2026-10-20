@@ -15,9 +15,9 @@ namespace ClaimsModule.Application.Claims.Loss;
 
 public sealed record UpdateLossDetailsCommand(Guid ClaimId, LossRequest Loss) : ICommand<Result<LossDetailsDto>>
 {
-    public UpdateLossDetailsInput ToInput(PolicyPeriod period, CauseCodes codes)
+    public UpdateLossDetailsInput ToInput(PolicyPeriod period, CauseCodes codes, DateTimeOffset now)
     {
-        return new UpdateLossDetailsInput(Loss.ToDetails(), period, codes);
+        return new UpdateLossDetailsInput(Loss.ToDetails(), period, codes, now);
     }
 }
 
@@ -35,6 +35,7 @@ public sealed class UpdateLossDetailsCommandHandler(
     IPolicyReader policies,
     ICauseCodeReader causes,
     IUnitOfWork unitOfWork,
+    IClock clock,
     IMapper mapper) : IRequestHandler<UpdateLossDetailsCommand, Result<LossDetailsDto>>
 {
     public async Task<Result<LossDetailsDto>> Handle(
@@ -51,7 +52,7 @@ public sealed class UpdateLossDetailsCommandHandler(
         var claim = loaded.Value;
         var period = await policies.GetPeriodAsync(claim.PolicyId, cancellationToken);
         var codes = await causes.GetActiveAsync(cancellationToken);
-        var outcome = claim.UpdateLossDetails(command.ToInput(period, codes));
+        var outcome = claim.UpdateLossDetails(command.ToInput(period, codes, clock.UtcNow));
         var result = outcome.ToResult();
 
         if (result.IsSuccess)

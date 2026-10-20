@@ -10,22 +10,22 @@ using MediatR;
 
 namespace ClaimsModule.Application.Audit.Queries;
 
-public sealed record ListClaimAuditQuery(Guid ClaimId, int Page, int PageSize)
+public sealed record ListClaimAuditEntriesQuery(Guid ClaimId, int Page, int PageSize)
     : IQuery<Result<PagedResult<AuditEntryDto>>>, IPagedQuery;
 
-public sealed class ListClaimAuditQueryValidator : PagedQueryValidator<ListClaimAuditQuery>
+public sealed class ListClaimAuditEntriesQueryValidator : PagedQueryValidator<ListClaimAuditEntriesQuery>
 {
-    public ListClaimAuditQueryValidator()
+    public ListClaimAuditEntriesQueryValidator()
     {
         RuleFor(query => query.ClaimId).NotEmpty();
     }
 }
 
-public sealed class ListClaimAuditQueryHandler(IClaimReader claims, IAuditLogReader audit)
-    : IRequestHandler<ListClaimAuditQuery, Result<PagedResult<AuditEntryDto>>>
+public sealed class ListClaimAuditEntriesQueryHandler(IClaimReader claims, IAuditLogReader audit)
+    : IRequestHandler<ListClaimAuditEntriesQuery, Result<PagedResult<AuditEntryDto>>>
 {
     public async Task<Result<PagedResult<AuditEntryDto>>> Handle(
-        ListClaimAuditQuery query,
+        ListClaimAuditEntriesQuery query,
         CancellationToken cancellationToken)
     {
         bool isKnown = await claims.ExistsAsync(query.ClaimId, cancellationToken);

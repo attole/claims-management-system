@@ -12,11 +12,12 @@ public sealed record ClaimStatusContext(
     PolicyPeriod PolicyPeriod,
     CauseCodes CauseCodes,
     ClaimReserveFacts ReserveFacts,
-    UserRole ActorRole)
+    UserRole ActorRole,
+    DateTimeOffset Now)
 {
     public ClaimTransitionInput ToTransitionInput()
     {
-        return new ClaimTransitionInput(PolicyPeriod, CauseCodes)
+        return new ClaimTransitionInput(PolicyPeriod, CauseCodes, Now)
         {
             Reason = ToReason(),
             Note = Command.Note ?? string.Empty,
@@ -30,7 +31,8 @@ public sealed record ClaimStatusContext(
             ReserveFacts.HasUnpostedHistory,
             ReserveFacts.HasOpenBalance,
             PolicyPeriod,
-            CauseCodes)
+            CauseCodes,
+            Now)
         {
             Reason = ToReason(),
             Note = Command.Note ?? string.Empty,
@@ -39,7 +41,7 @@ public sealed record ClaimStatusContext(
 
     public SendToPaymentClaimInput ToSendToPaymentInput()
     {
-        return new SendToPaymentClaimInput(ReserveFacts.HasApprovedReserve, PolicyPeriod, CauseCodes)
+        return new SendToPaymentClaimInput(ReserveFacts.HasApprovedReserve, PolicyPeriod, CauseCodes, Now)
         {
             IsLiabilityConfirmed = Command.IsLiabilityConfirmed,
             Reason = ToReason(),
@@ -49,7 +51,7 @@ public sealed record ClaimStatusContext(
 
     public ReopenClaimInput ToReopenInput()
     {
-        return new ReopenClaimInput(ActorRole, PolicyPeriod, CauseCodes)
+        return new ReopenClaimInput(ActorRole, PolicyPeriod, CauseCodes, Now)
         {
             Reason = ToReason(),
             Note = Command.Note ?? string.Empty,

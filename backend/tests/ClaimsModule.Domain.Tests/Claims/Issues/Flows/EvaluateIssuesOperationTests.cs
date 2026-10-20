@@ -26,7 +26,7 @@ public sealed class EvaluateIssuesOperationTests
     public void Run_ForAnEmptyClaim_SucceedsAndKeepsACriticalIssueForWhatIsMissing()
     {
         var claim = TestClaims.Empty();
-        var input = new EvaluateIssuesInput(TestClaims.Period(), TestClaims.Codes());
+        var input = new EvaluateIssuesInput(TestClaims.Period(), TestClaims.Codes(), TestClaims.Start);
 
         var outcome = EvaluateIssuesOperation.Run(claim, input);
 
@@ -38,7 +38,7 @@ public sealed class EvaluateIssuesOperationTests
     public void Run_WhenRunTwice_StoresNothingNew()
     {
         var claim = TestClaims.Empty();
-        var input = new EvaluateIssuesInput(TestClaims.Period(), TestClaims.Codes());
+        var input = new EvaluateIssuesInput(TestClaims.Period(), TestClaims.Codes(), TestClaims.Start);
         EvaluateIssuesOperation.Run(claim, input);
         var issuesBefore = claim.Issues.Count;
 
@@ -54,9 +54,9 @@ public sealed class EvaluateIssuesOperationTests
     {
         var claim = TestClaims.Empty();
         var loss = TestClaims.Loss(TestClaims.Start.AddDays(-1), TestClaims.Description);
-        var update = new UpdateLossDetailsInput(loss, TestClaims.Period(), TestClaims.Codes());
+        var update = new UpdateLossDetailsInput(loss, TestClaims.Period(), TestClaims.Codes(), TestClaims.Start);
         TestClaims.ChangeLoss(claim, update);
-        var input = new EvaluateIssuesInput(TestClaims.Period(), TestClaims.Codes());
+        var input = new EvaluateIssuesInput(TestClaims.Period(), TestClaims.Codes(), TestClaims.Start);
 
         var outcome = EvaluateIssuesOperation.Run(claim, input);
 
@@ -72,7 +72,7 @@ public sealed class EvaluateIssuesOperationTests
         var claim = TestClaims.Create(TestClaims.Claimant());
         var period = TestClaims.Period();
         var causeCodes = TestClaims.CodesOf("OTHER");
-        var input = new EvaluateIssuesInput(period, causeCodes);
+        var input = new EvaluateIssuesInput(period, causeCodes, TestClaims.Start);
 
         EvaluateIssuesOperation.Run(claim, input);
 
@@ -80,21 +80,23 @@ public sealed class EvaluateIssuesOperationTests
     }
 
     [Fact]
-    [Trait("Rule", IsLossDateNotAfterReport.Code)]
+    [Trait("Rule", IsLossDateNotInFuture.Code)]
     public void Run_WhenAnIssueComesBack_RaisesItAgainAsANewIssue()
     {
         var claim = TestClaims.WithLoss(TestClaims.Start.AddDays(2));
-        var input = new EvaluateIssuesInput(TestClaims.Period(), TestClaims.Codes());
+        var input = new EvaluateIssuesInput(TestClaims.Period(), TestClaims.Codes(), TestClaims.Start);
         var past = TestClaims.Loss(TestClaims.Start.AddDays(-1), TestClaims.Description);
         var future = TestClaims.Loss(TestClaims.Start.AddDays(2), TestClaims.Description);
-        TestClaims.ChangeLoss(claim, new UpdateLossDetailsInput(past, TestClaims.Period(), TestClaims.Codes()));
+        var toPast = new UpdateLossDetailsInput(past, TestClaims.Period(), TestClaims.Codes(), TestClaims.Start);
+        var toFuture = new UpdateLossDetailsInput(future, TestClaims.Period(), TestClaims.Codes(), TestClaims.Start);
+        TestClaims.ChangeLoss(claim, toPast);
         EvaluateIssuesOperation.Run(claim, input);
-        TestClaims.ChangeLoss(claim, new UpdateLossDetailsInput(future, TestClaims.Period(), TestClaims.Codes()));
+        TestClaims.ChangeLoss(claim, toFuture);
 
         EvaluateIssuesOperation.Run(claim, input);
 
         var futureIssues = claim.Issues
-            .Where(issue => issue.Finding.HasCode(IsLossDateNotAfterReport.Code))
+            .Where(issue => issue.Finding.HasCode(IsLossDateNotInFuture.Code))
             .ToList();
         futureIssues.Should().HaveCount(2);
         futureIssues.Count(issue => issue.State.IsCurrent).Should().Be(1);
@@ -104,7 +106,7 @@ public sealed class EvaluateIssuesOperationTests
     public void Run_ForACompleteClaim_LeavesNoCurrentIssue()
     {
         var claim = TestClaims.Create(TestClaims.Claimant());
-        var input = new EvaluateIssuesInput(TestClaims.Period(), TestClaims.Codes());
+        var input = new EvaluateIssuesInput(TestClaims.Period(), TestClaims.Codes(), TestClaims.Start);
 
         EvaluateIssuesOperation.Run(claim, input);
 
@@ -118,7 +120,7 @@ public sealed class EvaluateIssuesOperationTests
         var issue = claim.Issues.First(issue => issue.Finding.HasCode(IsDescriptionLongEnough.Code));
         TestClaims.WaiveIssue(claim, IsDescriptionLongEnough.Code);
         var issuesBefore = claim.Issues.Count;
-        var input = new EvaluateIssuesInput(TestClaims.Period(), TestClaims.Codes());
+        var input = new EvaluateIssuesInput(TestClaims.Period(), TestClaims.Codes(), TestClaims.Start);
 
         EvaluateIssuesOperation.Run(claim, input);
 
@@ -134,7 +136,7 @@ public sealed class EvaluateIssuesOperationTests
         var issuesBefore = claim.Issues.Count;
         var period = TestClaims.Period();
         var causeCodes = TestClaims.CodesOf("OTHER");
-        var input = new EvaluateIssuesInput(period, causeCodes);
+        var input = new EvaluateIssuesInput(period, causeCodes, TestClaims.Start);
 
         var outcome = EvaluateIssuesOperation.Run(claim, input);
 
@@ -149,8 +151,9 @@ public sealed class EvaluateIssuesOperationTests
         var claim = TestClaims.WithLoss(TestClaims.OutsidePolicyPeriod);
         TestClaims.AcknowledgeIssue(claim, IsLossDateWithinPolicyPeriod.Code);
         var earlier = TestClaims.Loss(TestClaims.OutsidePolicyPeriod.AddDays(-30), TestClaims.Description);
-        TestClaims.ChangeLoss(claim, new UpdateLossDetailsInput(earlier, TestClaims.Period(), TestClaims.Codes()));
-        var input = new EvaluateIssuesInput(TestClaims.Period(), TestClaims.Codes());
+        var toEarlier = new UpdateLossDetailsInput(earlier, TestClaims.Period(), TestClaims.Codes(), TestClaims.Start);
+        TestClaims.ChangeLoss(claim, toEarlier);
+        var input = new EvaluateIssuesInput(TestClaims.Period(), TestClaims.Codes(), TestClaims.Start);
 
         EvaluateIssuesOperation.Run(claim, input);
 
@@ -163,7 +166,7 @@ public sealed class EvaluateIssuesOperationTests
     {
         var claim = TestClaims.WithLoss(TestClaims.OutsidePolicyPeriod);
         TestClaims.AcknowledgeIssue(claim, IsLossDateWithinPolicyPeriod.Code);
-        var input = new EvaluateIssuesInput(TestClaims.Period(), TestClaims.Codes());
+        var input = new EvaluateIssuesInput(TestClaims.Period(), TestClaims.Codes(), TestClaims.Start);
 
         EvaluateIssuesOperation.Run(claim, input);
 
@@ -174,7 +177,7 @@ public sealed class EvaluateIssuesOperationTests
     public void Run_WithAReferenceForAnotherPolicy_Throws()
     {
         var claim = TestClaims.Empty();
-        var input = new EvaluateIssuesInput(PolicyPeriod.Empty, TestClaims.Codes());
+        var input = new EvaluateIssuesInput(PolicyPeriod.Empty, TestClaims.Codes(), TestClaims.Start);
 
         Action act = () => EvaluateIssuesOperation.Run(claim, input);
 

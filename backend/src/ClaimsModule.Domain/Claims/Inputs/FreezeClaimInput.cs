@@ -8,4 +8,5 @@ public sealed record FreezeClaimInput(
     bool HasUnpostedReserveHistory,
     bool HasOpenReserveBalance,
     PolicyPeriod PolicyPeriod,
-    CauseCodes CauseCodes) : ClaimTransitionInput(PolicyPeriod, CauseCodes);
+    CauseCodes CauseCodes,
+    DateTimeOffset Now) : ClaimTransitionInput(PolicyPeriod, CauseCodes, Now);

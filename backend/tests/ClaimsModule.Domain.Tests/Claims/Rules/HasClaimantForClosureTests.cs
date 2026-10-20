@@ -28,4 +28,17 @@ public sealed class HasClaimantForClosureTests
 
         result.Findings.Should().ContainSingle().Which.Code.Should().Be(HasClaimantForClosure.Code);
     }
+
+    [Fact]
+    [Trait("Rule", "S:V-Messages")]
+    public void Check_WhenNoClaimantExists_ReturnsTheSpecMessage()
+    {
+        var claim = TestClaims.Create();
+        var rule = new HasClaimantForClosure();
+
+        var result = rule.Check(claim);
+
+        result.Findings.Should().ContainSingle().Which.Message.Should()
+            .StartWith("Claim cannot be closed - ").And.EndWith(" is not satisfied.");
+    }
 }

@@ -32,4 +32,17 @@ public sealed class HasApprovalAuthorityTests
 
         result.Findings.Should().ContainSingle().Which.Code.Should().Be(HasApprovalAuthority.Code);
     }
+
+    [Fact]
+    [Trait("Rule", "S:V-Messages")]
+    public void Check_WhenTheRoleDoesNotCoverTheAmount_ReturnsTheSpecMessage()
+    {
+        var history = TestReserves.Submit(250_000m);
+        var rule = new HasApprovalAuthority(TestClaims.Supervisor);
+
+        var result = rule.Check(history);
+
+        var finding = result.Findings.Should().ContainSingle().Subject;
+        finding.Message.Should().Be("Your role does not have authority to approve this reserve amount.");
+    }
 }

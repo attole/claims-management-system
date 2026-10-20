@@ -31,4 +31,16 @@ public sealed class IsCauseCodeActiveTests
         finding.Severity.Should().Be(FindingSeverity.Critical);
         finding.Evidence.Should().Be("FIRE");
     }
+
+    [Fact]
+    [Trait("Rule", "S:V-Messages")]
+    public void Check_ForAnInactiveCode_ReturnsTheSpecMessage()
+    {
+        var loss = TestClaims.Loss(TestClaims.Start, TestClaims.Description);
+
+        var result = new IsCauseCodeActive(false).Check(loss);
+
+        var finding = result.Findings.Should().ContainSingle().Subject;
+        finding.Message.Should().Be("Cause of loss code is not recognised or is inactive.");
+    }
 }
