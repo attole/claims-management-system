@@ -11,6 +11,7 @@ Rules and contracts of the API: controllers, the error body, identity and the Id
 ## Errors
 
 - One error mapper turns a `Result` into the response: validation 422, not found 404, forbidden 403, conflict 409.
+- A `ConcurrencyConflictException` from the Unit of Work (a concurrent edit or a duplicate key) is caught by middleware and returned as a 409 with the same body.
 - The body follows the specification's sample: `type`, `title`, `status` and `errors` grouped by field. An error without a field goes under the key `General` (S:API-ErrorShape). The error code is not on the wire.
 - Only a request that cannot be bound at all is rejected before a command runs, and that rejection uses the same 422 body, not an own 400 body (a missing non-nullable value included).
 - The warnings of a successful `Result` are returned with the success body (the shape is decided when the first endpoint is written); the Application never returns HTTP types.
@@ -28,7 +29,9 @@ A write operation with an `Idempotency-Key` header is idempotent (S:API-Idempote
 2. `Started`: run the action. `Completed`: return the stored response without running it. `InProgress`: return 409. `BodyMismatch` (the same key with another body): return 422.
 3. After the action the filter calls `CompleteAsync` with the status code and body.
 
-Completion is its own save, not part of the command transaction: a crash between the two leaves the key in progress (409) until it expires.
+Completion is its own save, not part of the command transaction: a crash between the two leaves the key in progress (409) until the store treats it as abandoned.
+
+The header is optional and the filter applies to every write action; a request without it runs normally and is not stored. A replay returns the first response even if the claim has changed since; fresh state comes from a read. A stored key expires after about 24 hours and then counts as new.
 
 ## Tests
 

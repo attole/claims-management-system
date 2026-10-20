@@ -92,8 +92,6 @@ public sealed class Claim : AggregateRoot, ISoftDeletable, IStateful<ClaimState>
 
     public bool IsDeleted { get; private set; } = false;
 
-    public DateTimeOffset DeletedAt { get; private set; } = DateTimeOffset.MinValue;
-
     public static Outcome<Claim> Create(CreateClaimInput input)
     {
         return CreateClaimOperation.Run(input)

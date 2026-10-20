@@ -57,8 +57,6 @@ public sealed class ReserveComponent : AggregateRoot, ISoftDeletable, IStateful<
 
     public bool IsDeleted { get; private set; } = false;
 
-    public DateTimeOffset DeletedAt { get; private set; } = DateTimeOffset.MinValue;
-
     public static Outcome<ReserveComponent> Open(OpenReserveComponentInput input)
     {
         return OpenReserveComponentOperation.Run(input);

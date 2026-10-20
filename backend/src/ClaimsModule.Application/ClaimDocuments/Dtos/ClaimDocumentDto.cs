@@ -21,6 +21,4 @@ public sealed record ClaimDocumentDto
     public DateTimeOffset UploadedAt { get; init; } = DateTimeOffset.MinValue;
 
     public bool IsDeleted { get; init; } = false;
-
-    public DateTimeOffset DeletedAt { get; init; } = DateTimeOffset.MinValue;
 }

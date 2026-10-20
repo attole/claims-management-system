@@ -14,9 +14,9 @@ namespace ClaimsModule.Application.ClaimDocuments.Commands;
 
 public sealed record RemoveDocumentCommand(Guid ClaimId, Guid DocumentId) : ICommand<Result<ClaimDocumentDto>>
 {
-    public RemoveClaimDocumentInput ToInput(ClaimState claimState, DateTimeOffset now)
+    public RemoveClaimDocumentInput ToInput(ClaimState claimState)
     {
-        return new RemoveClaimDocumentInput(claimState, now);
+        return new RemoveClaimDocumentInput(claimState);
     }
 }
 
@@ -33,7 +33,6 @@ public sealed class RemoveDocumentCommandHandler(
     IClaimRepository claims,
     IClaimDocumentRepository documents,
     IUnitOfWork unitOfWork,
-    IClock clock,
     IMapper mapper) : IRequestHandler<RemoveDocumentCommand, Result<ClaimDocumentDto>>
 {
     public async Task<Result<ClaimDocumentDto>> Handle(
@@ -54,7 +53,7 @@ public sealed class RemoveDocumentCommandHandler(
             return loaded.ToFailure<ClaimDocumentDto>();
         }
 
-        var input = command.ToInput(loadedClaim.Value.State, clock.UtcNow);
+        var input = command.ToInput(loadedClaim.Value.State);
         var result = loaded.Value.Remove(input).ToResult();
 
         if (result.IsSuccess)

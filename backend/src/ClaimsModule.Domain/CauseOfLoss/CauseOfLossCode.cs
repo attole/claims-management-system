@@ -1,8 +1,9 @@
+using ClaimsModule.Domain.Common.Capabilities;
 using ClaimsModule.Domain.Common.Entities;
 
 namespace ClaimsModule.Domain.CauseOfLoss;
 
-public sealed class CauseOfLossCode : Entity
+public sealed class CauseOfLossCode : Entity, ISoftDeletable
 {
     private CauseOfLossCode()
     {
@@ -31,4 +32,6 @@ public sealed class CauseOfLossCode : Entity
     public PerilCategory PerilCategory { get; private set; } = PerilCategory.General;
 
     public bool IsActive { get; private set; } = false;
+
+    public bool IsDeleted { get; private set; } = false;
 }

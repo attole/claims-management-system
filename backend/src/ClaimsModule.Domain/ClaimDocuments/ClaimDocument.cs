@@ -40,8 +40,6 @@ public sealed class ClaimDocument : AggregateRoot, ISoftDeletable
 
     public bool IsDeleted { get; internal set; } = false;
 
-    public DateTimeOffset DeletedAt { get; internal set; } = DateTimeOffset.MinValue;
-
     public static Outcome<ClaimDocument> Upload(UploadClaimDocumentInput input)
     {
         return UploadClaimDocumentOperation.Run(input)

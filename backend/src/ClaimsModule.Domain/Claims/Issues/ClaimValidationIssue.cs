@@ -46,8 +46,6 @@ public sealed class ClaimValidationIssue : Entity, ISoftDeletable
 
     public bool IsDeleted { get; private set; } = false;
 
-    public DateTimeOffset DeletedAt { get; private set; } = DateTimeOffset.MinValue;
-
     internal Outcome<ClaimValidationIssue> Clear()
     {
         return ClearIssueOperation.Run(this, NoInput.Value)

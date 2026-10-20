@@ -30,8 +30,6 @@ public sealed class LossEvent : Entity, ISoftDeletable
 
     public bool IsDeleted { get; private set; } = false;
 
-    public DateTimeOffset DeletedAt { get; private set; } = DateTimeOffset.MinValue;
-
     internal Outcome<LossEvent> Update(LossDetailsInput input)
     {
         return UpdateLossDetailsOperation.Run(this, input);

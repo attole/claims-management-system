@@ -4,7 +4,6 @@ using ClaimsModule.Domain.ClaimDocuments.Inputs;
 using ClaimsModule.Domain.ClaimDocuments.Rules;
 using ClaimsModule.Domain.Claims;
 using ClaimsModule.Domain.Tests.Support.ClaimDocuments;
-using ClaimsModule.Domain.Tests.Support.Claims;
 
 namespace ClaimsModule.Domain.Tests.ClaimDocuments;
 
@@ -43,7 +42,7 @@ public sealed class ClaimDocumentTests
     public void Remove_RaisesOneRemovedEvent()
     {
         var document = TestDocuments.Upload();
-        var input = new RemoveClaimDocumentInput(new ClaimOpenState(), TestClaims.Later);
+        var input = new RemoveClaimDocumentInput(new ClaimOpenState());
 
         document.Remove(input);
 
@@ -57,7 +56,7 @@ public sealed class ClaimDocumentTests
     public void Remove_ARemovedDocument_ReturnsTheFindingAndRaisesNothing()
     {
         var document = TestDocuments.Upload();
-        var input = new RemoveClaimDocumentInput(new ClaimOpenState(), TestClaims.Later);
+        var input = new RemoveClaimDocumentInput(new ClaimOpenState());
         document.Remove(input);
         document.PopEvents();
 

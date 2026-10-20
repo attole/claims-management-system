@@ -31,7 +31,7 @@ public sealed class RemoveDocumentCommandTests
     {
         var claim = ApplicationClaims.Opened();
         var document = ApplicationDocuments.Uploaded(claim);
-        document.Remove(new RemoveClaimDocumentInput(claim.State, ClaimHandlerContext.Now));
+        document.Remove(new RemoveClaimDocumentInput(claim.State));
         var context = new ClaimHandlerContext().WithClaim(claim).WithDocument(document);
         var handler = CreateHandler(context);
         var command = new RemoveDocumentCommand(claim.Id, document.Id);
@@ -99,7 +99,6 @@ public sealed class RemoveDocumentCommandTests
             context.Claims,
             context.Documents,
             context.UnitOfWork,
-            context.Clock,
             context.Mapper);
     }
 }

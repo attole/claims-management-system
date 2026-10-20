@@ -2,7 +2,6 @@ using ClaimsModule.Domain.ClaimDocuments.Inputs;
 using ClaimsModule.Domain.ClaimDocuments.Rules;
 using ClaimsModule.Domain.Claims;
 using ClaimsModule.Domain.Tests.Support.ClaimDocuments;
-using ClaimsModule.Domain.Tests.Support.Claims;
 
 namespace ClaimsModule.Domain.Tests.ClaimDocuments.Rules;
 
@@ -25,7 +24,7 @@ public sealed class IsClaimDocumentNotRemovedTests
     public void Check_ForARemovedDocument_ReturnsTheFinding()
     {
         var document = TestDocuments.Upload();
-        document.Remove(new RemoveClaimDocumentInput(new ClaimOpenState(), TestClaims.Later));
+        document.Remove(new RemoveClaimDocumentInput(new ClaimOpenState()));
         var rule = new IsClaimDocumentNotRemoved();
 
         var result = rule.Check(document);

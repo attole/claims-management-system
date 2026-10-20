@@ -84,6 +84,6 @@ A background job sends an ordinary command (`DetectSlaBreachesCommand`, `ResendS
 ## Provides and expects
 
 - **Provides:** the commands, queries and DTOs, the `Result` type, the event dispatcher (`AddEvents`), the job commands (`DetectSlaBreachesCommand`, `ResendStalePostingsCommand` and the posting commands) and the ports below.
-- **Expects from Persistence:** `IClaimRepository`, `IReserveComponentRepository`, `IClaimDocumentRepository`, the readers (`IClaimReader`, `IClaimReserveReader`, `IPolicyReader`, `ICauseCodeReader`, `ISlaClaimReader`, `IAuditLogReader`), `IClaimNumberGenerator`, `IAuditLogService`, `IIdempotencyStore` and `IUnitOfWork`. See `docs/layers/persistence.md`.
+- **Expects from Persistence:** `IClaimRepository`, `IReserveComponentRepository`, `IClaimDocumentRepository`, the readers (`IClaimReader`, `IClaimReserveReader`, `IPolicyReader`, `ICauseCodeReader`, `ISlaClaimReader`, `IAuditLogReader`), `IClaimNumberGenerator`, `IAuditLogService`, `IIdempotencyStore` and `IUnitOfWork`. It translates EF save errors into `ConcurrencyConflictException`. See `docs/layers/persistence.md`.
 - **Expects from Infrastructure:** `IStorageService` and `IPostingScheduler`, and the jobs that send the job commands. See `docs/layers/infrastructure.md`.
 - **Expects from the API:** the clock, the current user and the correlation id (`IClock`, `ICurrentUser`, `ICorrelationContext`), the error mapping and the Idempotency-Key filter. See `docs/layers/api.md`.

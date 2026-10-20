@@ -1,8 +1,9 @@
+using ClaimsModule.Domain.Common.Capabilities;
 using ClaimsModule.Domain.Common.Entities;
 
 namespace ClaimsModule.Domain.Policies;
 
-public sealed class Policy : Entity
+public sealed class Policy : Entity, ISoftDeletable
 {
     private Policy()
     {
@@ -32,4 +33,6 @@ public sealed class Policy : Entity
     public PolicyPeriod Period { get; private set; }
 
     public IReadOnlyList<string> CoverageTypes { get; private set; } = [];
+
+    public bool IsDeleted { get; private set; } = false;
 }

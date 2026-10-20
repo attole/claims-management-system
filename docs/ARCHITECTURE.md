@@ -109,6 +109,11 @@ Table names are the spec's (section 9): `Claims`, `LossEvents`, `ClaimParties`, 
 | Reserve component status | an Active or Closed state that follows the claim | the spec gives the column but no rule |
 | History row (added columns) | the component type, the submission time and the posting failure reason | approval reads the type from the row; a review is checked against the submission; the tab shows why a posting failed |
 | Reserve review (changed) | who made the latest approval change, when and why, on the row instead of paired approved and rejected columns | a row is approved or rejected, never both |
+| Policy status | no column; the policy reader fills it from `PolicyPeriod.StatusOn(today)` | the specification seeds dates only, and a stored value would go stale at the end date with nothing to refresh it |
+| Soft delete on history | the state-change and reserve-history tables have no `IsDeleted` or `DeletedAt` and refuse a delete | history rows are never removed, so the history stays complete |
+| Deletion time | `DeletedAt` is a Persistence column stamped by the save interceptor; the Domain keeps only `IsDeleted` | no rule reads it |
+| Tables outside section 9 (added) | `ClaimIssues`, `ClaimStateChanges`, `PolicyCoverageTypes`, `ClaimNumberCounters`, `IdempotencyKeys` | stored issues, state-change history, a policy's coverage types, the atomic claim number and the Idempotency-Key store have no table in the specification |
+| Cause code sort order | a shadow column; the Domain holds no order | display order is a read concern |
 | Document soft delete (added) | `IsDeleted` and `DeletedAt` on the document | the spec lists no delete column |
 
 ### Decisions on gaps
@@ -132,6 +137,7 @@ Conditions and constants that no document states and that this repo added. Each 
 | Reserve | Claim limit | a change that does not increase the total passes the limit; one that would pass it is never auto-approved; the override cannot be removed while the total is over | CLAIM_OVERRIDE_STILL_NEEDED |
 | Reserve | Tiers | the auto-approval limit and the approval tiers compare the absolute amount; a handler may submit any amount and the row waits for an approver | S:BR-R-02 |
 | Reserve | Posting moves | posted, failed and retry need a job id; cancel has none | RESERVE_POSTING_JOB_REQUIRED |
+| Policy | Status | shown only: Active up to the effective end date (the earlier of expiry and cancellation), then Cancelled when a cancellation ended the cover, otherwise Expired; the date is an argument, the Domain reads no clock | none |
 | Read | Recent audit entries | the claim detail shows 10 | none |
 | Read | Page size cap | a page holds at most 100 rows | none |
 

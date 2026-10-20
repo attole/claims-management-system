@@ -1,6 +1,5 @@
 using ClaimsModule.Domain.ClaimDocuments.Inputs;
 using ClaimsModule.Domain.ClaimDocuments.Rules;
-using ClaimsModule.Domain.Common;
 using ClaimsModule.Domain.Core.Flows;
 
 namespace ClaimsModule.Domain.ClaimDocuments.Flows;
@@ -17,7 +16,6 @@ internal sealed class RemoveClaimDocumentOperation
     protected override Outcome<ClaimDocument> Apply(ClaimDocument document, RemoveClaimDocumentInput input)
     {
         document.IsDeleted = true;
-        document.DeletedAt = InputTime.NotBefore(input.Now, document.UploadedAt);
 
         return Done(document);
     }

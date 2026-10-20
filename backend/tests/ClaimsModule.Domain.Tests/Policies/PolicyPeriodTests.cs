@@ -56,6 +56,54 @@ public sealed class PolicyPeriodTests
         result.Should().BeFalse();
     }
 
+    [Theory]
+    [InlineData(2026, 1, 1)]
+    [InlineData(2026, 12, 31)]
+    public void StatusOn_ADayUpToTheExpiration_IsActive(int year, int month, int day)
+    {
+        var result = _period.StatusOn(new DateOnly(year, month, day));
+
+        result.Should().Be(PolicyStatus.Active);
+    }
+
+    [Fact]
+    public void StatusOn_ADayAfterTheExpiration_IsExpired()
+    {
+        var result = _period.StatusOn(new DateOnly(2027, 1, 1));
+
+        result.Should().Be(PolicyStatus.Expired);
+    }
+
+    [Fact]
+    public void StatusOn_ADayAfterAnEarlierCancellation_IsCancelled()
+    {
+        var cancelled = _period with { CancelledDate = new DateOnly(2026, 6, 30) };
+
+        var result = cancelled.StatusOn(new DateOnly(2026, 7, 1));
+
+        result.Should().Be(PolicyStatus.Cancelled);
+    }
+
+    [Fact]
+    public void StatusOn_TheCancellationDay_IsActive()
+    {
+        var cancelled = _period with { CancelledDate = new DateOnly(2026, 6, 30) };
+
+        var result = cancelled.StatusOn(new DateOnly(2026, 6, 30));
+
+        result.Should().Be(PolicyStatus.Active);
+    }
+
+    [Fact]
+    public void StatusOn_ACancellationAfterTheExpiration_IsExpired()
+    {
+        var cancelled = _period with { CancelledDate = new DateOnly(2027, 3, 1) };
+
+        var result = cancelled.StatusOn(new DateOnly(2027, 1, 1));
+
+        result.Should().Be(PolicyStatus.Expired);
+    }
+
     [Fact]
     public void Empty_IsNotSet()
     {

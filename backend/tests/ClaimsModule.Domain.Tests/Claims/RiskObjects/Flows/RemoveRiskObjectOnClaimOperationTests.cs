@@ -53,17 +53,4 @@ public sealed class RemoveRiskObjectOnClaimOperationTests
 
         outcome.CriticalFindings.Should().ContainSingle().Which.Code.Should().Be(IsClaimEditable.Code);
     }
-
-    [Fact]
-    public void Run_StampedBeforeTheClaimWasReported_Throws()
-    {
-        var claim = TestClaims.Create(TestClaims.Claimant());
-        var riskObject = claim.RiskObjects[0];
-        var earlier = TestClaims.Start.AddDays(-1);
-        var input = new RemoveRiskObjectInput(riskObject.Id, earlier, TestClaims.Period(), TestClaims.Codes());
-
-        Action act = () => RemoveRiskObjectOnClaimOperation.Run(claim, input);
-
-        act.Should().Throw<ArgumentOutOfRangeException>();
-    }
 }

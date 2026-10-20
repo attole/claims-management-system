@@ -26,15 +26,13 @@ public sealed class ClaimRiskObject : Entity, ISoftDeletable
 
     public bool IsDeleted { get; internal set; } = false;
 
-    public DateTimeOffset DeletedAt { get; internal set; } = DateTimeOffset.MinValue;
-
     internal Outcome<ClaimRiskObject> Update(RiskObjectDetailsInput input)
     {
         return UpdateRiskObjectOperation.Run(this, input);
     }
 
-    internal Outcome<ClaimRiskObject> Remove(RiskObjectRemovalInput input)
+    internal Outcome<ClaimRiskObject> Remove()
     {
-        return RemoveRiskObjectOperation.Run(this, input);
+        return RemoveRiskObjectOperation.Run(this, NoInput.Value);
     }
 }

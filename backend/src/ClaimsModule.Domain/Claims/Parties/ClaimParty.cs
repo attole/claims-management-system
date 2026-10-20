@@ -31,8 +31,6 @@ public sealed class ClaimParty : Entity, ISoftDeletable
 
     public bool IsDeleted { get; private set; } = false;
 
-    public DateTimeOffset DeletedAt { get; private set; } = DateTimeOffset.MinValue;
-
     internal Outcome<ClaimParty> Remove()
     {
         return RemovePartyOperation.Run(this, NoInput.Value)

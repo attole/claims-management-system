@@ -26,7 +26,7 @@ BOOL_PREFIX = re.compile(r"^_?(?:Is|Has|Can|Should|is|has|can|should)[A-Z]")
 BOOL_MEMBER = re.compile(
     r"^\s*(?:public|internal|protected|private)(?: (?:protected|internal|static|abstract|override|virtual|sealed|readonly|required|new))* bool (\w+)",
     re.M)
-BOOL_EXEMPT = {"Equals", "Authorize"}
+BOOL_EXEMPT = {"Equals", "Authorize", "ConvertsNulls"}
 TEST_METHOD = re.compile(r"\[(?:Fact|Theory)\](?:\s*\[[^\]]*\])*\s*public (?:async )?(?:void|Task) (\w+)\(")
 INTERFACE = re.compile(r"^\s*(?:public|internal)(?: partial)? interface (\w+)", re.M)
 ENTITY_SUBFOLDERS = {"Inputs", "Flows", "Events", "Rules"}

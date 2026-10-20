@@ -9,7 +9,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services
     .AddApplication()
-    .AddPersistence(builder.Configuration)
+    .AddPersistence()
     .AddInfrastructure()
     .AddJwt()
     .AddFrontendCors();
