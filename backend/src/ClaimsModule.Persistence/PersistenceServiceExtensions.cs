@@ -1,9 +1,12 @@
 using ClaimsModule.Application.Abstractions;
+using ClaimsModule.Application.Audit.Contracts;
 using ClaimsModule.Application.CauseOfLoss;
 using ClaimsModule.Application.ClaimDocuments.Contracts;
 using ClaimsModule.Application.Claims.Contracts;
 using ClaimsModule.Application.Policies;
 using ClaimsModule.Application.ReserveComponents.Contracts;
+using ClaimsModule.Persistence.Audit;
+using ClaimsModule.Persistence.ClaimNumbers;
 using ClaimsModule.Persistence.Interceptors;
 using ClaimsModule.Persistence.Readers;
 using ClaimsModule.Persistence.Repositories;
@@ -31,14 +34,17 @@ public static class PersistenceServiceExtensions
         services.AddScoped<ICauseCodeReader, CauseCodeReader>();
         services.AddScoped<IClaimReserveReader, ClaimReserveReader>();
         services.AddScoped<IClaimDocumentReader, ClaimDocumentReader>();
+        services.AddScoped<IClaimNumberGenerator, ClaimNumberGenerator>();
+        services.AddScoped<IAuditLogReader, AuditLogReader>();
+        services.AddScoped<IAuditLogService, AuditLogService>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
-        services.AddScoped<AuditSoftDeleteInterceptor>();
         services.AddDbContext<ClaimsDbContext>((provider, options) =>
         {
             var connectionString = provider.GetRequiredService<IOptions<PersistenceOptions>>().Value.ClaimsDb;
-            var interceptor = provider.GetRequiredService<AuditSoftDeleteInterceptor>();
+            var clock = provider.GetRequiredService<IClock>();
+            var currentUser = provider.GetRequiredService<ICurrentUser>();
 
-            options.UseSqlServer(connectionString).AddInterceptors(interceptor);
+            options.UseSqlServer(connectionString).AddInterceptors(SaveInterceptors.Create(clock, currentUser));
         });
 
         return services;

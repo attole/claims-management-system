@@ -1,5 +1,6 @@
 using ClaimsModule.Domain.Common.Entities;
 using ClaimsModule.Domain.ReserveComponents.History;
+using ClaimsModule.Persistence.Audit;
 using ClaimsModule.Persistence.Rows;
 using ClaimsModule.Persistence.Tests.Support;
 
@@ -42,6 +43,7 @@ public sealed class RootRelationshipExtensionsTests
         var result = context.Model.GetEntityTypes()
             .SelectMany(entityType => entityType.GetForeignKeys())
             .Where(key => typeof(AggregateRoot).IsAssignableFrom(key.PrincipalEntityType.ClrType))
+            .Where(key => key.DeclaringEntityType.ClrType != typeof(AuditLogEntry))
             .Where(key => !key.IsMarkedToModifyRoot())
             .ToList();
 

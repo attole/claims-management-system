@@ -1,9 +1,12 @@
 using ClaimsModule.Application.Abstractions;
+using ClaimsModule.Application.Audit.Contracts;
 using ClaimsModule.Application.CauseOfLoss;
 using ClaimsModule.Application.ClaimDocuments.Contracts;
 using ClaimsModule.Application.Claims.Contracts;
 using ClaimsModule.Application.Policies;
 using ClaimsModule.Application.ReserveComponents.Contracts;
+using ClaimsModule.Persistence.Audit;
+using ClaimsModule.Persistence.ClaimNumbers;
 using ClaimsModule.Persistence.Readers;
 using ClaimsModule.Persistence.Repositories;
 using Microsoft.Extensions.Configuration;
@@ -43,6 +46,9 @@ public sealed class PersistenceServiceExtensionsTests
     [InlineData(typeof(ICauseCodeReader), typeof(CauseCodeReader))]
     [InlineData(typeof(IClaimReserveReader), typeof(ClaimReserveReader))]
     [InlineData(typeof(IClaimDocumentReader), typeof(ClaimDocumentReader))]
+    [InlineData(typeof(IClaimNumberGenerator), typeof(ClaimNumberGenerator))]
+    [InlineData(typeof(IAuditLogReader), typeof(AuditLogReader))]
+    [InlineData(typeof(IAuditLogService), typeof(AuditLogService))]
     [InlineData(typeof(IUnitOfWork), typeof(UnitOfWork))]
     public void AddPersistence_Port_IsImplementedByThePersistenceClass(Type port, Type implementation)
     {

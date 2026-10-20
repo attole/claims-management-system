@@ -1,6 +1,8 @@
+using ClaimsModule.Domain.Common.Capabilities;
+
 namespace ClaimsModule.Persistence.Rows;
 
-internal sealed class ClaimListRow
+internal sealed class ClaimListRow : ITenantOwned
 {
     public Guid ClaimId { get; private set; } = Guid.Empty;
 

@@ -80,6 +80,26 @@ public sealed class UnitOfWorkTests
     }
 
     [Fact]
+    public async Task CommitAsync_BeforeHandlersKeepRaisingEvents_StopsWithAnError()
+    {
+        using var database = new TestDatabase();
+        using var context = database.CreateContext();
+        var created = 1;
+        var dispatcher = new Mock<IEventDispatcher>();
+        dispatcher
+            .Setup(source => source.DispatchBeforeCommitAsync(It.IsAny<IReadOnlyList<ExtendedEvent>>(), default))
+            .Callback(() => context.Claims.Add(TestClaims.Create(database, ++created)))
+            .Returns(Task.CompletedTask);
+        var unitOfWork = CreateUnitOfWork(database, context, dispatcher);
+        context.Claims.Add(TestClaims.Create(database));
+
+        Func<Task> act = () => unitOfWork.CommitAsync(CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        CountSaved(database).Should().Be(0);
+    }
+
+    [Fact]
     [Trait("Rule", "S:AUD-Correlation")]
     public async Task CommitAsync_Events_AreWrappedWithTheCommandContext()
     {
@@ -101,6 +121,39 @@ public sealed class UnitOfWorkTests
             && item.CorrelationId == _correlationId
             && item.OccurredAt == database.Now
             && item.EventId != Guid.Empty);
+    }
+
+    [Fact]
+    [Trait("Rule", "S:CLAIMNO-Atomic")]
+    public async Task CommitAsync_OpenTransaction_IsCommittedWithTheSave()
+    {
+        using var database = new TestDatabase();
+        using var context = database.CreateContext();
+        var unitOfWork = CreateUnitOfWork(database, context, new Mock<IEventDispatcher>());
+        await context.Database.BeginTransactionAsync();
+        context.Claims.Add(TestClaims.Create(database));
+
+        await unitOfWork.CommitAsync(CancellationToken.None);
+
+        context.Database.CurrentTransaction.Should().BeNull();
+        CountSaved(database).Should().Be(1);
+    }
+
+    [Fact]
+    [Trait("Rule", "S:CLAIMNO-Atomic")]
+    public async Task CommitAsync_SaveFails_LeavesTheTransactionUncommitted()
+    {
+        using var database = new TestDatabase();
+        using var context = database.CreateContext();
+        var unitOfWork = CreateUnitOfWork(database, context, new Mock<IEventDispatcher>());
+        await context.Database.BeginTransactionAsync();
+        context.ReserveComponents.Add(
+            TestReserves.Open(Ids.Next(), TestDatabase.OrganisationId, ReserveComponentTypeKind.Indemnity));
+
+        Func<Task> act = () => unitOfWork.CommitAsync(CancellationToken.None);
+
+        await act.Should().ThrowAsync<DbUpdateException>();
+        context.Database.CurrentTransaction.Should().NotBeNull();
     }
 
     [Fact]

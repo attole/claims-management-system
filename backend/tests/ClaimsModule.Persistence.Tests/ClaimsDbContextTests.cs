@@ -1,7 +1,6 @@
 using ClaimsModule.Domain.CauseOfLoss;
 using ClaimsModule.Domain.Common;
 using ClaimsModule.Domain.Common.Capabilities;
-using ClaimsModule.Domain.Common.Entities;
 using ClaimsModule.Domain.ReserveComponents;
 using ClaimsModule.Domain.ReserveComponents.History;
 using ClaimsModule.Persistence.Rows;
@@ -106,13 +105,13 @@ public sealed class ClaimsDbContextTests
 
     [Fact]
     [Trait("Rule", "S:DATA-Tenant")]
-    public void Model_EveryEntityTable_HasAQueryFilter()
+    public void Model_EveryTenantOwnedType_HasAQueryFilter()
     {
         using var database = new TestDatabase();
         using var context = database.CreateContext();
 
         var result = context.Model.GetEntityTypes()
-            .Where(entityType => typeof(Entity).IsAssignableFrom(entityType.ClrType))
+            .Where(entityType => typeof(ITenantOwned).IsAssignableFrom(entityType.ClrType))
             .Where(entityType => entityType.GetQueryFilter() is null)
             .ToList();
 

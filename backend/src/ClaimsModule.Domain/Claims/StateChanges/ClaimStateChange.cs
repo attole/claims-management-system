@@ -1,8 +1,9 @@
+using ClaimsModule.Domain.Common.Capabilities;
 using ClaimsModule.Domain.Common.Entities;
 
 namespace ClaimsModule.Domain.Claims.StateChanges;
 
-public sealed class ClaimStateChange : Entity
+public sealed class ClaimStateChange : Entity, IAppendOnly
 {
     private ClaimStateChange()
     {

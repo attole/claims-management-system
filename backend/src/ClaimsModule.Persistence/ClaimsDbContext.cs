@@ -6,6 +6,8 @@ using ClaimsModule.Domain.Common.Capabilities;
 using ClaimsModule.Domain.Common.Entities;
 using ClaimsModule.Domain.Policies;
 using ClaimsModule.Domain.ReserveComponents;
+using ClaimsModule.Persistence.Audit;
+using ClaimsModule.Persistence.ClaimNumbers;
 using ClaimsModule.Persistence.Configurations;
 using ClaimsModule.Persistence.Rows;
 using Microsoft.EntityFrameworkCore;
@@ -32,6 +34,8 @@ public sealed class ClaimsDbContext(DbContextOptions<ClaimsDbContext> options, I
 
     internal DbSet<PolicyCoverageType> PolicyCoverageTypes => Set<PolicyCoverageType>();
 
+    internal DbSet<AuditLogEntry> AuditLog => Set<AuditLogEntry>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfiguration(new ClaimConfiguration(this));
@@ -47,6 +51,8 @@ public sealed class ClaimsDbContext(DbContextOptions<ClaimsDbContext> options, I
         modelBuilder.ApplyConfiguration(new PolicyConfiguration(this));
         modelBuilder.ApplyConfiguration(new PolicyCoverageTypeConfiguration(this));
         modelBuilder.ApplyConfiguration(new CauseOfLossCodeConfiguration(this));
+        modelBuilder.ApplyConfiguration(new AuditLogEntryConfiguration(this));
+        modelBuilder.ApplyConfiguration(new ClaimNumberCounterConfiguration(this));
 
         ConfigureMoneyPrecision(modelBuilder);
 

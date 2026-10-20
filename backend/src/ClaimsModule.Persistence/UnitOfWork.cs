@@ -17,6 +17,7 @@ internal sealed class UnitOfWork(
 {
     private const int UniqueIndexViolation = 2601;
     private const int UniqueConstraintViolation = 2627;
+    private const int MaxDispatchPasses = 10;
 
     public async Task CommitAsync(CancellationToken cancellationToken)
     {
@@ -25,12 +26,14 @@ internal sealed class UnitOfWork(
         try
         {
             await context.SaveChangesAsync(cancellationToken);
+            await CommitTransactionAsync(cancellationToken);
         }
         catch (DbUpdateConcurrencyException exception)
         {
             throw new ConcurrencyConflictException("The data was changed by someone else.", exception);
         }
-        catch (DbUpdateException exception) when (IsUniqueViolation(exception))
+        catch (DbUpdateException exception)
+        when (exception.InnerException is SqlException { Number: UniqueIndexViolation or UniqueConstraintViolation })
         {
             throw new ConcurrencyConflictException("The data already exists.", exception);
         }
@@ -38,29 +41,34 @@ internal sealed class UnitOfWork(
         await dispatcher.DispatchAfterCommitAsync(extendedEvents, cancellationToken);
     }
 
-    private static bool IsUniqueViolation(DbUpdateException exception)
+    private async Task CommitTransactionAsync(CancellationToken cancellationToken)
     {
-        return exception.InnerException is SqlException { Number: UniqueIndexViolation or UniqueConstraintViolation };
+        var transaction = context.Database.CurrentTransaction;
+
+        if (transaction is not null)
+        {
+            await transaction.CommitAsync(cancellationToken);
+        }
     }
 
     private async Task<List<ExtendedEvent>> DispatchBeforeCommitAsync(CancellationToken cancellationToken)
     {
         List<ExtendedEvent> extendedEvents = [];
 
-        while (true)
+        for (int pass = 0; pass < MaxDispatchPasses; pass++)
         {
             var raised = PopExtendedEvents();
 
             if (raised.Count == 0)
             {
-                break;
+                return extendedEvents;
             }
 
             await dispatcher.DispatchBeforeCommitAsync(raised, cancellationToken);
             extendedEvents.AddRange(raised);
         }
 
-        return extendedEvents;
+        throw new InvalidOperationException("Event handling did not settle.");
     }
 
     private List<ExtendedEvent> PopExtendedEvents()

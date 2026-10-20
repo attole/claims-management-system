@@ -4,7 +4,8 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace ClaimsModule.Persistence.Configurations;
 
-internal sealed class ClaimListRowConfiguration(ClaimsDbContext context) : IEntityTypeConfiguration<ClaimListRow>
+internal sealed class ClaimListRowConfiguration(ClaimsDbContext context)
+    : TenantConfiguration<ClaimListRow>(context)
 {
     private const string ListSql = """
         SELECT claim.ClaimId, claim.OrganisationId, claim.ClaimNumber, claim.Status, claim.PolicyId,
@@ -18,11 +19,12 @@ internal sealed class ClaimListRowConfiguration(ClaimsDbContext context) : IEnti
         WHERE claim.IsDeleted = 0
         """;
 
-    public void Configure(EntityTypeBuilder<ClaimListRow> builder)
+    public override void Configure(EntityTypeBuilder<ClaimListRow> builder)
     {
+        base.Configure(builder);
+
         builder.HasNoKey();
         builder.ToSqlQuery(ListSql);
-        builder.HasQueryFilter(row => row.OrganisationId == context.CurrentOrganisationId);
         builder.Property(row => row.LossDate).IsRequired(false);
     }
 }

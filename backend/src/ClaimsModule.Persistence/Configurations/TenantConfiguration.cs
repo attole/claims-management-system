@@ -1,11 +1,11 @@
-using ClaimsModule.Domain.Common.Entities;
+using ClaimsModule.Domain.Common.Capabilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace ClaimsModule.Persistence.Configurations;
 
 internal abstract class TenantConfiguration<TEntity>(ClaimsDbContext context) : IEntityTypeConfiguration<TEntity>
-    where TEntity : Entity
+    where TEntity : class, ITenantOwned
 {
     public virtual void Configure(EntityTypeBuilder<TEntity> builder)
     {
