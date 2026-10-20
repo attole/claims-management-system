@@ -1,4 +1,6 @@
 using ClaimsModule.Domain.Common;
+using ClaimsModule.Domain.Common.Capabilities;
+using ClaimsModule.Domain.Common.Entities;
 using ClaimsModule.Persistence.Tests.Support;
 using ClaimsModule.Persistence.Tests.Support.CauseOfLoss;
 using Microsoft.EntityFrameworkCore;
@@ -98,6 +100,36 @@ public sealed class ClaimsDbContextTests
     }
 
     [Fact]
+    [Trait("Rule", "S:DATA-Tenant")]
+    public void Model_EveryEntityTable_HasAQueryFilter()
+    {
+        using var database = new TestDatabase();
+        using var context = database.CreateContext();
+
+        var result = context.Model.GetEntityTypes()
+            .Where(entityType => typeof(Entity).IsAssignableFrom(entityType.ClrType))
+            .Where(entityType => entityType.GetQueryFilter() is null)
+            .ToList();
+
+        result.Should().BeEmpty();
+    }
+
+    [Fact]
+    [Trait("Rule", "S:DATA-SoftDelete")]
+    public void Model_SoftDeletableEntityTable_FiltersTheDeleteFlag()
+    {
+        using var database = new TestDatabase();
+        using var context = database.CreateContext();
+
+        var result = context.Model.GetEntityTypes()
+            .Where(entityType => typeof(ISoftDeletable).IsAssignableFrom(entityType.ClrType))
+            .Where(entityType => !entityType.GetQueryFilter()!.ToString().Contains("IsDeleted"))
+            .ToList();
+
+        result.Should().BeEmpty();
+    }
+
+    [Fact]
     [Trait("Rule", "S:DATA-Naming")]
     public void Model_Tables_AreNamedAfterTheSpecification()
     {
@@ -105,6 +137,7 @@ public sealed class ClaimsDbContextTests
         using var context = database.CreateContext();
 
         var result = context.Model.GetEntityTypes()
+            .Where(entityType => entityType.GetSqlQuery() is null)
             .Select(entityType => entityType.GetTableName())
             .ToList();
 

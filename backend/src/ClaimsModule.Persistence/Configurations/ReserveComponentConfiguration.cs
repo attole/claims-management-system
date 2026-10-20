@@ -1,3 +1,4 @@
+using ClaimsModule.Domain.Claims;
 using ClaimsModule.Domain.ReserveComponents;
 using ClaimsModule.Persistence.Conventions;
 using ClaimsModule.Persistence.Converters;
@@ -23,6 +24,7 @@ internal sealed class ReserveComponentConfiguration : IEntityTypeConfiguration<R
             .HasConversion(new ClosedSetConverter<ReserveComponentState, ReserveComponentStateKind>(
                 ReserveComponentState.From))
             .HasMaxLength(50);
+        builder.HasOne<Claim>().WithMany().HasForeignKey(component => component.ClaimId).MarksRootModified();
         builder.HasMany(component => component.History)
             .WithOne()
             .HasForeignKey(history => history.ReserveComponentId)

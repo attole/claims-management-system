@@ -189,6 +189,34 @@ public sealed class ChangeClaimStatusCommandTests
     }
 
     [Fact]
+    public void Validate_WithAReasonCodeLongerThanTheColumn_FailsOnTheField()
+    {
+        var validator = new ChangeClaimStatusCommandValidator();
+        var command = new ChangeClaimStatusCommand(Guid.NewGuid(), ClaimStateKind.Withdrawn)
+        {
+            ReasonCode = new string('x', ClaimFieldLengths.ReasonCode + 1),
+        };
+
+        var result = validator.TestValidate(command);
+
+        result.ShouldHaveValidationErrorFor(request => request.ReasonCode);
+    }
+
+    [Fact]
+    public void Validate_WithAReasonTextLongerThanTheColumn_FailsOnTheField()
+    {
+        var validator = new ChangeClaimStatusCommandValidator();
+        var command = new ChangeClaimStatusCommand(Guid.NewGuid(), ClaimStateKind.Withdrawn)
+        {
+            ReasonText = new string('x', ClaimFieldLengths.ReasonText + 1),
+        };
+
+        var result = validator.TestValidate(command);
+
+        result.ShouldHaveValidationErrorFor(request => request.ReasonText);
+    }
+
+    [Fact]
     public void Validate_WithAnUnknownStatus_FailsOnTheField()
     {
         var validator = new ChangeClaimStatusCommandValidator();

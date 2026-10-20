@@ -1,7 +1,7 @@
-using ClaimsModule.Domain.Common;
 using ClaimsModule.Persistence.Readers;
 using ClaimsModule.Persistence.Tests.Support;
 using ClaimsModule.Persistence.Tests.Support.ClaimDocuments;
+using ClaimsModule.Persistence.Tests.Support.Claims;
 using ClaimsModule.Persistence.Tests.Support.Mapping;
 
 namespace ClaimsModule.Persistence.Tests.Readers;
@@ -12,13 +12,13 @@ public sealed class ClaimDocumentReaderTests
     public async Task ListAsync_Claim_ReturnsItsDocumentsOldestFirstWithTheirBlobPaths()
     {
         using var database = new TestDatabase();
-        var claimId = Ids.Next();
+        var claimId = TestClaims.Seed(database);
         using (var writer = database.CreateContext())
         {
             var organisationId = TestDatabase.OrganisationId;
             var later = TestDocuments.Upload(claimId, organisationId, "later.pdf", database.Now.AddDays(1));
             var first = TestDocuments.Upload(claimId, organisationId, "first.pdf", database.Now);
-            var other = TestDocuments.Upload(Ids.Next(), organisationId, "other.pdf", database.Now);
+            var other = TestDocuments.Upload(TestClaims.Seed(database, 2), organisationId, "other.pdf", database.Now);
             writer.ClaimDocuments.AddRange(later, first, other);
             writer.SaveChanges();
         }
@@ -36,7 +36,7 @@ public sealed class ClaimDocumentReaderTests
     public async Task ListAsync_RemovedDocument_IsNotListed()
     {
         using var database = new TestDatabase();
-        var claimId = Ids.Next();
+        var claimId = TestClaims.Seed(database);
         using var context = database.CreateContext();
         var document = TestDocuments.Upload(claimId, TestDatabase.OrganisationId, "a.pdf", database.Now);
         context.ClaimDocuments.Add(document);

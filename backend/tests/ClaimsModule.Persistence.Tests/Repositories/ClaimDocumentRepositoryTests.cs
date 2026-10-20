@@ -4,6 +4,7 @@ using ClaimsModule.Domain.Common;
 using ClaimsModule.Persistence.Repositories;
 using ClaimsModule.Persistence.Tests.Support;
 using ClaimsModule.Persistence.Tests.Support.ClaimDocuments;
+using ClaimsModule.Persistence.Tests.Support.Claims;
 using Microsoft.EntityFrameworkCore;
 
 namespace ClaimsModule.Persistence.Tests.Repositories;
@@ -27,7 +28,7 @@ public sealed class ClaimDocumentRepositoryTests
     public async Task GetAsync_DocumentOfTheClaim_ReturnsIt()
     {
         using var database = new TestDatabase();
-        var claimId = Ids.Next();
+        var claimId = TestClaims.Seed(database);
         var document = await SeedAsync(database, claimId);
         using var context = database.CreateContext();
         var repository = new ClaimDocumentRepository(context);
@@ -41,7 +42,7 @@ public sealed class ClaimDocumentRepositoryTests
     public async Task GetAsync_DocumentOfAnotherClaim_IsNotFound()
     {
         using var database = new TestDatabase();
-        var document = await SeedAsync(database, Ids.Next());
+        var document = await SeedAsync(database, TestClaims.Seed(database));
         using var context = database.CreateContext();
         var repository = new ClaimDocumentRepository(context);
 

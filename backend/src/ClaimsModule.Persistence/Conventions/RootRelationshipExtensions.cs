@@ -17,6 +17,16 @@ internal static class RootRelationshipExtensions
         return builder;
     }
 
+    public static ReferenceReferenceBuilder<TRoot, TRow> MarksRootModified<TRoot, TRow>(
+        this ReferenceReferenceBuilder<TRoot, TRow> builder)
+        where TRoot : class
+        where TRow : class
+    {
+        builder.Metadata.SetAnnotation(MarkerName, true);
+
+        return builder;
+    }
+
     public static bool IsMarkedToModifyRoot(this IReadOnlyForeignKey key)
     {
         bool isMarked = key.FindAnnotation(MarkerName) is not null;

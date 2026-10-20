@@ -1,6 +1,6 @@
-using ClaimsModule.Domain.Common;
 using ClaimsModule.Persistence.Tests.Support;
 using ClaimsModule.Persistence.Tests.Support.ClaimDocuments;
+using ClaimsModule.Persistence.Tests.Support.Claims;
 
 namespace ClaimsModule.Persistence.Tests.Configurations;
 
@@ -10,7 +10,7 @@ public sealed class ClaimDocumentConfigurationTests
     public void Configure_Document_ReadsBackItsDetails()
     {
         using var database = new TestDatabase();
-        var claimId = Ids.Next();
+        var claimId = TestClaims.Seed(database);
         using (var writer = database.CreateContext())
         {
             var document = TestDocuments.Upload(claimId, TestDatabase.OrganisationId, "a.pdf", database.Now);
@@ -34,7 +34,8 @@ public sealed class ClaimDocumentConfigurationTests
     {
         using var database = new TestDatabase();
         using var context = database.CreateContext();
-        var document = TestDocuments.Upload(Ids.Next(), TestDatabase.OrganisationId, "a.pdf", database.Now);
+        var claimId = TestClaims.Seed(database);
+        var document = TestDocuments.Upload(claimId, TestDatabase.OrganisationId, "a.pdf", database.Now);
         context.ClaimDocuments.Add(document);
         context.SaveChanges();
         context.ClaimDocuments.Remove(document);

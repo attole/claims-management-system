@@ -1,6 +1,6 @@
-using ClaimsModule.Domain.Common;
 using ClaimsModule.Domain.ReserveComponents;
 using ClaimsModule.Persistence.Tests.Support;
+using ClaimsModule.Persistence.Tests.Support.Claims;
 using ClaimsModule.Persistence.Tests.Support.ReserveComponents;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,7 +12,7 @@ public sealed class ReserveComponentConfigurationTests
     public void Configure_ComponentWithHistory_ReadsBackTheTypeStateAndRows()
     {
         using var database = new TestDatabase();
-        var claimId = Ids.Next();
+        var claimId = TestClaims.Seed(database);
         using (var writer = database.CreateContext())
         {
             var component = TestReserves.Open(claimId, TestDatabase.OrganisationId, ReserveComponentTypeKind.Expense);
@@ -40,7 +40,8 @@ public sealed class ReserveComponentConfigurationTests
     {
         using var database = new TestDatabase();
         using var context = database.CreateContext();
-        context.ReserveComponents.Add(TestReserves.Open(Ids.Next(), TestDatabase.OrganisationId, kind));
+        var claimId = TestClaims.Seed(database);
+        context.ReserveComponents.Add(TestReserves.Open(claimId, TestDatabase.OrganisationId, kind));
         context.SaveChanges();
 
         var result = context.Database
@@ -55,7 +56,8 @@ public sealed class ReserveComponentConfigurationTests
     {
         using var database = new TestDatabase();
         using var context = database.CreateContext();
-        var component = TestReserves.Open(Ids.Next(), TestDatabase.OrganisationId, ReserveComponentTypeKind.Alae);
+        var claimId = TestClaims.Seed(database);
+        var component = TestReserves.Open(claimId, TestDatabase.OrganisationId, ReserveComponentTypeKind.Alae);
         component.Close();
         context.ReserveComponents.Add(component);
         context.SaveChanges();

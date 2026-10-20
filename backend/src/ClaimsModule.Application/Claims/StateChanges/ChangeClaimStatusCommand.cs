@@ -31,6 +31,8 @@ public sealed class ChangeClaimStatusCommandValidator : AbstractValidator<Change
     {
         RuleFor(command => command.ClaimId).NotEmpty();
         RuleFor(command => command.TargetStatus).IsInEnum();
+        RuleFor(command => command.ReasonCode).MaximumLength(ClaimFieldLengths.ReasonCode);
+        RuleFor(command => command.ReasonText).MaximumLength(ClaimFieldLengths.ReasonText);
     }
 }
 

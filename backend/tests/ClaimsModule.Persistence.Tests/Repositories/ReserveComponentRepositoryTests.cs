@@ -3,6 +3,7 @@ using ClaimsModule.Domain.Common;
 using ClaimsModule.Domain.ReserveComponents;
 using ClaimsModule.Persistence.Repositories;
 using ClaimsModule.Persistence.Tests.Support;
+using ClaimsModule.Persistence.Tests.Support.Claims;
 using ClaimsModule.Persistence.Tests.Support.ReserveComponents;
 using Microsoft.EntityFrameworkCore;
 
@@ -27,7 +28,7 @@ public sealed class ReserveComponentRepositoryTests
     public async Task GetAsync_ComponentOfTheClaim_ReturnsItWithItsHistory()
     {
         using var database = new TestDatabase();
-        var claimId = Ids.Next();
+        var claimId = TestClaims.Seed(database);
         var component = await SeedAsync(database, claimId);
         using var context = database.CreateContext();
         var repository = new ReserveComponentRepository(context);
@@ -41,7 +42,7 @@ public sealed class ReserveComponentRepositoryTests
     public async Task GetAsync_ComponentOfAnotherClaim_IsNotFound()
     {
         using var database = new TestDatabase();
-        var component = await SeedAsync(database, Ids.Next());
+        var component = await SeedAsync(database, TestClaims.Seed(database));
         using var context = database.CreateContext();
         var repository = new ReserveComponentRepository(context);
 
@@ -54,7 +55,7 @@ public sealed class ReserveComponentRepositoryTests
     public async Task GetByHistoryAsync_RowOfTheClaim_ReturnsItsComponent()
     {
         using var database = new TestDatabase();
-        var claimId = Ids.Next();
+        var claimId = TestClaims.Seed(database);
         var component = await SeedAsync(database, claimId);
         using var context = database.CreateContext();
         var repository = new ReserveComponentRepository(context);
@@ -68,7 +69,7 @@ public sealed class ReserveComponentRepositoryTests
     public async Task GetByHistoryAsync_RowOfAnotherClaim_IsNotFound()
     {
         using var database = new TestDatabase();
-        var component = await SeedAsync(database, Ids.Next());
+        var component = await SeedAsync(database, TestClaims.Seed(database));
         using var context = database.CreateContext();
         var repository = new ReserveComponentRepository(context);
 
@@ -81,9 +82,9 @@ public sealed class ReserveComponentRepositoryTests
     public async Task ListByClaimAsync_Claim_ReturnsOnlyItsComponents()
     {
         using var database = new TestDatabase();
-        var claimId = Ids.Next();
+        var claimId = TestClaims.Seed(database);
         await SeedAsync(database, claimId);
-        await SeedAsync(database, Ids.Next());
+        await SeedAsync(database, TestClaims.Seed(database, 2));
         using var context = database.CreateContext();
         var repository = new ReserveComponentRepository(context);
 

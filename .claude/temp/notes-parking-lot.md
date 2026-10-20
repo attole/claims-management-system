@@ -16,3 +16,4 @@ NEXT: Frontend - build the three screens against the backend: errors surface to 
 NEXT: Deployment - the CI/CD pipeline and the Azure deployment; every outward action is confirmed first (CLAUDE.md 'Permissions model')
 NEXT: Docs - a final pass on README.md, docs/ARCHITECTURE.md and docs/AI-WORKFLOW.md, with the correction section generated from the journal, and the export of the conversation history
 NEXT: Persistence - add the SQL Server integration set (counter, concurrency, idempotency key, migration) after the Persistence packs; SQLite carries the tests until then (docs/layers/persistence.md)
+NEXT: replace the raw SQL of ClaimListRowConfiguration (keyless ToSqlQuery over Claims, LossEvents, Policies) with a mapped SQL view created in the migration pack; the SQL names tables and columns as strings and is untested on SQL Server

@@ -1,4 +1,7 @@
+using ClaimsModule.Application.CauseOfLoss;
 using ClaimsModule.Application.ClaimDocuments.Contracts;
+using ClaimsModule.Application.Claims.Contracts;
+using ClaimsModule.Application.Policies;
 using ClaimsModule.Application.ReserveComponents.Contracts;
 using ClaimsModule.Persistence.Interceptors;
 using ClaimsModule.Persistence.Readers;
@@ -19,8 +22,12 @@ public static class PersistenceServiceExtensions
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
+        services.AddScoped<IClaimRepository, ClaimRepository>();
         services.AddScoped<IReserveComponentRepository, ReserveComponentRepository>();
         services.AddScoped<IClaimDocumentRepository, ClaimDocumentRepository>();
+        services.AddScoped<IClaimReader, ClaimReader>();
+        services.AddScoped<IPolicyReader, PolicyReader>();
+        services.AddScoped<ICauseCodeReader, CauseCodeReader>();
         services.AddScoped<IClaimReserveReader, ClaimReserveReader>();
         services.AddScoped<IClaimDocumentReader, ClaimDocumentReader>();
         services.AddScoped<AuditSoftDeleteInterceptor>();

@@ -2,6 +2,7 @@ using System.Reflection;
 using ClaimsModule.Application.Abstractions;
 using ClaimsModule.Domain.CauseOfLoss;
 using ClaimsModule.Domain.ClaimDocuments;
+using ClaimsModule.Domain.Claims;
 using ClaimsModule.Domain.Common.Entities;
 using ClaimsModule.Domain.Policies;
 using ClaimsModule.Domain.ReserveComponents;
@@ -14,11 +15,9 @@ namespace ClaimsModule.Persistence;
 public sealed class ClaimsDbContext(DbContextOptions<ClaimsDbContext> options, ICurrentUser currentUser)
     : DbContext(options)
 {
-    private static readonly MethodInfo _tenantFilterMethod = FindMethod(nameof(ApplyTenantFilter));
-
-    private static readonly MethodInfo _softDeleteFilterMethod = FindMethod(nameof(ApplyTenantAndSoftDeleteFilter));
-
     public Guid CurrentOrganisationId => currentUser.OrganisationId;
+
+    public DbSet<Claim> Claims => Set<Claim>();
 
     public DbSet<Policy> Policies => Set<Policy>();
 
@@ -42,26 +41,25 @@ public sealed class ClaimsDbContext(DbContextOptions<ClaimsDbContext> options, I
         ApplyFilters(modelBuilder);
     }
 
-    private static MethodInfo FindMethod(string name)
-    {
-        return typeof(ClaimsDbContext).GetMethod(name, BindingFlags.Instance | BindingFlags.NonPublic)!;
-    }
-
     private void ApplyFilters(ModelBuilder modelBuilder)
     {
-        var tables = EntityTableConvention.FindEntityTables(modelBuilder);
-        var withSoftDelete = tables.Where(table => EntityTableConvention.HasSoftDelete(table));
-        var withoutSoftDelete = tables.Where(table => !EntityTableConvention.HasSoftDelete(table));
+        const BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
 
-        foreach (var table in withSoftDelete)
+        foreach (var table in EntityTableConvention.FindEntityTables(modelBuilder))
         {
-            _softDeleteFilterMethod.MakeGenericMethod(table.ClrType).Invoke(this, [modelBuilder]);
+            if (EntityTableConvention.HasSoftDelete(table))
+            {
+                var method = typeof(ClaimsDbContext).GetMethod(nameof(ApplyTenantAndSoftDeleteFilter), flags)!;
+                method.MakeGenericMethod(table.ClrType).Invoke(this, [modelBuilder]);
+            }
+            else
+            {
+                var method = typeof(ClaimsDbContext).GetMethod(nameof(ApplyTenantFilter), flags)!;
+                method.MakeGenericMethod(table.ClrType).Invoke(this, [modelBuilder]);
+            }
         }
 
-        foreach (var table in withoutSoftDelete)
-        {
-            _tenantFilterMethod.MakeGenericMethod(table.ClrType).Invoke(this, [modelBuilder]);
-        }
+        modelBuilder.Entity<ClaimListRow>().HasQueryFilter(row => row.OrganisationId == CurrentOrganisationId);
     }
 
     private void ApplyTenantFilter<TEntity>(ModelBuilder modelBuilder)

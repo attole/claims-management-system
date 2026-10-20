@@ -1,5 +1,7 @@
 using ClaimsModule.Application.ClaimDocuments;
 using ClaimsModule.Domain.ClaimDocuments;
+using ClaimsModule.Domain.Claims;
+using ClaimsModule.Persistence.Conventions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -29,6 +31,7 @@ internal sealed class ClaimDocumentConfiguration : IEntityTypeConfiguration<Clai
             details.Property(value => value.FileSizeBytes).HasColumnName("FileSizeBytes");
             details.Property(value => value.Notes).HasColumnName("Notes").HasMaxLength(DocumentFieldLengths.Notes);
         });
+        builder.HasOne<Claim>().WithMany().HasForeignKey(document => document.ClaimId).MarksRootModified();
         builder.HasIndex(document => document.ClaimId);
     }
 }

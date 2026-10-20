@@ -1,4 +1,7 @@
+using ClaimsModule.Application.CauseOfLoss;
 using ClaimsModule.Application.ClaimDocuments.Contracts;
+using ClaimsModule.Application.Claims.Contracts;
+using ClaimsModule.Application.Policies;
 using ClaimsModule.Application.ReserveComponents.Contracts;
 using ClaimsModule.Persistence.Readers;
 using ClaimsModule.Persistence.Repositories;
@@ -31,8 +34,12 @@ public sealed class PersistenceServiceExtensionsTests
     }
 
     [Theory]
+    [InlineData(typeof(IClaimRepository), typeof(ClaimRepository))]
     [InlineData(typeof(IReserveComponentRepository), typeof(ReserveComponentRepository))]
     [InlineData(typeof(IClaimDocumentRepository), typeof(ClaimDocumentRepository))]
+    [InlineData(typeof(IClaimReader), typeof(ClaimReader))]
+    [InlineData(typeof(IPolicyReader), typeof(PolicyReader))]
+    [InlineData(typeof(ICauseCodeReader), typeof(CauseCodeReader))]
     [InlineData(typeof(IClaimReserveReader), typeof(ClaimReserveReader))]
     [InlineData(typeof(IClaimDocumentReader), typeof(ClaimDocumentReader))]
     public void AddPersistence_Port_IsImplementedByThePersistenceClass(Type port, Type implementation)

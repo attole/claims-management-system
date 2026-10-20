@@ -78,4 +78,6 @@ public static class ClaimFieldLengths
     public const int AssetDescription = 500;
     public const int AssetReference = 255;
     public const int SearchText = 255;
+    public const int ReasonCode = 50;
+    public const int ReasonText = 500;
 }

@@ -2,6 +2,7 @@ using ClaimsModule.Domain.Common;
 using ClaimsModule.Domain.ReserveComponents;
 using ClaimsModule.Persistence.Readers;
 using ClaimsModule.Persistence.Tests.Support;
+using ClaimsModule.Persistence.Tests.Support.Claims;
 using ClaimsModule.Persistence.Tests.Support.Mapping;
 using ClaimsModule.Persistence.Tests.Support.ReserveComponents;
 
@@ -29,7 +30,7 @@ public sealed class ClaimReserveReaderTests
     public async Task GetFactsAsync_PendingRow_IsPendingButNotApproved()
     {
         using var database = new TestDatabase();
-        var claimId = Ids.Next();
+        var claimId = TestClaims.Seed(database);
         Seed(database, claimId, TestReserves.PendingAmount);
         using var context = database.CreateContext();
         var reader = new ClaimReserveReader(context, TestMapper.Create());
@@ -45,7 +46,7 @@ public sealed class ClaimReserveReaderTests
     public async Task GetFactsAsync_AutoApprovedRowNotPosted_IsApprovedUnpostedWithABalance()
     {
         using var database = new TestDatabase();
-        var claimId = Ids.Next();
+        var claimId = TestClaims.Seed(database);
         Seed(database, claimId, TestReserves.AutoApprovedAmount);
         using var context = database.CreateContext();
         var reader = new ClaimReserveReader(context, TestMapper.Create());
@@ -62,7 +63,7 @@ public sealed class ClaimReserveReaderTests
     public async Task GetFactsAsync_PostedRow_IsNotUnposted()
     {
         using var database = new TestDatabase();
-        var claimId = Ids.Next();
+        var claimId = TestClaims.Seed(database);
         Seed(database, claimId, TestReserves.AutoApprovedAmount, isPosted: true);
         using var context = database.CreateContext();
         var reader = new ClaimReserveReader(context, TestMapper.Create());
@@ -76,7 +77,7 @@ public sealed class ClaimReserveReaderTests
     public async Task GetReservesAsync_Claim_ReturnsTheComponentsHistoryAndTheApprovedTotal()
     {
         using var database = new TestDatabase();
-        var claimId = Ids.Next();
+        var claimId = TestClaims.Seed(database);
         Seed(database, claimId, TestReserves.AutoApprovedAmount);
         using var context = database.CreateContext();
         var reader = new ClaimReserveReader(context, TestMapper.Create());
@@ -96,10 +97,10 @@ public sealed class ClaimReserveReaderTests
     public async Task ListStalePendingPostingsAsync_ApprovedRowOlderThanTheLimit_IsListedAcrossOrganisations()
     {
         using var database = new TestDatabase();
-        var claimId = Ids.Next();
+        var claimId = TestClaims.Seed(database);
         var history = Seed(database, claimId, TestReserves.AutoApprovedAmount);
-        Seed(database, Ids.Next(), TestReserves.PendingAmount);
-        Seed(database, Ids.Next(), TestReserves.AutoApprovedAmount, isPosted: true);
+        Seed(database, TestClaims.Seed(database, 2), TestReserves.PendingAmount);
+        Seed(database, TestClaims.Seed(database, 3), TestReserves.AutoApprovedAmount, isPosted: true);
         using var context = database.CreateContext(Guid.Empty, Guid.Empty);
         var reader = new ClaimReserveReader(context, TestMapper.Create());
 
@@ -112,7 +113,7 @@ public sealed class ClaimReserveReaderTests
     public async Task ListStalePendingPostingsAsync_ApprovedRowNewerThanTheLimit_IsNotListed()
     {
         using var database = new TestDatabase();
-        Seed(database, Ids.Next(), TestReserves.AutoApprovedAmount);
+        Seed(database, TestClaims.Seed(database), TestReserves.AutoApprovedAmount);
         using var context = database.CreateContext(Guid.Empty, Guid.Empty);
         var reader = new ClaimReserveReader(context, TestMapper.Create());
 

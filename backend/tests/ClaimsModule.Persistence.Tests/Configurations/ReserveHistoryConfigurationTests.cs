@@ -1,7 +1,7 @@
-using ClaimsModule.Domain.Common;
 using ClaimsModule.Domain.ReserveComponents;
 using ClaimsModule.Domain.ReserveComponents.History;
 using ClaimsModule.Persistence.Tests.Support;
+using ClaimsModule.Persistence.Tests.Support.Claims;
 using ClaimsModule.Persistence.Tests.Support.ReserveComponents;
 
 namespace ClaimsModule.Persistence.Tests.Configurations;
@@ -13,7 +13,7 @@ public sealed class ReserveHistoryConfigurationTests
     public void Configure_AutoApprovedRow_ReadsBackEveryValue()
     {
         using var database = new TestDatabase();
-        var claimId = Ids.Next();
+        var claimId = TestClaims.Seed(database);
         ReserveHistory written;
         using (var writer = database.CreateContext())
         {
@@ -49,7 +49,7 @@ public sealed class ReserveHistoryConfigurationTests
         using (var writer = database.CreateContext())
         {
             var component = TestReserves.Open(
-                Ids.Next(),
+                TestClaims.Seed(database),
                 TestDatabase.OrganisationId,
                 ReserveComponentTypeKind.Indemnity);
             TestReserves.Submit(component, TestReserves.PendingAmount, database.Now);
@@ -75,7 +75,7 @@ public sealed class ReserveHistoryConfigurationTests
         using (var writer = database.CreateContext())
         {
             var component = TestReserves.Open(
-                Ids.Next(),
+                TestClaims.Seed(database),
                 TestDatabase.OrganisationId,
                 ReserveComponentTypeKind.Indemnity);
             var history = TestReserves.Submit(component, TestReserves.AutoApprovedAmount, database.Now);
@@ -98,7 +98,8 @@ public sealed class ReserveHistoryConfigurationTests
     {
         using var database = new TestDatabase();
         using var context = database.CreateContext();
-        var component = TestReserves.Open(Ids.Next(), TestDatabase.OrganisationId, ReserveComponentTypeKind.Indemnity);
+        var claimId = TestClaims.Seed(database);
+        var component = TestReserves.Open(claimId, TestDatabase.OrganisationId, ReserveComponentTypeKind.Indemnity);
         var history = TestReserves.Submit(component, TestReserves.AutoApprovedAmount, database.Now);
         context.ReserveComponents.Add(component);
         context.SaveChanges();
