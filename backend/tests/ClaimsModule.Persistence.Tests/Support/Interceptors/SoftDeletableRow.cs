@@ -1,7 +1,7 @@
 using ClaimsModule.Domain.Common.Capabilities;
 using ClaimsModule.Domain.Common.Entities;
 
-namespace ClaimsModule.Persistence.Tests.Support.Conventions;
+namespace ClaimsModule.Persistence.Tests.Support.Interceptors;
 
 internal sealed class SoftDeletableRow : Entity, ISoftDeletable
 {

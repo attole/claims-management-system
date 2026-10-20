@@ -1,6 +1,6 @@
-using ClaimsModule.Application.Events.Contracts;
 using ClaimsModule.Application.ReserveComponents.History.Handlers;
 using ClaimsModule.Application.Tests.Support.Claims;
+using ClaimsModule.Application.Tests.Support.Events;
 using ClaimsModule.Domain.ReserveComponents.History.Events;
 
 namespace ClaimsModule.Application.Tests.ReserveComponents.History.Handlers;
@@ -14,7 +14,7 @@ public sealed class ReservePostingRetriedHandlerTests
         var handler = new ReservePostingRetriedHandler(context.Scheduler);
         var domainEvent = CreateEvent("Failed", "Pending");
 
-        await handler.HandleAsync(domainEvent, CreateContext(domainEvent), CancellationToken.None);
+        await handler.HandleAsync(domainEvent, ExtendedEvents.For(domainEvent), CancellationToken.None);
 
         context.VerifyEnqueuedWithJobId("retry-token");
     }
@@ -29,7 +29,7 @@ public sealed class ReservePostingRetriedHandlerTests
         var handler = new ReservePostingRetriedHandler(context.Scheduler);
         var domainEvent = CreateEvent(from, to);
 
-        await handler.HandleAsync(domainEvent, CreateContext(domainEvent), CancellationToken.None);
+        await handler.HandleAsync(domainEvent, ExtendedEvents.For(domainEvent), CancellationToken.None);
 
         context.VerifyEnqueued(Times.Never());
     }
@@ -45,15 +45,5 @@ public sealed class ReservePostingRetriedHandlerTests
             "retry-token",
             string.Empty,
             100m);
-    }
-
-    private static EventContext CreateContext(ReserveHistoryPostingStateChangedEvent domainEvent)
-    {
-        return new EventContext(
-            Guid.NewGuid(),
-            ClaimHandlerContext.Now,
-            ClaimHandlerContext.UserId,
-            Guid.NewGuid(),
-            domainEvent);
     }
 }

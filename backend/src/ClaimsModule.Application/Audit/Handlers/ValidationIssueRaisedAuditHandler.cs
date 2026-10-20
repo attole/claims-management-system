@@ -10,7 +10,7 @@ public sealed class ValidationIssueRaisedAuditHandler(IAuditLogService audit)
 {
     public async Task HandleAsync(
         ValidationIssueRaisedEvent domainEvent,
-        EventContext context,
+        ExtendedEvent extendedEvent,
         CancellationToken cancellationToken)
     {
         var entry = new AuditEntry(
@@ -23,6 +23,6 @@ public sealed class ValidationIssueRaisedAuditHandler(IAuditLogService audit)
             RelatedEntityType = nameof(ClaimValidationIssue),
         };
 
-        await audit.WriteAsync(entry, context, cancellationToken);
+        await audit.WriteAsync(entry, extendedEvent, cancellationToken);
     }
 }

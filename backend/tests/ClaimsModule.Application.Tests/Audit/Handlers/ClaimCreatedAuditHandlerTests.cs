@@ -15,7 +15,7 @@ public sealed class ClaimCreatedAuditHandlerTests
         var handler = new ClaimCreatedAuditHandler(log);
         var domainEvent = new ClaimCreatedEvent(Guid.NewGuid(), "CLM-1");
 
-        await handler.HandleAsync(domainEvent, EventContexts.For(domainEvent), CancellationToken.None);
+        await handler.HandleAsync(domainEvent, ExtendedEvents.For(domainEvent), CancellationToken.None);
 
         var entry = log.Entries.Should().ContainSingle().Subject;
         entry.EventType.Should().Be(AuditEventTypes.ClaimCreated);

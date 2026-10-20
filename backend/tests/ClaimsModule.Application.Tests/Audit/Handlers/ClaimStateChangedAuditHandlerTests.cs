@@ -16,7 +16,7 @@ public sealed class ClaimStateChangedAuditHandlerTests
         var handler = new ClaimStateChangedAuditHandler(log);
         var domainEvent = CreateEvent("Draft", "Open");
 
-        await handler.HandleAsync(domainEvent, EventContexts.For(domainEvent), CancellationToken.None);
+        await handler.HandleAsync(domainEvent, ExtendedEvents.For(domainEvent), CancellationToken.None);
 
         var entry = log.Entries.Should().ContainSingle().Subject;
         entry.EventType.Should().Be(AuditEventTypes.StatusChanged);
@@ -36,7 +36,7 @@ public sealed class ClaimStateChangedAuditHandlerTests
         var handler = new ClaimStateChangedAuditHandler(log);
         var domainEvent = CreateEvent("Open", target);
 
-        await handler.HandleAsync(domainEvent, EventContexts.For(domainEvent), CancellationToken.None);
+        await handler.HandleAsync(domainEvent, ExtendedEvents.For(domainEvent), CancellationToken.None);
 
         log.Entries.Select(entry => entry.EventType).Should().Equal(AuditEventTypes.StatusChanged, eventType);
         log.Entries.Last().NewValue.Should().Contain("Duplicate");

@@ -5,10 +5,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace ClaimsModule.Persistence.Configurations;
 
-internal sealed class ClaimRiskObjectConfiguration : IEntityTypeConfiguration<ClaimRiskObject>
+internal sealed class ClaimRiskObjectConfiguration(ClaimsDbContext context)
+    : SoftDeleteConfiguration<ClaimRiskObject>(context)
 {
-    public void Configure(EntityTypeBuilder<ClaimRiskObject> builder)
+    public override void Configure(EntityTypeBuilder<ClaimRiskObject> builder)
     {
+        base.Configure(builder);
+
         builder.ToTable("ClaimRiskObjects");
         builder.HasKey(riskObject => riskObject.Id);
         builder.Property(riskObject => riskObject.Id).HasColumnName("ClaimRiskObjectId");

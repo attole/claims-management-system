@@ -10,7 +10,7 @@ public sealed class ReserveSubmittedAuditHandler(IAuditLogService audit)
 {
     public async Task HandleAsync(
         ReserveHistorySubmittedEvent domainEvent,
-        EventContext context,
+        ExtendedEvent extendedEvent,
         CancellationToken cancellationToken)
     {
         var entry = new AuditEntry(
@@ -23,6 +23,6 @@ public sealed class ReserveSubmittedAuditHandler(IAuditLogService audit)
             RelatedEntityType = nameof(ReserveHistory),
         };
 
-        await audit.WriteAsync(entry, context, cancellationToken);
+        await audit.WriteAsync(entry, extendedEvent, cancellationToken);
     }
 }

@@ -6,10 +6,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace ClaimsModule.Persistence.Configurations;
 
-internal sealed class ClaimPartyConfiguration : IEntityTypeConfiguration<ClaimParty>
+internal sealed class ClaimPartyConfiguration(ClaimsDbContext context)
+    : SoftDeleteConfiguration<ClaimParty>(context)
 {
-    public void Configure(EntityTypeBuilder<ClaimParty> builder)
+    public override void Configure(EntityTypeBuilder<ClaimParty> builder)
     {
+        base.Configure(builder);
+
         builder.ToTable("ClaimParties");
         builder.HasKey(party => party.Id);
         builder.Property(party => party.Id).HasColumnName("ClaimPartyId");

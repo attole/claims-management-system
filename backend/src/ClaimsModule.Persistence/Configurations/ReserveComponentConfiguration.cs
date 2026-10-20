@@ -1,16 +1,18 @@
 using ClaimsModule.Domain.Claims;
 using ClaimsModule.Domain.ReserveComponents;
-using ClaimsModule.Persistence.Conventions;
 using ClaimsModule.Persistence.Converters;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace ClaimsModule.Persistence.Configurations;
 
-internal sealed class ReserveComponentConfiguration : IEntityTypeConfiguration<ReserveComponent>
+internal sealed class ReserveComponentConfiguration(ClaimsDbContext context)
+    : SoftDeleteConfiguration<ReserveComponent>(context)
 {
-    public void Configure(EntityTypeBuilder<ReserveComponent> builder)
+    public override void Configure(EntityTypeBuilder<ReserveComponent> builder)
     {
+        base.Configure(builder);
+
         builder.ToTable("ClaimReserveComponents");
         builder.HasKey(component => component.Id);
         builder.Property(component => component.Id).HasColumnName("ReserveComponentId");

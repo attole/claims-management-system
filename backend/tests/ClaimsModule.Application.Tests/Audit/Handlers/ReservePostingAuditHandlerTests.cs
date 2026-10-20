@@ -17,7 +17,7 @@ public sealed class ReservePostingAuditHandlerTests
         var handler = new ReservePostingAuditHandler(log);
         var domainEvent = CreateEvent(target);
 
-        await handler.HandleAsync(domainEvent, EventContexts.For(domainEvent), CancellationToken.None);
+        await handler.HandleAsync(domainEvent, ExtendedEvents.For(domainEvent), CancellationToken.None);
 
         var entry = log.Entries.Should().ContainSingle().Subject;
         entry.EventType.Should().Be(eventType);
@@ -34,7 +34,7 @@ public sealed class ReservePostingAuditHandlerTests
         var handler = new ReservePostingAuditHandler(log);
         var domainEvent = CreateEvent(target);
 
-        await handler.HandleAsync(domainEvent, EventContexts.For(domainEvent), CancellationToken.None);
+        await handler.HandleAsync(domainEvent, ExtendedEvents.For(domainEvent), CancellationToken.None);
 
         log.Entries.Should().BeEmpty();
     }

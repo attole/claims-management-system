@@ -14,7 +14,7 @@ public sealed class ClaimStateChangedReserveComponentHandler(IReserveComponentRe
 
     public async Task HandleAsync(
         ClaimStateChangedEvent domainEvent,
-        EventContext context,
+        ExtendedEvent extendedEvent,
         CancellationToken cancellationToken)
     {
         var target = ClaimState.From(Enum.Parse<ClaimStateKind>(domainEvent.To));

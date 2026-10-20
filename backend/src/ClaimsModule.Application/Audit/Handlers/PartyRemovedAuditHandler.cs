@@ -9,7 +9,7 @@ public sealed class PartyRemovedAuditHandler(IAuditLogService audit) : IBeforeCo
 {
     public async Task HandleAsync(
         PartyRemovedEvent domainEvent,
-        EventContext context,
+        ExtendedEvent extendedEvent,
         CancellationToken cancellationToken)
     {
         var entry = new AuditEntry(
@@ -22,6 +22,6 @@ public sealed class PartyRemovedAuditHandler(IAuditLogService audit) : IBeforeCo
             RelatedEntityType = nameof(ClaimParty),
         };
 
-        await audit.WriteAsync(entry, context, cancellationToken);
+        await audit.WriteAsync(entry, extendedEvent, cancellationToken);
     }
 }

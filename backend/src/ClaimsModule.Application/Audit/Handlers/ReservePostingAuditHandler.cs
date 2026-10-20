@@ -16,14 +16,14 @@ public sealed class ReservePostingAuditHandler(IAuditLogService audit)
 
     public async Task HandleAsync(
         ReserveHistoryPostingStateChangedEvent domainEvent,
-        EventContext context,
+        ExtendedEvent extendedEvent,
         CancellationToken cancellationToken)
     {
         if (_eventTypesByTarget.TryGetValue(domainEvent.To, out var eventType))
         {
             var entry = CreateEntry(domainEvent, eventType);
 
-            await audit.WriteAsync(entry, context, cancellationToken);
+            await audit.WriteAsync(entry, extendedEvent, cancellationToken);
         }
     }
 

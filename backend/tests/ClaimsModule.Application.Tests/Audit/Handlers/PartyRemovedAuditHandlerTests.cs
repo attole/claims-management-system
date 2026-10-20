@@ -15,7 +15,7 @@ public sealed class PartyRemovedAuditHandlerTests
         var handler = new PartyRemovedAuditHandler(log);
         var domainEvent = new PartyRemovedEvent(Guid.NewGuid(), Guid.NewGuid(), "Witness");
 
-        await handler.HandleAsync(domainEvent, EventContexts.For(domainEvent), CancellationToken.None);
+        await handler.HandleAsync(domainEvent, ExtendedEvents.For(domainEvent), CancellationToken.None);
 
         var entry = log.Entries.Should().ContainSingle().Subject;
         entry.EventType.Should().Be(AuditEventTypes.PartyRemoved);

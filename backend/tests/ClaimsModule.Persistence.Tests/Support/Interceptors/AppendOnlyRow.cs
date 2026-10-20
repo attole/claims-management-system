@@ -1,6 +1,6 @@
 using ClaimsModule.Domain.Common.Entities;
 
-namespace ClaimsModule.Persistence.Tests.Support.Conventions;
+namespace ClaimsModule.Persistence.Tests.Support.Interceptors;
 
 internal sealed class AppendOnlyRow : Entity
 {

@@ -10,7 +10,7 @@ public sealed class ReserveApprovedPostingHandler(IPostingScheduler scheduler)
 {
     public async Task HandleAsync(
         ReserveHistoryApprovalStateChangedEvent domainEvent,
-        EventContext context,
+        ExtendedEvent extendedEvent,
         CancellationToken cancellationToken)
     {
         var target = ReserveApprovalState.From(Enum.Parse<ReserveApprovalStateKind>(domainEvent.To));

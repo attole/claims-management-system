@@ -1,9 +1,14 @@
+using ClaimsModule.Domain.CauseOfLoss;
 using ClaimsModule.Domain.Common;
 using ClaimsModule.Domain.Common.Capabilities;
 using ClaimsModule.Domain.Common.Entities;
+using ClaimsModule.Domain.ReserveComponents;
+using ClaimsModule.Domain.ReserveComponents.History;
+using ClaimsModule.Persistence.Rows;
 using ClaimsModule.Persistence.Tests.Support;
 using ClaimsModule.Persistence.Tests.Support.CauseOfLoss;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 
 namespace ClaimsModule.Persistence.Tests;
 
@@ -115,6 +120,36 @@ public sealed class ClaimsDbContextTests
     }
 
     [Fact]
+    [Trait("Rule", "S:DATA-Tenant")]
+    public void Model_ClaimListRow_HasAQueryFilter()
+    {
+        using var database = new TestDatabase();
+        using var context = database.CreateContext();
+
+        var result = context.Model.FindEntityType(typeof(ClaimListRow))!.GetQueryFilter();
+
+        result.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void Model_EveryConfigurationClass_IsApplied()
+    {
+        using var database = new TestDatabase();
+        using var context = database.CreateContext();
+
+        var result = typeof(ClaimsDbContext).Assembly.GetTypes()
+            .Where(type => !type.IsAbstract)
+            .SelectMany(type => type.GetInterfaces())
+            .Where(contract => contract.IsGenericType)
+            .Where(contract => contract.GetGenericTypeDefinition() == typeof(IEntityTypeConfiguration<>))
+            .Select(contract => contract.GetGenericArguments()[0])
+            .Where(entityType => context.Model.FindEntityType(entityType) is null)
+            .ToList();
+
+        result.Should().BeEmpty();
+    }
+
+    [Fact]
     [Trait("Rule", "S:DATA-SoftDelete")]
     public void Model_SoftDeletableEntityTable_FiltersTheDeleteFlag()
     {
@@ -172,5 +207,125 @@ public sealed class ClaimsDbContextTests
 
         result.Should().NotBeEmpty();
         result.Should().OnlyContain(property => property.GetPrecision() == 19 && property.GetScale() == 4);
+    }
+
+    [Theory]
+    [Trait("Rule", "S:DATA-AuditColumns")]
+    [InlineData("CreatedAt")]
+    [InlineData("UpdatedAt")]
+    [InlineData("UserCreated")]
+    [InlineData("UserModified")]
+    public void Model_EntityTable_AddsTheAuditColumns(string column)
+    {
+        using var database = new TestDatabase();
+        using var context = database.CreateContext();
+        var entityType = context.Model.FindEntityType(typeof(CauseOfLossCode))!;
+
+        var result = entityType.FindProperty(column);
+
+        result.Should().NotBeNull();
+    }
+
+    [Theory]
+    [Trait("Rule", "S:DATA-SoftDelete")]
+    [InlineData("IsDeleted")]
+    [InlineData("DeletedAt")]
+    public void Model_EntityTable_AddsTheSoftDeleteColumns(string column)
+    {
+        using var database = new TestDatabase();
+        using var context = database.CreateContext();
+        var entityType = context.Model.FindEntityType(typeof(CauseOfLossCode))!;
+
+        var result = entityType.FindProperty(column);
+
+        result.Should().NotBeNull();
+    }
+
+    [Fact]
+    [Trait("Rule", "S:DATA-EfConfig")]
+    public void Model_EntityTable_KeepsTheKeyClientGenerated()
+    {
+        using var database = new TestDatabase();
+        using var context = database.CreateContext();
+        var entityType = context.Model.FindEntityType(typeof(CauseOfLossCode))!;
+
+        var result = entityType.FindProperty("Id")!.ValueGenerated;
+
+        result.Should().Be(ValueGenerated.Never);
+    }
+
+    [Fact]
+    [Trait("Rule", "S:DATA-SoftDelete")]
+    public void Model_EntityWithoutTheSoftDeleteInterface_HasNoSoftDeleteColumns()
+    {
+        using var database = new TestDatabase();
+        using var context = database.CreateContext();
+        var entityType = context.Model.FindEntityType(typeof(ReserveHistory))!;
+
+        var result = entityType.GetProperties().Select(property => property.Name).ToList();
+
+        result.Should().NotContain(["IsDeleted", "DeletedAt"]);
+    }
+
+    [Fact]
+    [Trait("Rule", "S:DATA-EfConfig")]
+    public void Model_SqlServerKey_DefaultsToASequentialId()
+    {
+        var model = SqlServerModel.Create();
+        var key = model.FindEntityType(typeof(CauseOfLossCode))!.FindProperty("Id")!;
+
+        var result = key.GetDefaultValueSql();
+
+        result.Should().Be("NEWSEQUENTIALID()");
+    }
+
+    [Fact]
+    [Trait("Rule", "S:DATA-RowVer")]
+    public void Model_AggregateRoot_HasAConcurrencyToken()
+    {
+        using var database = new TestDatabase();
+        using var context = database.CreateContext();
+        var entityType = context.Model.FindEntityType(typeof(ReserveComponent))!;
+
+        var result = entityType.FindProperty("RowVer")!.IsConcurrencyToken;
+
+        result.Should().BeTrue();
+    }
+
+    [Fact]
+    [Trait("Rule", "S:DATA-RowVer")]
+    public void Model_EntityThatIsNotARoot_HasNoRowVersion()
+    {
+        using var database = new TestDatabase();
+        using var context = database.CreateContext();
+        var entityType = context.Model.FindEntityType(typeof(CauseOfLossCode))!;
+
+        var result = entityType.FindProperty("RowVer");
+
+        result.Should().BeNull();
+    }
+
+    [Fact]
+    [Trait("Rule", "S:DATA-RowVer")]
+    public void Model_SqlServerAggregateRoot_UsesARowVersionColumn()
+    {
+        var model = SqlServerModel.Create();
+        var rowVersion = model.FindEntityType(typeof(ReserveComponent))!.FindProperty("RowVer")!;
+
+        var result = rowVersion.GetColumnType();
+
+        result.Should().Be("rowversion");
+    }
+
+    [Fact]
+    [Trait("Rule", "S:DATA-Conventions")]
+    public void Model_SqlServerTimestamps_AreStoredAsDateTimeOffset()
+    {
+        var model = SqlServerModel.Create();
+        var createdAt = model.FindEntityType(typeof(CauseOfLossCode))!.FindProperty("CreatedAt")!;
+
+        var result = createdAt.GetColumnType();
+
+        result.Should().Be("datetimeoffset");
     }
 }

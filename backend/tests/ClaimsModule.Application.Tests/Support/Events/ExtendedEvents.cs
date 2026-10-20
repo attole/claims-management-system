@@ -4,11 +4,11 @@ using ClaimsModule.Domain.Common.Events;
 
 namespace ClaimsModule.Application.Tests.Support.Events;
 
-public static class EventContexts
+public static class ExtendedEvents
 {
-    public static EventContext For(DomainEvent domainEvent)
+    public static ExtendedEvent For(DomainEvent domainEvent)
     {
-        return new EventContext(
+        return new ExtendedEvent(
             Guid.NewGuid(),
             ClaimHandlerContext.Now,
             ClaimHandlerContext.UserId,

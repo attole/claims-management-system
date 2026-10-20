@@ -15,7 +15,7 @@ public sealed class PartyAddedAuditHandlerTests
         var handler = new PartyAddedAuditHandler(log);
         var domainEvent = new PartyAddedEvent(Guid.NewGuid(), Guid.NewGuid(), "Claimant");
 
-        await handler.HandleAsync(domainEvent, EventContexts.For(domainEvent), CancellationToken.None);
+        await handler.HandleAsync(domainEvent, ExtendedEvents.For(domainEvent), CancellationToken.None);
 
         var entry = log.Entries.Should().ContainSingle().Subject;
         entry.EventType.Should().Be(AuditEventTypes.PartyAdded);

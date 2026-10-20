@@ -4,10 +4,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace ClaimsModule.Persistence.Configurations;
 
-internal sealed class CauseOfLossCodeConfiguration : IEntityTypeConfiguration<CauseOfLossCode>
+internal sealed class CauseOfLossCodeConfiguration(ClaimsDbContext context)
+    : SoftDeleteConfiguration<CauseOfLossCode>(context)
 {
-    public void Configure(EntityTypeBuilder<CauseOfLossCode> builder)
+    public override void Configure(EntityTypeBuilder<CauseOfLossCode> builder)
     {
+        base.Configure(builder);
+
         builder.ToTable("CauseOfLossCodes");
         builder.HasKey(code => code.Id);
         builder.Property(code => code.Id).HasColumnName("CauseOfLossCodeId");

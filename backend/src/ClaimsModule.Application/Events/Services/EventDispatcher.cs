@@ -1,44 +1,39 @@
-using System.Reflection;
 using ClaimsModule.Application.Events.Contracts;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace ClaimsModule.Application.Events.Services;
 
-public sealed class EventDispatcher(IServiceProvider services) : IEventDispatcher
+public sealed class EventDispatcher(
+    IEnumerable<IBeforeCommitEventHandler> beforeCommitHandlers,
+    IEnumerable<IAfterCommitEventHandler> afterCommitHandlers) : IEventDispatcher
 {
-    private const string HandleMethodName = "HandleAsync";
-
     public async Task DispatchBeforeCommitAsync(
-        IReadOnlyList<EventContext> contexts,
+        IReadOnlyList<ExtendedEvent> extendedEvents,
         CancellationToken cancellationToken)
     {
-        await DispatchAsync(typeof(IBeforeCommitEventHandler<>), contexts, cancellationToken);
-    }
-
-    public async Task DispatchAfterCommitAsync(
-        IReadOnlyList<EventContext> contexts,
-        CancellationToken cancellationToken)
-    {
-        await DispatchAsync(typeof(IAfterCommitEventHandler<>), contexts, cancellationToken);
-    }
-
-    private async Task DispatchAsync(
-        Type contract,
-        IReadOnlyList<EventContext> contexts,
-        CancellationToken cancellationToken)
-    {
-        foreach (var context in contexts)
+        foreach (var extendedEvent in extendedEvents)
         {
-            var handlerType = contract.MakeGenericType(context.Event.GetType());
-            var handlers = services.GetServices(handlerType);
-            var method = handlerType.GetMethod(HandleMethodName)!;
+            var eventType = extendedEvent.Event.GetType();
+            var handlers = beforeCommitHandlers.Where(handler => handler.EventType == eventType);
 
             foreach (var handler in handlers)
             {
-                object[] arguments = [context.Event, context, cancellationToken];
-                var running = (Task)method.Invoke(handler, BindingFlags.DoNotWrapExceptions, null, arguments, null)!;
+                await handler.HandleAsync(extendedEvent, cancellationToken);
+            }
+        }
+    }
 
-                await running;
+    public async Task DispatchAfterCommitAsync(
+        IReadOnlyList<ExtendedEvent> extendedEvents,
+        CancellationToken cancellationToken)
+    {
+        foreach (var extendedEvent in extendedEvents)
+        {
+            var eventType = extendedEvent.Event.GetType();
+            var handlers = afterCommitHandlers.Where(handler => handler.EventType == eventType);
+
+            foreach (var handler in handlers)
+            {
+                await handler.HandleAsync(extendedEvent, cancellationToken);
             }
         }
     }

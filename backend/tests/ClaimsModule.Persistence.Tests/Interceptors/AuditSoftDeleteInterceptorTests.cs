@@ -4,7 +4,7 @@ using ClaimsModule.Domain.ReserveComponents;
 using ClaimsModule.Persistence.Tests.Support;
 using ClaimsModule.Persistence.Tests.Support.CauseOfLoss;
 using ClaimsModule.Persistence.Tests.Support.Claims;
-using ClaimsModule.Persistence.Tests.Support.Conventions;
+using ClaimsModule.Persistence.Tests.Support.Interceptors;
 using ClaimsModule.Persistence.Tests.Support.ReserveComponents;
 using Microsoft.EntityFrameworkCore;
 

@@ -4,10 +4,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace ClaimsModule.Persistence.Configurations;
 
-internal sealed class PolicyConfiguration : IEntityTypeConfiguration<Policy>
+internal sealed class PolicyConfiguration(ClaimsDbContext context)
+    : SoftDeleteConfiguration<Policy>(context)
 {
-    public void Configure(EntityTypeBuilder<Policy> builder)
+    public override void Configure(EntityTypeBuilder<Policy> builder)
     {
+        base.Configure(builder);
+
         builder.ToTable("Policies");
         builder.HasKey(policy => policy.Id);
         builder.Property(policy => policy.Id).HasColumnName("PolicyId");

@@ -15,7 +15,7 @@ public sealed class DocumentUploadedAuditHandlerTests
         var handler = new DocumentUploadedAuditHandler(log);
         var domainEvent = new ClaimDocumentUploadedEvent(Guid.NewGuid(), Guid.NewGuid(), "Report", "report.pdf");
 
-        await handler.HandleAsync(domainEvent, EventContexts.For(domainEvent), CancellationToken.None);
+        await handler.HandleAsync(domainEvent, ExtendedEvents.For(domainEvent), CancellationToken.None);
 
         var entry = log.Entries.Should().ContainSingle().Subject;
         entry.EventType.Should().Be(AuditEventTypes.DocumentUploaded);

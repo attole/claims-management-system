@@ -1,7 +1,7 @@
 using ClaimsModule.Application.Abstractions;
 using ClaimsModule.Domain.Common;
 using ClaimsModule.Persistence.Interceptors;
-using ClaimsModule.Persistence.Tests.Support.Conventions;
+using ClaimsModule.Persistence.Tests.Support.Interceptors;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 

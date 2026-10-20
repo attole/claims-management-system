@@ -1,16 +1,18 @@
 using ClaimsModule.Domain.Claims;
 using ClaimsModule.Domain.Claims.Loss;
-using ClaimsModule.Persistence.Conventions;
 using ClaimsModule.Persistence.Converters;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace ClaimsModule.Persistence.Configurations;
 
-internal sealed class ClaimConfiguration : IEntityTypeConfiguration<Claim>
+internal sealed class ClaimConfiguration(ClaimsDbContext context)
+    : SoftDeleteConfiguration<Claim>(context)
 {
-    public void Configure(EntityTypeBuilder<Claim> builder)
+    public override void Configure(EntityTypeBuilder<Claim> builder)
     {
+        base.Configure(builder);
+
         builder.ToTable("Claims");
         builder.HasKey(claim => claim.Id);
         builder.Property(claim => claim.Id).HasColumnName("ClaimId");

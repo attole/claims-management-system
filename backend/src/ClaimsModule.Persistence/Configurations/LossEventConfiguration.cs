@@ -6,10 +6,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace ClaimsModule.Persistence.Configurations;
 
-internal sealed class LossEventConfiguration : IEntityTypeConfiguration<LossEvent>
+internal sealed class LossEventConfiguration(ClaimsDbContext context)
+    : SoftDeleteConfiguration<LossEvent>(context)
 {
-    public void Configure(EntityTypeBuilder<LossEvent> builder)
+    public override void Configure(EntityTypeBuilder<LossEvent> builder)
     {
+        base.Configure(builder);
+
         builder.ToTable("LossEvents");
         builder.HasKey(loss => loss.Id);
         builder.Property(loss => loss.Id).HasColumnName("LossEventId");

@@ -1,6 +1,6 @@
-using ClaimsModule.Application.Events.Contracts;
 using ClaimsModule.Application.ReserveComponents.History.Handlers;
 using ClaimsModule.Application.Tests.Support.Claims;
+using ClaimsModule.Application.Tests.Support.Events;
 using ClaimsModule.Domain.ReserveComponents.History.Events;
 
 namespace ClaimsModule.Application.Tests.ReserveComponents.History.Handlers;
@@ -17,7 +17,7 @@ public sealed class ReserveApprovedPostingHandlerTests
         var handler = new ReserveApprovedPostingHandler(context.Scheduler);
         var domainEvent = CreateEvent("PendingApproval", target);
 
-        await handler.HandleAsync(domainEvent, CreateContext(domainEvent), CancellationToken.None);
+        await handler.HandleAsync(domainEvent, ExtendedEvents.For(domainEvent), CancellationToken.None);
 
         context.VerifyEnqueued(Times.Once());
     }
@@ -31,7 +31,7 @@ public sealed class ReserveApprovedPostingHandlerTests
         var handler = new ReserveApprovedPostingHandler(context.Scheduler);
         var domainEvent = CreateEvent("PendingApproval", target);
 
-        await handler.HandleAsync(domainEvent, CreateContext(domainEvent), CancellationToken.None);
+        await handler.HandleAsync(domainEvent, ExtendedEvents.For(domainEvent), CancellationToken.None);
 
         context.VerifyEnqueued(Times.Never());
     }
@@ -45,15 +45,5 @@ public sealed class ReserveApprovedPostingHandlerTests
             from,
             to,
             string.Empty);
-    }
-
-    private static EventContext CreateContext(ReserveHistoryApprovalStateChangedEvent domainEvent)
-    {
-        return new EventContext(
-            Guid.NewGuid(),
-            ClaimHandlerContext.Now,
-            ClaimHandlerContext.UserId,
-            Guid.NewGuid(),
-            domainEvent);
     }
 }

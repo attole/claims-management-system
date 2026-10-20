@@ -1,4 +1,4 @@
-namespace ClaimsModule.Persistence.Conventions;
+namespace ClaimsModule.Persistence;
 
 internal static class RowColumns
 {

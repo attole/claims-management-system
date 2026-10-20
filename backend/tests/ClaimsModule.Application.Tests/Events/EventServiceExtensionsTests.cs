@@ -7,8 +7,6 @@ using ClaimsModule.Application.Events.Services;
 using ClaimsModule.Application.ReserveComponents.Contracts;
 using ClaimsModule.Application.ReserveComponents.Handlers;
 using ClaimsModule.Application.ReserveComponents.History.Handlers;
-using ClaimsModule.Domain.Claims.Events;
-using ClaimsModule.Domain.ReserveComponents.History.Events;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace ClaimsModule.Application.Tests.Events;
@@ -21,7 +19,7 @@ public sealed class EventServiceExtensionsTests
     {
         var provider = CreateProvider();
 
-        var result = provider.GetServices<IBeforeCommitEventHandler<ClaimStateChangedEvent>>();
+        var result = provider.GetServices<IBeforeCommitEventHandler>();
 
         result.Should().Contain(handler => handler is ClaimStateChangedReserveComponentHandler);
     }
@@ -32,7 +30,7 @@ public sealed class EventServiceExtensionsTests
     {
         var provider = CreateProvider();
 
-        var result = provider.GetServices<IAfterCommitEventHandler<ReserveHistoryApprovalStateChangedEvent>>();
+        var result = provider.GetServices<IAfterCommitEventHandler>();
 
         result.Should().ContainSingle(handler => handler is ReserveApprovedPostingHandler);
     }
@@ -43,7 +41,7 @@ public sealed class EventServiceExtensionsTests
     {
         var provider = CreateProvider();
 
-        var result = provider.GetServices<IAfterCommitEventHandler<ReserveHistoryPostingStateChangedEvent>>();
+        var result = provider.GetServices<IAfterCommitEventHandler>();
 
         result.Should().ContainSingle(handler => handler is ReservePostingRetriedHandler);
     }
@@ -54,7 +52,7 @@ public sealed class EventServiceExtensionsTests
     {
         var provider = CreateProvider();
 
-        var result = provider.GetServices<IBeforeCommitEventHandler<ClaimStateChangedEvent>>();
+        var result = provider.GetServices<IBeforeCommitEventHandler>();
 
         result.Should().Contain(handler => handler is ClaimStateChangedAuditHandler);
     }

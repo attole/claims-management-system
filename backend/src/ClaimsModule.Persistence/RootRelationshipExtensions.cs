@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace ClaimsModule.Persistence.Conventions;
+namespace ClaimsModule.Persistence;
 
 internal static class RootRelationshipExtensions
 {

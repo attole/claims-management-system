@@ -7,10 +7,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace ClaimsModule.Persistence.Configurations;
 
-internal sealed class ReserveHistoryConfiguration : IEntityTypeConfiguration<ReserveHistory>
+internal sealed class ReserveHistoryConfiguration(ClaimsDbContext context)
+    : TenantConfiguration<ReserveHistory>(context)
 {
-    public void Configure(EntityTypeBuilder<ReserveHistory> builder)
+    public override void Configure(EntityTypeBuilder<ReserveHistory> builder)
     {
+        base.Configure(builder);
+
         builder.ToTable("ReserveHistory");
         builder.HasKey(history => history.Id);
         builder.Property(history => history.Id).HasColumnName("ReserveHistoryId");

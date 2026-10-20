@@ -1,16 +1,18 @@
 using ClaimsModule.Application.ClaimDocuments;
 using ClaimsModule.Domain.ClaimDocuments;
 using ClaimsModule.Domain.Claims;
-using ClaimsModule.Persistence.Conventions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace ClaimsModule.Persistence.Configurations;
 
-internal sealed class ClaimDocumentConfiguration : IEntityTypeConfiguration<ClaimDocument>
+internal sealed class ClaimDocumentConfiguration(ClaimsDbContext context)
+    : SoftDeleteConfiguration<ClaimDocument>(context)
 {
-    public void Configure(EntityTypeBuilder<ClaimDocument> builder)
+    public override void Configure(EntityTypeBuilder<ClaimDocument> builder)
     {
+        base.Configure(builder);
+
         builder.ToTable("ClaimDocuments");
         builder.HasKey(document => document.Id);
         builder.Property(document => document.Id).HasColumnName("ClaimDocumentId");

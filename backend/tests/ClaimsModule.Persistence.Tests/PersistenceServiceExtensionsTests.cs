@@ -1,3 +1,4 @@
+using ClaimsModule.Application.Abstractions;
 using ClaimsModule.Application.CauseOfLoss;
 using ClaimsModule.Application.ClaimDocuments.Contracts;
 using ClaimsModule.Application.Claims.Contracts;
@@ -42,6 +43,7 @@ public sealed class PersistenceServiceExtensionsTests
     [InlineData(typeof(ICauseCodeReader), typeof(CauseCodeReader))]
     [InlineData(typeof(IClaimReserveReader), typeof(ClaimReserveReader))]
     [InlineData(typeof(IClaimDocumentReader), typeof(ClaimDocumentReader))]
+    [InlineData(typeof(IUnitOfWork), typeof(UnitOfWork))]
     public void AddPersistence_Port_IsImplementedByThePersistenceClass(Type port, Type implementation)
     {
         var services = new ServiceCollection();

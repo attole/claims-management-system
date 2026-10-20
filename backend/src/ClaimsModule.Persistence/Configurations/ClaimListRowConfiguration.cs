@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace ClaimsModule.Persistence.Configurations;
 
-internal sealed class ClaimListRowConfiguration : IEntityTypeConfiguration<ClaimListRow>
+internal sealed class ClaimListRowConfiguration(ClaimsDbContext context) : IEntityTypeConfiguration<ClaimListRow>
 {
     private const string ListSql = """
         SELECT claim.ClaimId, claim.OrganisationId, claim.ClaimNumber, claim.Status, claim.PolicyId,
@@ -22,6 +22,7 @@ internal sealed class ClaimListRowConfiguration : IEntityTypeConfiguration<Claim
     {
         builder.HasNoKey();
         builder.ToSqlQuery(ListSql);
+        builder.HasQueryFilter(row => row.OrganisationId == context.CurrentOrganisationId);
         builder.Property(row => row.LossDate).IsRequired(false);
     }
 }

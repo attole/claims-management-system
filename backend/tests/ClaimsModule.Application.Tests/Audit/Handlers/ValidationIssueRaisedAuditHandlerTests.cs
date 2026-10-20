@@ -15,7 +15,7 @@ public sealed class ValidationIssueRaisedAuditHandlerTests
         var handler = new ValidationIssueRaisedAuditHandler(log);
         var domainEvent = new ValidationIssueRaisedEvent(Guid.NewGuid(), Guid.NewGuid(), "NO_PARTY", "Critical");
 
-        await handler.HandleAsync(domainEvent, EventContexts.For(domainEvent), CancellationToken.None);
+        await handler.HandleAsync(domainEvent, ExtendedEvents.For(domainEvent), CancellationToken.None);
 
         var entry = log.Entries.Should().ContainSingle().Subject;
         entry.EventType.Should().Be(AuditEventTypes.ValidationIssueAdded);

@@ -3,7 +3,7 @@ using ClaimsModule.Domain.Common.Events;
 
 namespace ClaimsModule.Application.Events.Contracts;
 
-public sealed record EventContext(
+public sealed record ExtendedEvent(
     Guid EventId,
     DateTimeOffset OccurredAt,
     Guid ActorId,

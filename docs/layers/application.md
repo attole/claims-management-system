@@ -62,7 +62,7 @@ Repository and reader interfaces are defined in the Application and implemented 
 
 ## Event handlers
 
-`IBeforeCommitEventHandler<TEvent>` runs in the same transaction (audit, components following the claim); `IAfterCommitEventHandler<TEvent>` runs after the commit (enqueue a job). They are registered by assembly scan (`AddEvents`, which also registers the dispatcher and the Unit of Work) and live in the feature's `Handlers/` folder. A handler reads the event context, not the Domain event alone, for the id, time, actor and correlation id. Audit handlers write through `IAuditLogService`, which takes an `AuditContext` (time, actor, correlation id); an `EventContext` is one.
+`IBeforeCommitEventHandler<TEvent>` runs in the same transaction (audit, components following the claim); `IAfterCommitEventHandler<TEvent>` runs after the commit (enqueue a job). A handler implements the generic interface for its one event and its typed `HandleAsync(TEvent, ExtendedEvent, CancellationToken)`. Each generic interface extends a non-generic one (`IBeforeCommitEventHandler`, in the same file) that carries `EventType` and `HandleAsync(ExtendedEvent, CancellationToken)`, with default implementations that return `typeof(TEvent)` and cast the event into the typed method. The dispatcher holds the non-generic handlers and calls only those whose `EventType` equals `extendedEvent.Event.GetType()`, so there is no reflection at dispatch and no event check in a handler. An event type with no handler is ignored, so a new event that must be audited needs its audit handler and test. Handlers are registered by assembly scan (`AddEvents`, which also registers the dispatcher) and live in the feature's `Handlers/` folder. A handler reads the extended event (`ExtendedEvent`), not the Domain event alone, for the id, time, actor and correlation id. Audit handlers write through `IAuditLogService`, which takes an `AuditContext` (time, actor, correlation id); an `ExtendedEvent` is one.
 
 ## Job commands
 
@@ -79,7 +79,7 @@ A background job sends an ordinary command (`DetectSlaBreachesCommand`, `ResendS
 - One test class per use-case file, `<UseCase>CommandTests` or `<UseCase>QueryTests`, holding its `Handle_...` and `Validate_...` tests; a request file has `<Request>Tests`; a mapping profile `<Profile>Tests`.
 - Handlers are tested against fakes: `ClaimHandlerContext` (writes) and `QueryContext` (reads) in `Support/Claims` build the Moq readers and repositories, with `With...` methods for the arranged data and `Verify...` methods for the effects.
 - A handler test covers the success path with what it stores or commits, the not-found path and one refusal asserted by its rule code with `[Trait("Rule", ...)]`; a validator test covers one failing case per rule. Domain rules are not retested.
-- Real Domain outcomes build the arranged state (`ApplicationClaims`, `ApplicationReserves`, `ApplicationDocuments`), never private state. `Support/Events` holds `EventContexts` and `RecordingAuditLog` for the event and audit handler tests.
+- Real Domain outcomes build the arranged state (`ApplicationClaims`, `ApplicationReserves`, `ApplicationDocuments`), never private state. `Support/Events` holds `ExtendedEvents` and `RecordingAuditLog` for the event and audit handler tests.
 
 ## Provides and expects
 

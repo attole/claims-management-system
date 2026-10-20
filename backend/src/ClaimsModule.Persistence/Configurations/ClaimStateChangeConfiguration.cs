@@ -7,10 +7,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace ClaimsModule.Persistence.Configurations;
 
-internal sealed class ClaimStateChangeConfiguration : IEntityTypeConfiguration<ClaimStateChange>
+internal sealed class ClaimStateChangeConfiguration(ClaimsDbContext context)
+    : TenantConfiguration<ClaimStateChange>(context)
 {
-    public void Configure(EntityTypeBuilder<ClaimStateChange> builder)
+    public override void Configure(EntityTypeBuilder<ClaimStateChange> builder)
     {
+        base.Configure(builder);
+
         builder.ToTable("ClaimStateChanges");
         builder.HasKey(stateChange => stateChange.Id);
         builder.Property(stateChange => stateChange.Id).HasColumnName("ClaimStateChangeId");

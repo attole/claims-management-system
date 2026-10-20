@@ -1,3 +1,4 @@
+using ClaimsModule.Application.Abstractions;
 using ClaimsModule.Application.CauseOfLoss;
 using ClaimsModule.Application.ClaimDocuments.Contracts;
 using ClaimsModule.Application.Claims.Contracts;
@@ -30,6 +31,7 @@ public static class PersistenceServiceExtensions
         services.AddScoped<ICauseCodeReader, CauseCodeReader>();
         services.AddScoped<IClaimReserveReader, ClaimReserveReader>();
         services.AddScoped<IClaimDocumentReader, ClaimDocumentReader>();
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<AuditSoftDeleteInterceptor>();
         services.AddDbContext<ClaimsDbContext>((provider, options) =>
         {

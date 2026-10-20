@@ -5,10 +5,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace ClaimsModule.Persistence.Configurations;
 
-internal sealed class PolicyCoverageTypeConfiguration : IEntityTypeConfiguration<PolicyCoverageType>
+internal sealed class PolicyCoverageTypeConfiguration(ClaimsDbContext context)
+    : TenantConfiguration<PolicyCoverageType>(context)
 {
-    public void Configure(EntityTypeBuilder<PolicyCoverageType> builder)
+    public override void Configure(EntityTypeBuilder<PolicyCoverageType> builder)
     {
+        base.Configure(builder);
+
         builder.ToTable("PolicyCoverageTypes");
         builder.HasKey(coverageType => coverageType.Id);
         builder.Property(coverageType => coverageType.Id).HasColumnName("PolicyCoverageTypeId");

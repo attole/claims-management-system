@@ -1,6 +1,6 @@
 using ClaimsModule.Application.Abstractions;
+using ClaimsModule.Domain.Common.Capabilities;
 using ClaimsModule.Domain.Common.Entities;
-using ClaimsModule.Persistence.Conventions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -45,7 +45,7 @@ internal sealed class AuditSoftDeleteInterceptor(IClock clock, ICurrentUser curr
 
         foreach (var entry in entries)
         {
-            bool hasSoftDelete = EntityTableConvention.HasSoftDelete(entry.Metadata);
+            bool hasSoftDelete = entry.Entity is ISoftDeletable;
 
             if (entry.State == EntityState.Added)
             {

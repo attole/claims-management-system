@@ -2,7 +2,7 @@
 
 Rules and contracts of Persistence: schema conventions, how the Domain is mapped, the save interceptor, the Unit of Work, readers and repositories, and migrations. It implements the ports the Application defines (`docs/layers/application.md` 'Provides and expects'). `.claude/CLAUDE.md` holds the short rules and points here; read this file before changing the Persistence project or reviewing its code. The schema departures from the specification and their reasons are in `docs/ARCHITECTURE.md` 'Schema departures from the spec'.
 
-Status: built and tested: the context, the model-wide conventions (including `RowVer`), the filters, the converters, the save interceptor with the root touch, every entity mapping (claim and its children, policy, cause of loss, reserves, documents), the claim, reserve and document repositories, and the claim, policy, cause-code, reserve and document readers. Not built: the claim number generator, the Unit of Work, the audit and idempotency stores, the SLA reader and the migration. Points marked (spiked) were checked in a throwaway EF Core 9 spike outside the repo (SQL Server provider for the model and script, SQLite in memory for round trips); points marked (not verified) need a real-database check when they are written. Open questions are in `.claude/temp/notes-parking-lot.md`.
+Status: built and tested: the context, the model-wide conventions (including `RowVer`), the filters, the converters, the save interceptor with the root touch, every entity mapping (claim and its children, policy, cause of loss, reserves, documents), the claim, reserve and document repositories, the claim, policy, cause-code, reserve and document readers, and the Unit of Work. Not built: the claim number generator, the audit and idempotency stores, the SLA reader and the migration. Points marked (spiked) were checked in a throwaway EF Core 9 spike outside the repo (SQL Server provider for the model and script, SQLite in memory for round trips); points marked (not verified) need a real-database check when they are written. Open questions are in `.claude/temp/notes-parking-lot.md`.
 
 ## Layout
 
@@ -20,7 +20,7 @@ Status: built and tested: the context, the model-wide conventions (including `Ro
 - Aggregate roots (the claim, the reserve component, the document) carry a `RowVer` concurrency token.
 - A Draft claim may be incomplete: the loss date column is nullable and the cause code has no foreign key (see `docs/ARCHITECTURE.md` 'Schema departures from the spec').
 - The audit log has no update or delete permission in the application, and an index by claim and event type for the SLA dedupe lookup.
-- One `ClaimsDbContext` serves every repository, reader and service, so one save covers a command. A model-wide convention (not a per-entity line) adds the tenant and soft-delete filters, the audit shadow columns, the soft-delete columns (for `ISoftDeletable` entities only) and the key default to every `Entity`.
+- One `ClaimsDbContext` serves every repository, reader and service, so one save covers a command. A model-wide convention adds the audit shadow columns, the soft-delete columns (for `ISoftDeletable` entities only) and the key default to every `Entity`. The query filters come from two base classes: a configuration derives from `TenantConfiguration<T>`, or from `SoftDeleteConfiguration<T>` when its entity is soft-deletable, and its `Configure` override starts with `base.Configure(builder)`, which applies the filter (a test fails when an entity has no filter, so a forgotten call is caught). A configuration takes the `ClaimsDbContext` in its constructor, so `ClaimsDbContext.ApplyConfigurations` registers each one by hand; a test fails when a configuration is not applied or an entity has no filter. The filter must read `CurrentOrganisationId` through the context (spiked: EF re-binds it per context instance), never a Guid value taken at model build, which the cached model would freeze for every later request.
 - The tenant filter reads the organisation of `ICurrentUser`. A job has no user, so the filter must see an empty organisation and not throw, and job readers bypass it on purpose (`IgnoreQueryFilters` with the soft-delete test written out).
 - The coverage types of a policy are a child table (`PolicyCoverageTypes`, one row per type), not a JSON column.
 - `CauseOfLossCodes` carries a `SortOrder` shadow column for the display order; the Domain has no order.
@@ -50,14 +50,14 @@ Status: built and tested: the context, the model-wide conventions (including `Ro
 One `UnitOfWork` class implements `IUnitOfWork` over the `DbContext`:
 
 1. Pop the events of every tracked entity, roots and children (`ChangeTracker.Entries<Entity>()`).
-2. Wrap each in an `EventContext` (new `Ids.Next()`, clock time, current user id, correlation id).
+2. Wrap each in an `ExtendedEvent` (new `Ids.Next()`, clock time, current user id, correlation id).
 3. Run the before-commit handlers; they can raise more events, so repeat until no new event appears.
 4. Save once.
 5. Run the after-commit handlers.
 
 Tests against EF cover the order (before, save, after), the repeat until empty, the context fields, and no save when a before-commit handler throws. Idempotency completion is its own save, not part of the command transaction.
 
-**Save errors:** the Unit of Work catches `DbUpdateConcurrencyException` and a unique-index `DbUpdateException` and throws the Application's `ConcurrencyConflictException`, so the Application never sees an EF type. The API middleware maps it to 409 (`docs/layers/api.md` 'Errors'). Nothing else is caught.
+**Save errors:** the Unit of Work catches `DbUpdateConcurrencyException` and a unique-index `DbUpdateException` and throws the Application's `ConcurrencyConflictException`, so the Application never sees an EF type. The API middleware maps it to 409 (`docs/layers/api.md` 'Errors'). Nothing else is caught. The unique-index test reads the SQL Server error numbers 2601 and 2627, so the duplicate-key translation is not verified on SQLite (not verified: it needs the SQL Server test set); the concurrency translation is tested through a row removed by another writer, because `RowVer` does not change on SQLite.
 
 ## Readers and repositories
 

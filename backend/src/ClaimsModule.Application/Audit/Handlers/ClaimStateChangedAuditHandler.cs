@@ -16,18 +16,18 @@ public sealed class ClaimStateChangedAuditHandler(IAuditLogService audit)
 
     public async Task HandleAsync(
         ClaimStateChangedEvent domainEvent,
-        EventContext context,
+        ExtendedEvent extendedEvent,
         CancellationToken cancellationToken)
     {
         var changed = CreateEntry(domainEvent, AuditEventTypes.StatusChanged);
 
-        await audit.WriteAsync(changed, context, cancellationToken);
+        await audit.WriteAsync(changed, extendedEvent, cancellationToken);
 
         if (_eventTypesByTarget.TryGetValue(domainEvent.To, out var eventType))
         {
             var specific = CreateEntry(domainEvent, eventType);
 
-            await audit.WriteAsync(specific, context, cancellationToken);
+            await audit.WriteAsync(specific, extendedEvent, cancellationToken);
         }
     }
 

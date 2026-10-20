@@ -10,7 +10,7 @@ public sealed class ReservePostingRetriedHandler(IPostingScheduler scheduler)
 {
     public async Task HandleAsync(
         ReserveHistoryPostingStateChangedEvent domainEvent,
-        EventContext context,
+        ExtendedEvent extendedEvent,
         CancellationToken cancellationToken)
     {
         var from = Enum.Parse<ReservePostingStateKind>(domainEvent.From);

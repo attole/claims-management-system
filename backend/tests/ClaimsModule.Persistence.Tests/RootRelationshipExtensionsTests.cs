@@ -1,10 +1,9 @@
 using ClaimsModule.Domain.Common.Entities;
 using ClaimsModule.Domain.ReserveComponents.History;
-using ClaimsModule.Persistence.Conventions;
 using ClaimsModule.Persistence.Rows;
 using ClaimsModule.Persistence.Tests.Support;
 
-namespace ClaimsModule.Persistence.Tests.Conventions;
+namespace ClaimsModule.Persistence.Tests;
 
 public sealed class RootRelationshipExtensionsTests
 {

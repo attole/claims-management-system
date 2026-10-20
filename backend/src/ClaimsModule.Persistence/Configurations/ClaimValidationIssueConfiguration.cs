@@ -5,10 +5,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace ClaimsModule.Persistence.Configurations;
 
-internal sealed class ClaimValidationIssueConfiguration : IEntityTypeConfiguration<ClaimValidationIssue>
+internal sealed class ClaimValidationIssueConfiguration(ClaimsDbContext context)
+    : SoftDeleteConfiguration<ClaimValidationIssue>(context)
 {
-    public void Configure(EntityTypeBuilder<ClaimValidationIssue> builder)
+    public override void Configure(EntityTypeBuilder<ClaimValidationIssue> builder)
     {
+        base.Configure(builder);
+
         builder.ToTable("ClaimIssues");
         builder.HasKey(issue => issue.Id);
         builder.Property(issue => issue.Id).HasColumnName("ClaimIssueId");

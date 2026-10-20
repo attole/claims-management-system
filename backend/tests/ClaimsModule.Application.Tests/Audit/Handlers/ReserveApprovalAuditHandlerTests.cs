@@ -19,7 +19,7 @@ public sealed class ReserveApprovalAuditHandlerTests
         var handler = new ReserveApprovalAuditHandler(log);
         var domainEvent = CreateEvent(target);
 
-        await handler.HandleAsync(domainEvent, EventContexts.For(domainEvent), CancellationToken.None);
+        await handler.HandleAsync(domainEvent, ExtendedEvents.For(domainEvent), CancellationToken.None);
 
         var entry = log.Entries.Should().ContainSingle().Subject;
         entry.EventType.Should().Be(eventType);
@@ -34,7 +34,7 @@ public sealed class ReserveApprovalAuditHandlerTests
         var handler = new ReserveApprovalAuditHandler(log);
         var domainEvent = CreateEvent("Rejected");
 
-        await handler.HandleAsync(domainEvent, EventContexts.For(domainEvent), CancellationToken.None);
+        await handler.HandleAsync(domainEvent, ExtendedEvents.For(domainEvent), CancellationToken.None);
 
         log.Entries.Single().OldValue.Should().Contain("Too high");
     }
@@ -47,7 +47,7 @@ public sealed class ReserveApprovalAuditHandlerTests
         var handler = new ReserveApprovalAuditHandler(log);
         var domainEvent = CreateEvent("Approved");
 
-        await handler.HandleAsync(domainEvent, EventContexts.For(domainEvent), CancellationToken.None);
+        await handler.HandleAsync(domainEvent, ExtendedEvents.For(domainEvent), CancellationToken.None);
 
         log.Entries.Single().NewValue.Should().Contain("Too high");
     }
@@ -60,7 +60,7 @@ public sealed class ReserveApprovalAuditHandlerTests
         var handler = new ReserveApprovalAuditHandler(log);
         var domainEvent = CreateEvent("PendingApproval");
 
-        await handler.HandleAsync(domainEvent, EventContexts.For(domainEvent), CancellationToken.None);
+        await handler.HandleAsync(domainEvent, ExtendedEvents.For(domainEvent), CancellationToken.None);
 
         log.Entries.Should().BeEmpty();
     }
