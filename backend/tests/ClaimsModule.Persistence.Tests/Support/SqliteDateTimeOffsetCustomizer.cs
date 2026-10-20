@@ -13,7 +13,7 @@ internal sealed class SqliteDateTimeOffsetCustomizer(ModelCustomizerDependencies
 
         var converter = new DateTimeOffsetToBinaryConverter();
         var properties = modelBuilder.Model.GetEntityTypes()
-            .Where(entityType => entityType.GetSqlQuery() is null)
+            .Where(entityType => entityType.GetViewName() is null)
             .SelectMany(entityType => entityType.GetProperties()
                 .Concat(entityType.GetComplexProperties().SelectMany(complex => complex.ComplexType.GetProperties())))
             .Where(property => (Nullable.GetUnderlyingType(property.ClrType) ?? property.ClrType)

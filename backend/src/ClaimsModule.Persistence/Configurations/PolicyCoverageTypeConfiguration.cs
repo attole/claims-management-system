@@ -1,5 +1,6 @@
 using ClaimsModule.Domain.Policies;
 using ClaimsModule.Persistence.Rows;
+using ClaimsModule.Persistence.Schema.Seed;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -18,5 +19,6 @@ internal sealed class PolicyCoverageTypeConfiguration(ClaimsDbContext context)
         builder.Property(coverageType => coverageType.Name).HasMaxLength(255).IsRequired();
         builder.HasIndex(coverageType => new { coverageType.PolicyId, coverageType.Name }).IsUnique();
         builder.HasOne<Policy>().WithMany().HasForeignKey(coverageType => coverageType.PolicyId);
+        builder.HasData(PolicySeed.CoverageTypes());
     }
 }

@@ -102,6 +102,8 @@ def tracked_files():
 
 def check_ascii():
     for rel, path in tracked_files():
+        if "/Migrations/" in rel:
+            continue
         if path.suffix in TEXT_SUFFIXES or path.name in {".gitignore", ".editorconfig"}:
             text = path.read_text(encoding="utf-8", errors="replace")
             bad = sorted({c for c in text if ord(c) > 127})

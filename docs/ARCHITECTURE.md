@@ -116,6 +116,8 @@ Table names are the spec's (section 9): `Claims`, `LossEvents`, `ClaimParties`, 
 | Tables outside section 9 (added) | `ClaimIssues`, `ClaimStateChanges`, `PolicyCoverageTypes`, `ClaimNumberCounters`, `IdempotencyKeys` | stored issues, state-change history, a policy's coverage types, the atomic claim number and the Idempotency-Key store have no table in the specification |
 | Cause code sort order | a shadow column; the Domain holds no order | display order is a read concern |
 | Document soft delete (added) | `IsDeleted` and `DeletedAt` on the document | the spec lists no delete column |
+| Claim list view (added) | the database view `ClaimListView` joining claims, loss events and policies, created by the second migration | the list filters, sorts and pages on columns of three tables in one query |
+| Audit table permission (added) | update and delete on `ClaimAuditLog` are denied to the database role `claims_app`, created by the second migration | the spec forbids updating or deleting audit rows; the deployment adds the app's database user to the role (S:AUD-NoUpdateDelete) |
 
 ### Decisions on gaps
 

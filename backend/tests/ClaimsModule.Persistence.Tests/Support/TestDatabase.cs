@@ -1,6 +1,7 @@
 using ClaimsModule.Application.Abstractions;
 using ClaimsModule.Domain.Common;
 using ClaimsModule.Persistence.Interceptors;
+using ClaimsModule.Persistence.Schema;
 using ClaimsModule.Persistence.Tests.Support.Interceptors;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -39,6 +40,7 @@ public sealed class TestDatabase : IDisposable
             .Options;
         var context = new ClaimsDbContext(options, user);
         context.Database.EnsureCreated();
+        context.Database.ExecuteSqlRaw($"CREATE VIEW IF NOT EXISTS {ClaimListView.Name} AS {ClaimListView.SelectSql}");
 
         return context;
     }

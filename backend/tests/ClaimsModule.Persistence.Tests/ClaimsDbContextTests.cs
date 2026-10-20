@@ -4,6 +4,7 @@ using ClaimsModule.Domain.Common.Capabilities;
 using ClaimsModule.Domain.ReserveComponents;
 using ClaimsModule.Domain.ReserveComponents.History;
 using ClaimsModule.Persistence.Rows;
+using ClaimsModule.Persistence.Schema.Seed;
 using ClaimsModule.Persistence.Tests.Support;
 using ClaimsModule.Persistence.Tests.Support.CauseOfLoss;
 using Microsoft.EntityFrameworkCore;
@@ -98,9 +99,9 @@ public sealed class ClaimsDbContextTests
 
         using var context = database.CreateContext(Guid.Empty, Guid.Empty);
 
-        var result = context.CauseOfLossCodes.IgnoreQueryFilters().ToList();
+        var result = context.CauseOfLossCodes.IgnoreQueryFilters().Select(code => code.OrganisationId).ToList();
 
-        result.Should().ContainSingle();
+        result.Should().Contain([TestDatabase.OrganisationId, SeedIds.Organisation]);
     }
 
     [Fact]
@@ -171,7 +172,7 @@ public sealed class ClaimsDbContextTests
         using var context = database.CreateContext();
 
         var result = context.Model.GetEntityTypes()
-            .Where(entityType => entityType.GetSqlQuery() is null)
+            .Where(entityType => entityType.GetViewName() is null)
             .Select(entityType => entityType.GetTableName())
             .ToList();
 

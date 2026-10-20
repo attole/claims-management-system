@@ -2,7 +2,7 @@
 
 Claims handling for a policy administration system, built end to end: a .NET 9 backend (Clean Architecture, CQRS) and an Angular frontend.
 
-Status: the Domain and the Application are built and tested. Persistence, Infrastructure and the API hold only their skeletons, and the frontend is not started.
+Status: the Domain, the Application and the Persistence (with its migrations and seed) are built and tested. Infrastructure and the API hold only their skeletons, and the frontend is not started.
 
 ## Documentation
 
@@ -24,9 +24,11 @@ dotnet test backend
 python -I .claude/tools/check_workflow.py
 ```
 
+The tests in `ClaimsModule.Persistence.SqlServerTests` create a temporary database on LocalDB (or on the server in `CLAIMS_TEST_SQLSERVER`) and are skipped when no server answers.
+
 ## Run locally
 
-1. Create the database (Hangfire creates its tables, not the database): `sqlcmd -S "(localdb)\MSSQLLocalDB" -Q "CREATE DATABASE ClaimsModule"`
+1. Create and seed the database. The app does not migrate at startup. From the `backend` folder run `dotnet tool restore`, then `dotnet dotnet-ef database update --project src/ClaimsModule.Persistence` (Hangfire creates its own tables later). It targets LocalDB; set `CLAIMS_DB_CONNECTION` to use another server.
 2. Set the signing key (32 or more characters, any test value locally): `dotnet user-secrets set "Jwt:SigningKey" "<32+ character test value>" --project backend/src/ClaimsModule.API`
 3. Run: `dotnet run --project backend/src/ClaimsModule.API`
 

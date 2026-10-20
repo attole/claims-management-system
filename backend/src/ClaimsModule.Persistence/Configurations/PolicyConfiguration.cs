@@ -1,4 +1,5 @@
 using ClaimsModule.Domain.Policies;
+using ClaimsModule.Persistence.Schema.Seed;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -22,5 +23,6 @@ internal sealed class PolicyConfiguration(ClaimsDbContext context)
         builder.Ignore(policy => policy.Period);
         builder.Ignore(policy => policy.CoverageTypes);
         builder.HasIndex(policy => policy.PolicyNumber).IsUnique();
+        builder.HasData(PolicySeed.Policies());
     }
 }

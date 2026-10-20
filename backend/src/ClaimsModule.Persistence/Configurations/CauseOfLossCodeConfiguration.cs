@@ -1,4 +1,5 @@
 using ClaimsModule.Domain.CauseOfLoss;
+using ClaimsModule.Persistence.Schema.Seed;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -20,5 +21,6 @@ internal sealed class CauseOfLossCodeConfiguration(ClaimsDbContext context)
         builder.Property(code => code.IsActive).HasDefaultValue(false);
         builder.Property<int>("SortOrder");
         builder.HasIndex(code => code.Code).IsUnique();
+        builder.HasData(CauseOfLossSeed.Codes());
     }
 }

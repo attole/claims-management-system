@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="ClaimsModule.Persistence.Tests" />
+    <InternalsVisibleTo Include="ClaimsModule.Persistence.SqlServerTests" />
   </ItemGroup>
 
   <ItemGroup>

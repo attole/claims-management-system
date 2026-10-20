@@ -19,6 +19,7 @@ Rules and contracts of the API: controllers, the error body, identity and the Id
 ## Identity and correlation
 
 - The actor and the role come from the authenticated user, never from the request. The role from the token becomes a `UserRole` with `UserRole.From`. A dev token endpoint behind `DevAuth:Enabled` is parked in `.claude/temp/notes-parking-lot.md`.
+- Persistence builds `ClaimsDbContext` and its save interceptors from the scoped `ICurrentUser` and `IClock`, so the API must register both (and `ICorrelationContext`) before any request reaches a handler. The organisation of the user is the tenant filter value; the dev users carry the seeded organisation id, or the seeded policies and cause-of-loss codes are invisible to them (`docs/layers/persistence.md` 'Migrations and seed data').
 - Middleware sets the correlation id that `ICorrelationContext` exposes, so every audit entry of one request carries it (S:AUD-Correlation).
 
 ## Idempotency-Key
