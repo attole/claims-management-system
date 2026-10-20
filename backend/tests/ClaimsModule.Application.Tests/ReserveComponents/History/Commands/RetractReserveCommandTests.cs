@@ -68,6 +68,20 @@ public sealed class RetractReserveCommandTests
         result.ShouldHaveValidationErrorFor(request => request.ReserveHistoryId);
     }
 
+    [Fact]
+    public void Validate_WithAReasonLongerThanTheColumn_FailsOnTheField()
+    {
+        var validator = new RetractReserveCommandValidator();
+        var command = new RetractReserveCommand(Guid.NewGuid(), Guid.NewGuid())
+        {
+            Reason = new string('x', ReserveFieldLengths.ReviewReason + 1),
+        };
+
+        var result = validator.TestValidate(command);
+
+        result.ShouldHaveValidationErrorFor(request => request.Reason);
+    }
+
     private static RetractReserveCommandHandler CreateHandler(ClaimHandlerContext context)
     {
         return new RetractReserveCommandHandler(

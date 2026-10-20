@@ -1,4 +1,8 @@
+using ClaimsModule.Application.ClaimDocuments.Contracts;
+using ClaimsModule.Application.ReserveComponents.Contracts;
 using ClaimsModule.Persistence.Interceptors;
+using ClaimsModule.Persistence.Readers;
+using ClaimsModule.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -15,6 +19,10 @@ public static class PersistenceServiceExtensions
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
+        services.AddScoped<IReserveComponentRepository, ReserveComponentRepository>();
+        services.AddScoped<IClaimDocumentRepository, ClaimDocumentRepository>();
+        services.AddScoped<IClaimReserveReader, ClaimReserveReader>();
+        services.AddScoped<IClaimDocumentReader, ClaimDocumentReader>();
         services.AddScoped<AuditSoftDeleteInterceptor>();
         services.AddDbContext<ClaimsDbContext>((provider, options) =>
         {

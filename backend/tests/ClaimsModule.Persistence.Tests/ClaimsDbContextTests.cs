@@ -119,10 +119,25 @@ public sealed class ClaimsDbContextTests
         using var context = database.CreateContext();
 
         var result = context.Model.GetEntityTypes()
-            .SelectMany(entityType => entityType.GetProperties())
+            .SelectMany(entityType => entityType.GetFlattenedProperties())
             .Select(property => property.GetColumnName())
             .ToList();
 
         result.Should().OnlyContain(name => char.IsUpper(name[0]) && !name.Contains('_'));
+    }
+
+    [Fact]
+    [Trait("Rule", "S:DATA-Conventions")]
+    public void Model_DecimalColumns_AreMoneyPrecision()
+    {
+        var model = SqlServerModel.Create();
+
+        var result = model.GetEntityTypes()
+            .SelectMany(entityType => entityType.GetFlattenedProperties())
+            .Where(property => property.ClrType == typeof(decimal))
+            .ToList();
+
+        result.Should().NotBeEmpty();
+        result.Should().OnlyContain(property => property.GetPrecision() == 19 && property.GetScale() == 4);
     }
 }

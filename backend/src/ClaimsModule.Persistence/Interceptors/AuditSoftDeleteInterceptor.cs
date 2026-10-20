@@ -2,6 +2,7 @@ using ClaimsModule.Application.Abstractions;
 using ClaimsModule.Domain.Common.Entities;
 using ClaimsModule.Persistence.Conventions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace ClaimsModule.Persistence.Interceptors;
@@ -35,6 +36,7 @@ internal sealed class AuditSoftDeleteInterceptor(IClock clock, ICurrentUser curr
         }
 
         context.ChangeTracker.DetectChanges();
+        MarkParentRootsModified(context);
         var now = clock.UtcNow;
         Guid? actor = currentUser.Id == Guid.Empty ? null : currentUser.Id;
         var entries = context.ChangeTracker.Entries<Entity>()
@@ -75,6 +77,32 @@ internal sealed class AuditSoftDeleteInterceptor(IClock clock, ICurrentUser curr
             if (hasSoftDelete && entry.Property(RowColumns.IsDeleted) is { IsModified: true, CurrentValue: true })
             {
                 entry.Property(RowColumns.DeletedAt).CurrentValue = now;
+            }
+        }
+    }
+
+    private static void MarkParentRootsModified(DbContext context)
+    {
+        var rows = context.ChangeTracker.Entries<Entity>().ToList();
+        var roots = rows.Where(row => row.Entity is AggregateRoot).ToList();
+        var changedRows = new Queue<EntityEntry<Entity>>(
+            rows.Where(row => row.State is EntityState.Added or EntityState.Modified or EntityState.Deleted));
+
+        while (changedRows.TryDequeue(out var changedRow))
+        {
+            var parentIds = changedRow.Metadata.GetForeignKeys()
+                .Where(key => key.IsMarkedToModifyRoot())
+                .Select(key => changedRow.Property(key.Properties[0].Name).CurrentValue)
+                .ToList();
+            var unchangedParents = roots
+                .Where(root => root.State == EntityState.Unchanged)
+                .Where(root => parentIds.Contains(root.Entity.Id))
+                .ToList();
+
+            foreach (var parent in unchangedParents)
+            {
+                parent.Property(RowColumns.UpdatedAt).IsModified = true;
+                changedRows.Enqueue(parent);
             }
         }
     }

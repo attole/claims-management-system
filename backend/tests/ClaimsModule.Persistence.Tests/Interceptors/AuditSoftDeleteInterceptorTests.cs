@@ -1,7 +1,10 @@
 using ClaimsModule.Domain.Common;
+using ClaimsModule.Domain.ReserveComponents;
 using ClaimsModule.Persistence.Tests.Support;
 using ClaimsModule.Persistence.Tests.Support.CauseOfLoss;
 using ClaimsModule.Persistence.Tests.Support.Conventions;
+using ClaimsModule.Persistence.Tests.Support.ReserveComponents;
+using Microsoft.EntityFrameworkCore;
 
 namespace ClaimsModule.Persistence.Tests.Interceptors;
 
@@ -100,6 +103,45 @@ public sealed class AuditSoftDeleteInterceptorTests
 
         result.Should().Be(1);
         context.Entry(row).Property("DeletedAt").CurrentValue.Should().Be(_later);
+    }
+
+    [Fact]
+    [Trait("Rule", "S:DATA-AuditColumns")]
+    public void SaveChanges_NewChildRow_MarksItsRootModified()
+    {
+        using var database = new TestDatabase();
+        var component = TestReserves.Open(Ids.Next(), TestDatabase.OrganisationId, ReserveComponentTypeKind.Indemnity);
+        using (var writer = database.CreateContext())
+        {
+            writer.ReserveComponents.Add(component);
+            writer.SaveChanges();
+        }
+
+        database.Now = _later;
+        using var context = database.CreateContext();
+        var stored = context.ReserveComponents.Include(found => found.History).Single();
+        TestReserves.Submit(stored, TestReserves.AutoApprovedAmount, _later);
+
+        var result = context.SaveChanges();
+
+        result.Should().Be(2);
+        context.Entry(stored).Property("UpdatedAt").CurrentValue.Should().Be(_later);
+        context.Entry(stored).Property("UserModified").CurrentValue.Should().Be(TestDatabase.UserId);
+    }
+
+    [Fact]
+    [Trait("Rule", "S:DATA-AuditColumns")]
+    public void SaveChanges_UntouchedRoot_IsNotWritten()
+    {
+        using var database = new TestDatabase();
+        using var context = database.CreateContext();
+        var component = TestReserves.Open(Ids.Next(), TestDatabase.OrganisationId, ReserveComponentTypeKind.Indemnity);
+        context.ReserveComponents.Add(component);
+        context.SaveChanges();
+
+        var result = context.SaveChanges();
+
+        result.Should().Be(0);
     }
 
     [Fact]

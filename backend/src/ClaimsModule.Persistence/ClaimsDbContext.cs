@@ -1,8 +1,10 @@
 using System.Reflection;
 using ClaimsModule.Application.Abstractions;
 using ClaimsModule.Domain.CauseOfLoss;
+using ClaimsModule.Domain.ClaimDocuments;
 using ClaimsModule.Domain.Common.Entities;
 using ClaimsModule.Domain.Policies;
+using ClaimsModule.Domain.ReserveComponents;
 using ClaimsModule.Persistence.Conventions;
 using ClaimsModule.Persistence.Rows;
 using Microsoft.EntityFrameworkCore;
@@ -21,6 +23,10 @@ public sealed class ClaimsDbContext(DbContextOptions<ClaimsDbContext> options, I
     public DbSet<Policy> Policies => Set<Policy>();
 
     public DbSet<CauseOfLossCode> CauseOfLossCodes => Set<CauseOfLossCode>();
+
+    public DbSet<ReserveComponent> ReserveComponents => Set<ReserveComponent>();
+
+    public DbSet<ClaimDocument> ClaimDocuments => Set<ClaimDocument>();
 
     internal DbSet<PolicyCoverageType> PolicyCoverageTypes => Set<PolicyCoverageType>();
 

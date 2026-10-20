@@ -1,4 +1,5 @@
 using ClaimsModule.Domain.CauseOfLoss;
+using ClaimsModule.Domain.ReserveComponents;
 using ClaimsModule.Persistence.Conventions;
 using ClaimsModule.Persistence.Tests.Support;
 using ClaimsModule.Persistence.Tests.Support.Conventions;
@@ -90,6 +91,44 @@ public sealed class EntityTableConventionTests
         var result = key.GetDefaultValueSql();
 
         result.Should().Be("NEWSEQUENTIALID()");
+    }
+
+    [Fact]
+    [Trait("Rule", "S:DATA-RowVer")]
+    public void ConfigureEntityTables_AggregateRoot_HasAConcurrencyToken()
+    {
+        using var database = new TestDatabase();
+        using var context = database.CreateContext();
+        var entityType = context.Model.FindEntityType(typeof(ReserveComponent))!;
+
+        var result = entityType.FindProperty("RowVer")!.IsConcurrencyToken;
+
+        result.Should().BeTrue();
+    }
+
+    [Fact]
+    [Trait("Rule", "S:DATA-RowVer")]
+    public void ConfigureEntityTables_EntityThatIsNotARoot_HasNoRowVersion()
+    {
+        using var database = new TestDatabase();
+        using var context = database.CreateContext();
+        var entityType = context.Model.FindEntityType(typeof(CauseOfLossCode))!;
+
+        var result = entityType.FindProperty("RowVer");
+
+        result.Should().BeNull();
+    }
+
+    [Fact]
+    [Trait("Rule", "S:DATA-RowVer")]
+    public void ConfigureEntityTables_SqlServerAggregateRoot_UsesARowVersionColumn()
+    {
+        var model = SqlServerModel.Create();
+        var rowVersion = model.FindEntityType(typeof(ReserveComponent))!.FindProperty("RowVer")!;
+
+        var result = rowVersion.GetColumnType();
+
+        result.Should().Be("rowversion");
     }
 
     [Fact]

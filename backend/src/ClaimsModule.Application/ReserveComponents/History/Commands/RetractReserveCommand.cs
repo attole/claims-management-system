@@ -29,6 +29,7 @@ public sealed class RetractReserveCommandValidator : AbstractValidator<RetractRe
     {
         RuleFor(command => command.ClaimId).NotEmpty();
         RuleFor(command => command.ReserveHistoryId).NotEmpty();
+        RuleFor(command => command.Reason).MaximumLength(ReserveFieldLengths.ReviewReason);
     }
 }
 

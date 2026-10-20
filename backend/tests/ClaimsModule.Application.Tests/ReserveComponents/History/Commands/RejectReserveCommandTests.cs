@@ -78,6 +78,18 @@ public sealed class RejectReserveCommandTests
         result.ShouldHaveValidationErrorFor(request => request.Reason);
     }
 
+    [Fact]
+    public void Validate_WithAReasonLongerThanTheColumn_FailsOnTheField()
+    {
+        var validator = new RejectReserveCommandValidator();
+        var reason = new string('x', ReserveFieldLengths.ReviewReason + 1);
+        var command = new RejectReserveCommand(Guid.NewGuid(), Guid.NewGuid(), reason);
+
+        var result = validator.TestValidate(command);
+
+        result.ShouldHaveValidationErrorFor(request => request.Reason);
+    }
+
     private static RejectReserveCommandHandler CreateHandler(ClaimHandlerContext context)
     {
         return new RejectReserveCommandHandler(

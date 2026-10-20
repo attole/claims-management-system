@@ -95,6 +95,20 @@ public sealed class ApproveReserveCommandTests
         result.ShouldNotHaveAnyValidationErrors();
     }
 
+    [Fact]
+    public void Validate_WithAReasonLongerThanTheColumn_FailsOnTheField()
+    {
+        var validator = new ApproveReserveCommandValidator();
+        var command = new ApproveReserveCommand(Guid.NewGuid(), Guid.NewGuid())
+        {
+            Reason = new string('x', ReserveFieldLengths.ReviewReason + 1),
+        };
+
+        var result = validator.TestValidate(command);
+
+        result.ShouldHaveValidationErrorFor(request => request.Reason);
+    }
+
     private static ApproveReserveCommandHandler CreateHandler(ClaimHandlerContext context)
     {
         return new ApproveReserveCommandHandler(

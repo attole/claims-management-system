@@ -1,3 +1,7 @@
+using ClaimsModule.Application.ClaimDocuments.Contracts;
+using ClaimsModule.Application.ReserveComponents.Contracts;
+using ClaimsModule.Persistence.Readers;
+using ClaimsModule.Persistence.Repositories;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -24,6 +28,21 @@ public sealed class PersistenceServiceExtensionsTests
         var result = provider.GetRequiredService<IOptions<PersistenceOptions>>().Value;
 
         result.ClaimsDb.Should().Be("Server=x");
+    }
+
+    [Theory]
+    [InlineData(typeof(IReserveComponentRepository), typeof(ReserveComponentRepository))]
+    [InlineData(typeof(IClaimDocumentRepository), typeof(ClaimDocumentRepository))]
+    [InlineData(typeof(IClaimReserveReader), typeof(ClaimReserveReader))]
+    [InlineData(typeof(IClaimDocumentReader), typeof(ClaimDocumentReader))]
+    public void AddPersistence_Port_IsImplementedByThePersistenceClass(Type port, Type implementation)
+    {
+        var services = new ServiceCollection();
+
+        services.AddPersistence();
+
+        services.Should().Contain(descriptor => descriptor.ServiceType == port
+            && descriptor.ImplementationType == implementation);
     }
 
     private static ServiceProvider CreateProvider(Dictionary<string, string?> settings)

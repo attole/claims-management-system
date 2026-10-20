@@ -23,4 +23,5 @@ public static class ReserveErrors
 public static class ReserveFieldLengths
 {
     public const int ChangeReason = 500;
+    public const int ReviewReason = 500;
 }

@@ -560,3 +560,39 @@ decisions: the user chose docs/layers over a standards folder, interpretations a
 ai-errors: a first trim of CLAUDE.md saved only about 3 percent until the details moved to the layer files; the AI's own size check showed it
 human-vs-ai: the user decided the structure and what was stale; the AI proposed argued options, rewrote the files and kept the workflow check at zero findings
 refs: SPLIT-008
+
+## CORRECTION-034 | p3 backend | 2026-10-20
+what: the layer docs promised an empty-date converter on an optional column, but EF refuses a nullable column on a non-nullable value type (found by a failing test)
+caught-by: test
+fix: the policy dates became shadow columns with a real NULL, and DeletedAt moved out of the Domain
+lesson: check each mapping claim against a real model before writing it into the layer docs
+
+## CORRECTION-035 | p3 backend | 2026-10-20
+what: PolicyPeriod was mapped as a complex property by sharing its PolicyId with the key column, a workaround the user questioned
+caught-by: user
+fix: Policy maps scalar date columns, and the reader builds the period and the status from them
+lesson: when a mapping needs a trick, change its shape instead of forcing the type through EF
+
+## CORRECTION-036 | p3 backend | 2026-10-20
+what: soft delete was a default on every table with an opt-out annotation extension and shadow flags, which the user found needlessly indirect
+caught-by: user
+fix: a table soft-deletes exactly when its entity implements ISoftDeletable, and the extension and shadow flag were removed
+lesson: derive a persistence behaviour from a Domain capability instead of adding a second opt-out switch
+
+## ASSESSMENT-013 | p3 backend | 2026-10-20
+area: EF Core mapping checked by real-database tests
+helped: high
+note: SQLite round trips plus a SQL Server model check exposed three mapping limits within minutes (nullable value types, constructor binding, the per-tenant filter)
+
+## SPLIT-009 | p3 backend | 2026-10-20
+item: Persistence pack 1 and the Domain clean-up
+who: hybrid
+note: the user decided the child table, shadow columns, the status in the Domain, the names and the inline interceptor; the AI wrote code, tests and docs and ran the review and spec-check
+
+## SUMMARY-023 | p3 backend | 2026-10-20
+topic: Persistence design and pack 1
+story: the design listed the ports, six packs and the risks. The user chose Persistence-owned exception translation, a coverage child table, a computed policy status, and SQLite tests first with a SQL Server set later. Pack 1 added the context, model-wide conventions, tenant and soft-delete filters, converters and the save interceptor, plus the policy and cause-of-loss mappings. DeletedAt left the Domain, and PolicyPeriod gained StatusOn.
+decisions: the user chose one context, converters as named expression fields, soft delete by the ISoftDeletable interface, nullable shadow columns for dates, and the status rule in PolicyPeriod with no stored column
+ai-errors: unverified mapping claims in the docs, a column-sharing workaround, an opt-out switch for soft delete and an over-abstracted interceptor; real-database tests, the user's questions and the review caught them
+human-vs-ai: the user questioned each mapping and shape and chose the simpler one; the AI wrote the code, tests and docs, kept build, tests and checks green and applied the review fixes
+refs: CORRECTION-034 to CORRECTION-036, ASSESSMENT-013, SPLIT-009

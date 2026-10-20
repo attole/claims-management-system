@@ -28,7 +28,7 @@ public sealed class RejectReserveCommandValidator : AbstractValidator<RejectRese
     {
         RuleFor(command => command.ClaimId).NotEmpty();
         RuleFor(command => command.ReserveHistoryId).NotEmpty();
-        RuleFor(command => command.Reason).NotNull();
+        RuleFor(command => command.Reason).NotNull().MaximumLength(ReserveFieldLengths.ReviewReason);
     }
 }
 

@@ -23,6 +23,11 @@ internal static class EntityTableConvention
             {
                 AddSoftDeleteColumns(builder);
             }
+
+            if (typeof(AggregateRoot).IsAssignableFrom(table.ClrType))
+            {
+                AddRowVersion(builder, isSqlServer);
+            }
         }
     }
 
@@ -56,6 +61,16 @@ internal static class EntityTableConvention
         builder.Property<DateTimeOffset?>(RowColumns.UpdatedAt);
         builder.Property<Guid?>(RowColumns.UserCreated);
         builder.Property<Guid?>(RowColumns.UserModified);
+    }
+
+    private static void AddRowVersion(EntityTypeBuilder builder, bool isSqlServer)
+    {
+        var rowVersion = builder.Property(nameof(AggregateRoot.RowVer)).IsConcurrencyToken();
+
+        if (isSqlServer)
+        {
+            rowVersion.IsRowVersion();
+        }
     }
 
     private static void AddSoftDeleteColumns(EntityTypeBuilder builder)
