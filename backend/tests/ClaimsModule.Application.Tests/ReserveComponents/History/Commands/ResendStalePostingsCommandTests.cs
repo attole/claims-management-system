@@ -12,8 +12,8 @@ public sealed class ResendStalePostingsCommandTests
     [Trait("Rule", "S:JOB-GL")]
     public async Task Handle_EnqueuesEachPendingApprovedRowWithoutAJobId()
     {
-        var first = new UnpostedReserve(Guid.NewGuid(), Guid.NewGuid());
-        var second = new UnpostedReserve(Guid.NewGuid(), Guid.NewGuid());
+        var first = new UnpostedReserve(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
+        var second = new UnpostedReserve(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
         var scheduler = new Mock<IPostingScheduler>();
         var handler = CreateHandler(CreateReader([first, second]).Object, scheduler);
         var command = new ResendStalePostingsCommand(TimeSpan.FromMinutes(10));
@@ -22,10 +22,20 @@ public sealed class ResendStalePostingsCommandTests
 
         result.Value.ResentCount.Should().Be(2);
         scheduler.Verify(
-            mock => mock.EnqueueAsync(first.ClaimId, first.ReserveHistoryId, string.Empty, CancellationToken.None),
+            mock => mock.EnqueueAsync(
+                first.OrganisationId,
+                first.ClaimId,
+                first.ReserveHistoryId,
+                string.Empty,
+                CancellationToken.None),
             Times.Once());
         scheduler.Verify(
-            mock => mock.EnqueueAsync(second.ClaimId, second.ReserveHistoryId, string.Empty, CancellationToken.None),
+            mock => mock.EnqueueAsync(
+                second.OrganisationId,
+                second.ClaimId,
+                second.ReserveHistoryId,
+                string.Empty,
+                CancellationToken.None),
             Times.Once());
     }
 

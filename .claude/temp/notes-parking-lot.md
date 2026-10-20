@@ -24,3 +24,4 @@ NEXT: Deployment - provision the claims_app database role membership for the app
 NEXT: Persistence - add a SQL Server test for the claim list loss-date filter (untestable on SQLite)
 NEXT: infrastructure packs: 1 clock and storage (Azure + local with signed download token), 2 posting scheduler and GL job, 3 SLA and posting sweep jobs with registration, 4 idempotency cleanup (needs Application purge command + Persistence method + job). Pack 2 to 4 blocked by the job tenancy rule.
 NEXT: API pack: local download endpoint validates LocalDownloadToken and streams the file; static files are not used.
+NEXT: API - a middleware sets ScopedCurrentUser (Infrastructure/Identity, registered as ICurrentUser) from the token; this replaces the HttpCurrentUser idea in the auth option B proposal above (docs/layers/infrastructure.md Posting job, Tenancy)

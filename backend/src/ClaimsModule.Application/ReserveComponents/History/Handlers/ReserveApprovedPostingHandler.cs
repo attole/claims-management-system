@@ -5,7 +5,7 @@ using ClaimsModule.Domain.ReserveComponents.History.Events;
 
 namespace ClaimsModule.Application.ReserveComponents.History.Handlers;
 
-public sealed class ReserveApprovedPostingHandler(IPostingScheduler scheduler)
+public sealed class ReserveApprovedPostingHandler(IPostingScheduler scheduler, ICurrentUser user)
     : IAfterCommitEventHandler<ReserveHistoryApprovalStateChangedEvent>
 {
     public async Task HandleAsync(
@@ -18,6 +18,7 @@ public sealed class ReserveApprovedPostingHandler(IPostingScheduler scheduler)
         if (target.IsApproved)
         {
             await scheduler.EnqueueAsync(
+                user.OrganisationId,
                 domainEvent.ClaimId,
                 domainEvent.ReserveHistoryId,
                 string.Empty,

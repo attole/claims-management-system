@@ -8,6 +8,8 @@ public sealed class InfrastructureServiceExtensionsTests
     [Theory]
     [InlineData(typeof(IClock))]
     [InlineData(typeof(IStorageService))]
+    [InlineData(typeof(IPostingScheduler))]
+    [InlineData(typeof(ICurrentUser))]
     public void AddInfrastructure_Port_IsRegistered(Type port)
     {
         var services = new ServiceCollection();

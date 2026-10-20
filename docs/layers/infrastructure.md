@@ -1,6 +1,6 @@
 # Infrastructure layer
 
-Rules and contracts of Infrastructure: the background jobs and the adapters for outside services. It implements `IStorageService` and `IPostingScheduler` and sends the job commands (`docs/layers/application.md` 'Provides and expects'). `.claude/CLAUDE.md` holds the short rules and points here; read this file before changing the Infrastructure project or reviewing its code. Status: the clock and the storage adapters are built; the jobs are not (this file holds what the Domain and the Application hand over for them).
+Rules and contracts of Infrastructure: the background jobs and the adapters for outside services. It implements `IStorageService` and `IPostingScheduler` and sends the job commands (`docs/layers/application.md` 'Provides and expects'). `.claude/CLAUDE.md` holds the short rules and points here; read this file before changing the Infrastructure project or reviewing its code. Status: the clock, the storage adapters and the posting job with its scheduler are built; the SLA job, the posting sweep, the idempotency cleanup and the recurring registration are not (this file holds what the Domain and the Application hand over for them).
 
 ## Layout
 
@@ -12,6 +12,9 @@ Rules and contracts of Infrastructure: the background jobs and the adapters for 
 - **Posting job (GL).** The Application enqueues it after the commit through `IPostingScheduler` (an approved or auto-approved row, or a failed posting returned to pending). The job marks the row through `MarkReservePostedCommand` or `MarkReservePostingFailedCommand`.
   - An approval passes an empty job id; the job assigns its own and reports it when it marks the row. A retry stores a fresh token as the job id (the Domain requires one on the move) and the after-commit handler passes it to the scheduler, so the job runs under the recorded id.
   - The job is idempotent (S:JOB-GL-Idempotent): marking an already posted row succeeds without a write. It retries automatically and, when the retries are exhausted, marks the row failed (S:JOB-GL-Failure).
+  - `HangfirePostingScheduler` implements `IPostingScheduler` and enqueues `ReservePostingJob`. A refused command counts as a failure, so it retries like an exception. `ReservePostingJob.MaxRetries` is 3 (four runs); the run with the retry count at the maximum marks the row failed instead of throwing.
+  - **Tenancy.** A job has no user, so the scheduler carries the organisation of the row as a job argument (`IPostingScheduler.EnqueueAsync` takes it first; the after-commit handlers read it from `ICurrentUser`, the sweep from `UnpostedReserve.OrganisationId`). The job sets it on the `ScopedCurrentUser` (system actor `Guid.Empty`, lowest role) of a fresh DI scope and sends the command there, so the repositories and the tenant filter stay in force on the write path. Each command gets its own scope: after a failed commit the first scope's context still tracks the unsaved change, and the failed-mark would load that stale row.
+  - `ScopedCurrentUser` is the one scoped `ICurrentUser` that Infrastructure registers (`IdentityServiceExtensions`). The API sets it from the token at the start of a request; a job sets it from its arguments.
   - The audit entries for posted and failed come from the posting events, not from the job.
 - **SLA job.** Runs every 15 minutes (S:JOB-SLA) and sends `DetectSlaBreachesCommand`. The command writes the breach entries as the system actor and respects the 24-hour dedupe; the job writes nothing itself.
 - **Posting sweep.** A periodic job sends `ResendStalePostingsCommand` with a minimum age taken from its options. It is required: a crash between the commit and the enqueue loses the posting job, and close and withdraw refuse while an approved row is unposted.
@@ -22,6 +25,10 @@ Rules and contracts of Infrastructure: the background jobs and the adapters for 
 ## Clock
 
 - `SystemClock` implements `IClock` (singleton). The Persistence interceptors, the stores and the handlers read time only through it.
+
+## Current user
+
+- `ScopedCurrentUser` implements `ICurrentUser` as a settable scoped holder (`Set(id, organisationId, role)`) and is the registered `ICurrentUser`. Its empty state (empty ids, lowest role) is what the tenant filter sees when nothing set it.
 
 ## Storage adapter
 

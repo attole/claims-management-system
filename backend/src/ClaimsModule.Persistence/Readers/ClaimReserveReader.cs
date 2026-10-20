@@ -68,12 +68,18 @@ internal sealed class ClaimReserveReader(ClaimsDbContext context, IMapper mapper
             .AsNoTracking()
             .Where(history => approvedStates.Contains(history.ApprovalState))
             .Where(history => history.PostingState == pendingPosting)
-            .Select(history => new { history.Details.ClaimId, history.Id, history.Review.ReviewedAt })
+            .Select(history => new
+            {
+                history.OrganisationId,
+                history.Details.ClaimId,
+                history.Id,
+                history.Review.ReviewedAt,
+            })
             .ToListAsync(cancellationToken);
 
         var stale = unposted
             .Where(row => row.ReviewedAt < approvedBefore)
-            .Select(row => new UnpostedReserve(row.ClaimId, row.Id))
+            .Select(row => new UnpostedReserve(row.OrganisationId, row.ClaimId, row.Id))
             .ToList();
 
         return stale;

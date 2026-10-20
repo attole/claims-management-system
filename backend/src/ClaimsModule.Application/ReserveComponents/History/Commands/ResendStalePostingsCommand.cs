@@ -32,7 +32,12 @@ public sealed class ResendStalePostingsCommandHandler(
 
         foreach (var reserve in unposted)
         {
-            await scheduler.EnqueueAsync(reserve.ClaimId, reserve.ReserveHistoryId, string.Empty, cancellationToken);
+            await scheduler.EnqueueAsync(
+                reserve.OrganisationId,
+                reserve.ClaimId,
+                reserve.ReserveHistoryId,
+                string.Empty,
+                cancellationToken);
         }
 
         return Result<ResendPostingsDto>.Success(new ResendPostingsDto { ResentCount = unposted.Count });

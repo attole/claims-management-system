@@ -107,6 +107,7 @@ public sealed class ClaimReserveReaderTests
         var result = await reader.ListStalePendingPostingsAsync(database.Now.AddHours(1), CancellationToken.None);
 
         result.Should().ContainSingle(row => row.ClaimId == claimId && row.ReserveHistoryId == history);
+        result.Single().OrganisationId.Should().Be(TestDatabase.OrganisationId);
     }
 
     [Fact]

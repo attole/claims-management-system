@@ -5,7 +5,7 @@ using ClaimsModule.Domain.ReserveComponents.History.Events;
 
 namespace ClaimsModule.Application.ReserveComponents.History.Handlers;
 
-public sealed class ReservePostingRetriedHandler(IPostingScheduler scheduler)
+public sealed class ReservePostingRetriedHandler(IPostingScheduler scheduler, ICurrentUser user)
     : IAfterCommitEventHandler<ReserveHistoryPostingStateChangedEvent>
 {
     public async Task HandleAsync(
@@ -20,6 +20,7 @@ public sealed class ReservePostingRetriedHandler(IPostingScheduler scheduler)
         if (isRetried)
         {
             await scheduler.EnqueueAsync(
+                user.OrganisationId,
                 domainEvent.ClaimId,
                 domainEvent.ReserveHistoryId,
                 domainEvent.JobId,

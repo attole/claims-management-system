@@ -1,5 +1,6 @@
 using ClaimsModule.Infrastructure.BackgroundJobs;
 using ClaimsModule.Infrastructure.Clock;
+using ClaimsModule.Infrastructure.Identity;
 using ClaimsModule.Infrastructure.Storage;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
@@ -12,6 +13,7 @@ public static class InfrastructureServiceExtensions
     {
         return services
             .AddClock()
+            .AddIdentity()
             .AddStorage()
             .AddBackgroundJobs();
     }

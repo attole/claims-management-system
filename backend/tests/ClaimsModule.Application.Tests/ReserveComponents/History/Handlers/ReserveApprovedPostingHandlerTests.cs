@@ -14,7 +14,7 @@ public sealed class ReserveApprovedPostingHandlerTests
     public async Task HandleAsync_WhenTheRowIsApproved_EnqueuesThePostingJob(string target)
     {
         var context = new ClaimHandlerContext();
-        var handler = new ReserveApprovedPostingHandler(context.Scheduler);
+        var handler = new ReserveApprovedPostingHandler(context.Scheduler, context.User);
         var domainEvent = CreateEvent("PendingApproval", target);
 
         await handler.HandleAsync(domainEvent, ExtendedEvents.For(domainEvent), CancellationToken.None);
@@ -28,7 +28,7 @@ public sealed class ReserveApprovedPostingHandlerTests
     public async Task HandleAsync_WhenTheRowIsRefused_EnqueuesNothing(string target)
     {
         var context = new ClaimHandlerContext();
-        var handler = new ReserveApprovedPostingHandler(context.Scheduler);
+        var handler = new ReserveApprovedPostingHandler(context.Scheduler, context.User);
         var domainEvent = CreateEvent("PendingApproval", target);
 
         await handler.HandleAsync(domainEvent, ExtendedEvents.For(domainEvent), CancellationToken.None);

@@ -1,3 +1,4 @@
+using ClaimsModule.Application.Abstractions;
 using Hangfire;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
@@ -22,6 +23,8 @@ internal static class BackgroundJobsServiceExtensions
             .UseRecommendedSerializerSettings()
             .UseSqlServerStorage(ReadConnectionString(provider)));
         services.AddHangfireServer();
+        services.AddScoped<ReservePostingJob>();
+        services.AddScoped<IPostingScheduler, HangfirePostingScheduler>();
 
         return services;
     }

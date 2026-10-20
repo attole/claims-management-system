@@ -62,6 +62,7 @@ public sealed class ClaimHandlerContext
         _scheduler.Setup(mock => mock.EnqueueAsync(
                 It.IsAny<Guid>(),
                 It.IsAny<Guid>(),
+                It.IsAny<Guid>(),
                 It.IsAny<string>(),
                 It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
@@ -244,6 +245,7 @@ public sealed class ClaimHandlerContext
     {
         _scheduler.Verify(
             mock => mock.EnqueueAsync(
+                OrganisationId,
                 It.IsAny<Guid>(),
                 It.IsAny<Guid>(),
                 It.IsAny<string>(),
@@ -254,7 +256,12 @@ public sealed class ClaimHandlerContext
     public void VerifyEnqueuedWithJobId(string jobId)
     {
         _scheduler.Verify(
-            mock => mock.EnqueueAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), jobId, It.IsAny<CancellationToken>()),
+            mock => mock.EnqueueAsync(
+                OrganisationId,
+                It.IsAny<Guid>(),
+                It.IsAny<Guid>(),
+                jobId,
+                It.IsAny<CancellationToken>()),
             Times.Once());
     }
 

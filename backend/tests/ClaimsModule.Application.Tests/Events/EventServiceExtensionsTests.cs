@@ -72,6 +72,7 @@ public sealed class EventServiceExtensionsTests
         var services = new ServiceCollection();
         services.AddSingleton(Mock.Of<IReserveComponentRepository>());
         services.AddSingleton(Mock.Of<IPostingScheduler>());
+        services.AddSingleton(Mock.Of<ICurrentUser>());
         services.AddSingleton(Mock.Of<IAuditLogService>());
         services.AddEvents(typeof(ApplicationServiceExtensions).Assembly);
 

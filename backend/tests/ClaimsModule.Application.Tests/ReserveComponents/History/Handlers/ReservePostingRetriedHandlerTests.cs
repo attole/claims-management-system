@@ -11,7 +11,7 @@ public sealed class ReservePostingRetriedHandlerTests
     public async Task HandleAsync_WhenAFailedPostingReturnsToPending_EnqueuesTheJob()
     {
         var context = new ClaimHandlerContext();
-        var handler = new ReservePostingRetriedHandler(context.Scheduler);
+        var handler = new ReservePostingRetriedHandler(context.Scheduler, context.User);
         var domainEvent = CreateEvent("Failed", "Pending");
 
         await handler.HandleAsync(domainEvent, ExtendedEvents.For(domainEvent), CancellationToken.None);
@@ -26,7 +26,7 @@ public sealed class ReservePostingRetriedHandlerTests
     public async Task HandleAsync_ForAnyOtherPostingMove_EnqueuesNothing(string from, string to)
     {
         var context = new ClaimHandlerContext();
-        var handler = new ReservePostingRetriedHandler(context.Scheduler);
+        var handler = new ReservePostingRetriedHandler(context.Scheduler, context.User);
         var domainEvent = CreateEvent(from, to);
 
         await handler.HandleAsync(domainEvent, ExtendedEvents.For(domainEvent), CancellationToken.None);
