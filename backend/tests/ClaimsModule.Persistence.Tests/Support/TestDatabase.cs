@@ -5,6 +5,7 @@ using ClaimsModule.Persistence.Tests.Support.Interceptors;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 
 namespace ClaimsModule.Persistence.Tests.Support;
 
@@ -33,6 +34,7 @@ public sealed class TestDatabase : IDisposable
         var user = CreateUser(organisationId, userId);
         var options = new DbContextOptionsBuilder<ClaimsDbContext>()
             .UseSqlite(_connection)
+            .ReplaceService<IModelCustomizer, SqliteDateTimeOffsetCustomizer>()
             .AddInterceptors(CreateInterceptors(user))
             .Options;
         var context = new ClaimsDbContext(options, user);

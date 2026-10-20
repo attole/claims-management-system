@@ -9,6 +9,7 @@ using ClaimsModule.Domain.ReserveComponents;
 using ClaimsModule.Persistence.Audit;
 using ClaimsModule.Persistence.ClaimNumbers;
 using ClaimsModule.Persistence.Configurations;
+using ClaimsModule.Persistence.Idempotency;
 using ClaimsModule.Persistence.Rows;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -36,6 +37,8 @@ public sealed class ClaimsDbContext(DbContextOptions<ClaimsDbContext> options, I
 
     internal DbSet<AuditLogEntry> AuditLog => Set<AuditLogEntry>();
 
+    internal DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfiguration(new ClaimConfiguration(this));
@@ -53,6 +56,7 @@ public sealed class ClaimsDbContext(DbContextOptions<ClaimsDbContext> options, I
         modelBuilder.ApplyConfiguration(new CauseOfLossCodeConfiguration(this));
         modelBuilder.ApplyConfiguration(new AuditLogEntryConfiguration(this));
         modelBuilder.ApplyConfiguration(new ClaimNumberCounterConfiguration(this));
+        modelBuilder.ApplyConfiguration(new IdempotencyRecordConfiguration(this));
 
         ConfigureMoneyPrecision(modelBuilder);
 

@@ -29,7 +29,7 @@ A write operation with an `Idempotency-Key` header is idempotent (S:API-Idempote
 2. `Started`: run the action. `Completed`: return the stored response without running it. `InProgress`: return 409. `BodyMismatch` (the same key with another body): return 422.
 3. After the action the filter calls `CompleteAsync` with the status code and body.
 
-Completion is its own save, not part of the command transaction: a crash between the two leaves the key in progress (409) until the store treats it as abandoned.
+The store saves the key with the command's own commit, so a key with no stored response means the request is still running or crashed after its commit: it answers 409 and the action is never run again until the key expires. Completion (the response) is its own save after the action.
 
 The header is optional and the filter applies to every write action; a request without it runs normally and is not stored. A replay returns the first response even if the claim has changed since; fresh state comes from a read. A stored key expires after about 24 hours and then counts as new.
 

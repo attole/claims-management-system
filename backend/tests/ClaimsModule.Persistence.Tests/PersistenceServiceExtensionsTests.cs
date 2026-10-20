@@ -3,10 +3,13 @@ using ClaimsModule.Application.Audit.Contracts;
 using ClaimsModule.Application.CauseOfLoss;
 using ClaimsModule.Application.ClaimDocuments.Contracts;
 using ClaimsModule.Application.Claims.Contracts;
+using ClaimsModule.Application.Idempotency;
 using ClaimsModule.Application.Policies;
 using ClaimsModule.Application.ReserveComponents.Contracts;
+using ClaimsModule.Application.Sla;
 using ClaimsModule.Persistence.Audit;
 using ClaimsModule.Persistence.ClaimNumbers;
+using ClaimsModule.Persistence.Idempotency;
 using ClaimsModule.Persistence.Readers;
 using ClaimsModule.Persistence.Repositories;
 using Microsoft.Extensions.Configuration;
@@ -47,6 +50,8 @@ public sealed class PersistenceServiceExtensionsTests
     [InlineData(typeof(IClaimReserveReader), typeof(ClaimReserveReader))]
     [InlineData(typeof(IClaimDocumentReader), typeof(ClaimDocumentReader))]
     [InlineData(typeof(IClaimNumberGenerator), typeof(ClaimNumberGenerator))]
+    [InlineData(typeof(IIdempotencyStore), typeof(IdempotencyStore))]
+    [InlineData(typeof(ISlaClaimReader), typeof(SlaClaimReader))]
     [InlineData(typeof(IAuditLogReader), typeof(AuditLogReader))]
     [InlineData(typeof(IAuditLogService), typeof(AuditLogService))]
     [InlineData(typeof(IUnitOfWork), typeof(UnitOfWork))]

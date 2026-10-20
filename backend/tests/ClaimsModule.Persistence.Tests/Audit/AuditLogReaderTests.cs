@@ -9,7 +9,7 @@ namespace ClaimsModule.Persistence.Tests.Audit;
 public sealed class AuditLogReaderTests
 {
     [Fact]
-    public async Task ListAsync_Claim_ReturnsOnlyItsEntriesWithTheStamp()
+    public async Task ListAsync_Claim_ReturnsOnlyItsEntriesNewestFirstWithTheStamp()
     {
         using var database = new TestDatabase();
         var claimId = TestClaims.Seed(database);
@@ -25,11 +25,10 @@ public sealed class AuditLogReaderTests
         var result = await reader.ListAsync(claimId, new PageWindow(1, 10), CancellationToken.None);
 
         result.TotalCount.Should().Be(2);
-        result.Items.Select(item => item.Description).Should().BeEquivalentTo("first", "second");
-        var second = result.Items.Single(item => item.Description == "second");
-        second.CreatedAt.Should().Be(database.Now);
-        second.CreatedByUserId.Should().Be(TestDatabase.UserId);
-        second.CorrelationId.Should().Be(correlationId);
+        result.Items.Select(item => item.Description).Should().Equal("second", "first");
+        result.Items[0].CreatedAt.Should().Be(database.Now);
+        result.Items[0].CreatedByUserId.Should().Be(TestDatabase.UserId);
+        result.Items[0].CorrelationId.Should().Be(correlationId);
     }
 
     [Fact]
@@ -68,7 +67,7 @@ public sealed class AuditLogReaderTests
         var result = await reader.ListAsync(claimId, new PageWindow(2, 2), CancellationToken.None);
 
         result.TotalCount.Should().Be(3);
-        result.Items.Should().ContainSingle();
+        result.Items.Select(item => item.Description).Should().Equal("a");
     }
 
     [Fact]

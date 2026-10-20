@@ -15,7 +15,8 @@ internal sealed class AuditLogReader(ClaimsDbContext context) : IAuditLogReader
         var entries = context.AuditLog.AsNoTracking().Where(entry => entry.ClaimId == claimId);
         var totalCount = await entries.CountAsync(cancellationToken);
         var rows = await entries
-            .OrderByDescending(entry => entry.Id)
+            .OrderByDescending(entry => entry.CreatedAt)
+            .ThenByDescending(entry => entry.Id)
             .Skip(page.Skip)
             .Take(page.PageSize)
             .ToListAsync(cancellationToken);
