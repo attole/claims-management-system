@@ -596,3 +596,15 @@ decisions: the user chose one context, converters as named expression fields, so
 ai-errors: unverified mapping claims in the docs, a column-sharing workaround, an opt-out switch for soft delete and an over-abstracted interceptor; real-database tests, the user's questions and the review caught them
 human-vs-ai: the user questioned each mapping and shape and chose the simpler one; the AI wrote the code, tests and docs, kept build, tests and checks green and applied the review fixes
 refs: CORRECTION-034 to CORRECTION-036, ASSESSMENT-013, SPLIT-009
+
+## CORRECTION-038 | p3 backend | 2026-10-21
+what: the AI added needless helpers (IsWellFormed, IsSigned), a separate LocalFileStore class, a hard-to-justify StoragePath and left unused Auth and Database stubs in Infrastructure
+caught-by: user
+fix: the helpers were inlined, LocalFileStore was folded into the local service, the stubs were removed and Hangfire reads its connection string from configuration
+lesson: every new type or helper must answer who else uses it; build the simple shape first, since the user questions each abstraction
+
+## CORRECTION-039 | p3 backend | 2026-10-21
+what: Infrastructure pack 1 passed build, tests and the workflow check, yet the code review still found five defects
+caught-by: code-review
+fix: all five were fixed, then build, tests and the workflow check were run again
+lesson: a green build does not replace a fresh-context review of the whole pack
