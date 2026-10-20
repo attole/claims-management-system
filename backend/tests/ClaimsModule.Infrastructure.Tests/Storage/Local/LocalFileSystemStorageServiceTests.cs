@@ -7,6 +7,8 @@ public sealed class LocalFileSystemStorageServiceTests : IDisposable
 {
     private static readonly TimeSpan _oneHour = TimeSpan.FromHours(1);
     private static readonly byte[] _content = [1, 2, 3, 4];
+    private static readonly DateTimeOffset _later = DateTimeOffset.UtcNow.AddMinutes(10);
+    private static readonly DateTimeOffset _earlier = DateTimeOffset.UtcNow.AddHours(-1);
 
     private readonly string _root = StorageTestData.NewRoot();
     private readonly LocalDownloadToken _tokens;
@@ -74,6 +76,52 @@ public sealed class LocalFileSystemStorageServiceTests : IDisposable
         var result = await _service.GetDownloadUrlAsync(StorageTestData.BlobPath, _oneHour, CancellationToken.None);
 
         _tokens.ReadPath(TokenFrom(result)).Should().Be(StorageTestData.BlobPath);
+    }
+
+    [Fact]
+    public async Task ListAsync_FileOlderThanTheLimit_IsListedWithTheContainerPrefix()
+    {
+        await Upload(StorageTestData.BlobPath);
+
+        var result = await _service.ListAsync("claim-documents", _later, CancellationToken.None);
+
+        result.Should().Equal(StorageTestData.BlobPath);
+    }
+
+    [Fact]
+    public async Task ListAsync_FileNewerThanTheLimit_IsNotListed()
+    {
+        await Upload(StorageTestData.BlobPath);
+
+        var result = await _service.ListAsync("claim-documents", _earlier, CancellationToken.None);
+
+        result.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ListAsync_BeforeAnythingWasStored_ReturnsNothing()
+    {
+        var result = await _service.ListAsync("claim-documents", _later, CancellationToken.None);
+
+        result.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task DeleteAsync_StoredFile_RemovesIt()
+    {
+        await Upload(StorageTestData.BlobPath);
+
+        await _service.DeleteAsync(StorageTestData.BlobPath, CancellationToken.None);
+
+        File.Exists(Path.Combine(_root, "org-1", "claim-1", "upload_file.pdf")).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task DeleteAsync_PathNeverStored_DoesNotThrow()
+    {
+        Func<Task> act = () => _service.DeleteAsync(StorageTestData.BlobPath, CancellationToken.None);
+
+        await act.Should().NotThrowAsync();
     }
 
     private static string TokenFrom(string url)

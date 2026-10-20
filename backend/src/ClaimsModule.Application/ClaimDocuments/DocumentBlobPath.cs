@@ -4,12 +4,13 @@ namespace ClaimsModule.Application.ClaimDocuments;
 
 public static partial class DocumentBlobPath
 {
-    private const string Root = "claim-documents";
+    public const string Container = "claim-documents";
+
     private const string FallbackName = "file";
 
     public static string Build(Guid organisationId, Guid claimId, Guid uploadId, string fileName)
     {
-        return $"{Root}/{organisationId}/{claimId}/{uploadId:N}_{Sanitise(fileName)}";
+        return $"{Container}/{organisationId}/{claimId}/{uploadId:N}_{Sanitise(fileName)}";
     }
 
     public static string Sanitise(string fileName)

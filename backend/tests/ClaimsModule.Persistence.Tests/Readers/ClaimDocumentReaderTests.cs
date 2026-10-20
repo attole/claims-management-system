@@ -49,4 +49,40 @@ public sealed class ClaimDocumentReaderTests
 
         result.Should().BeEmpty();
     }
+
+    [Fact]
+    public async Task FindReferencedPathsAsync_RemovedDocumentOfAnotherOrganisation_StillCountsAsReferenced()
+    {
+        using var database = new TestDatabase();
+        var claimId = TestClaims.Seed(database);
+        using (var writer = database.CreateContext())
+        {
+            var document = TestDocuments.Upload(claimId, TestDatabase.OrganisationId, "kept.pdf", database.Now);
+            writer.ClaimDocuments.Add(document);
+            writer.SaveChanges();
+            writer.ClaimDocuments.Remove(document);
+            writer.SaveChanges();
+        }
+
+        using var jobContext = database.CreateContext(Guid.Empty, Guid.Empty);
+        var reader = new ClaimDocumentReader(jobContext, TestMapper.Create());
+
+        var result = await reader.FindReferencedPathsAsync(
+            ["claim-documents/kept.pdf", "claim-documents/stray.pdf"],
+            CancellationToken.None);
+
+        result.Should().Equal("claim-documents/kept.pdf");
+    }
+
+    [Fact]
+    public async Task FindReferencedPathsAsync_PathNoDocumentRefersTo_IsNotReturned()
+    {
+        using var database = new TestDatabase();
+        using var context = database.CreateContext();
+        var reader = new ClaimDocumentReader(context, TestMapper.Create());
+
+        var result = await reader.FindReferencedPathsAsync(["claim-documents/stray.pdf"], CancellationToken.None);
+
+        result.Should().BeEmpty();
+    }
 }

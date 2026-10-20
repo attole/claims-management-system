@@ -20,6 +20,38 @@ internal sealed class AzureBlobStorageService(IOptions<StorageOptions> options, 
         await container.GetBlobClient(target.Name).UploadAsync(content, upload, cancellationToken);
     }
 
+    public async Task<IReadOnlyList<string>> ListAsync(
+        string container,
+        DateTimeOffset createdBefore,
+        CancellationToken cancellationToken)
+    {
+        var containerClient = _client.GetBlobContainerClient(container);
+        var paths = new List<string>();
+
+        if (!await containerClient.ExistsAsync(cancellationToken))
+        {
+            return paths;
+        }
+
+        await foreach (var blob in containerClient.GetBlobsAsync(cancellationToken: cancellationToken))
+        {
+            if (blob.Properties.LastModified < createdBefore)
+            {
+                paths.Add($"{container}/{blob.Name}");
+            }
+        }
+
+        return paths;
+    }
+
+    public async Task DeleteAsync(string path, CancellationToken cancellationToken)
+    {
+        var target = StoragePath.From(path);
+        var container = _client.GetBlobContainerClient(target.Container);
+
+        await container.DeleteBlobIfExistsAsync(target.Name, cancellationToken: cancellationToken);
+    }
+
     public Task<string> GetDownloadUrlAsync(string path, TimeSpan lifetime, CancellationToken cancellationToken)
     {
         var target = StoragePath.From(path);

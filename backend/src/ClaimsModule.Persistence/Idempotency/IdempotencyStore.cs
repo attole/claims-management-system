@@ -8,6 +8,8 @@ namespace ClaimsModule.Persistence.Idempotency;
 internal sealed class IdempotencyStore(ClaimsDbContext context, IClock clock, ICurrentUser currentUser)
     : IIdempotencyStore
 {
+    private const int PurgeBatchSize = 500;
+
     private static readonly TimeSpan _expiresAfter = TimeSpan.FromHours(24);
 
     public async Task<IdempotencyBegin> BeginAsync(IdempotencyRequest request, CancellationToken cancellationToken)
@@ -41,6 +43,27 @@ internal sealed class IdempotencyStore(ClaimsDbContext context, IClock clock, IC
         record.Complete(response);
 
         await context.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<int> PurgeExpiredAsync(CancellationToken cancellationToken)
+    {
+        var expiredBefore = clock.UtcNow - _expiresAfter;
+        int total = 0;
+        int purged;
+
+        do
+        {
+            purged = await context.IdempotencyRecords
+                .IgnoreQueryFilters()
+                .Where(record => record.CreatedAt < expiredBefore)
+                .OrderBy(record => record.Id)
+                .Take(PurgeBatchSize)
+                .ExecuteDeleteAsync(cancellationToken);
+            total += purged;
+        }
+        while (purged == PurgeBatchSize);
+
+        return total;
     }
 
     private async Task<IdempotencyRecord?> FindAsync(IdempotencyRequest request, CancellationToken cancellationToken)

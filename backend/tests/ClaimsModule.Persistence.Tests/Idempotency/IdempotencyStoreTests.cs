@@ -1,5 +1,6 @@
 using ClaimsModule.Application.Abstractions;
 using ClaimsModule.Application.Idempotency;
+using ClaimsModule.Domain.Common;
 using ClaimsModule.Persistence.Idempotency;
 using ClaimsModule.Persistence.Tests.Support;
 using Microsoft.EntityFrameworkCore;
@@ -151,6 +152,68 @@ public sealed class IdempotencyStoreTests
         Func<Task> act = () => Complete(database, _request, new IdempotencyResponse(200, "{}"));
 
         await act.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    [Fact]
+    [Trait("Rule", "S:API-IdempotencyKey")]
+    public async Task PurgeExpiredAsync_RemovesKeysOlderThanTheWindowOfEveryOrganisation()
+    {
+        using var database = new TestDatabase();
+        var otherOrganisation = Guid.NewGuid();
+        await BeginAndCommit(database, _request);
+        using (var other = database.CreateContext(otherOrganisation, TestDatabase.UserId))
+        {
+            var otherStore = CreateStore(database, other, otherOrganisation, TestDatabase.UserId);
+            await otherStore.BeginAsync(_request, CancellationToken.None);
+            await other.SaveChangesAsync();
+        }
+
+        database.Now = database.Now.AddHours(25);
+        using var jobContext = database.CreateContext(Guid.Empty, Guid.Empty);
+        var store = CreateStore(database, jobContext, Guid.Empty, Guid.Empty);
+
+        int result = await store.PurgeExpiredAsync(CancellationToken.None);
+
+        result.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task PurgeExpiredAsync_MoreExpiredKeysThanOneBatch_RemovesAllOfThem()
+    {
+        using var database = new TestDatabase();
+        using (var setup = database.CreateContext())
+        {
+            var records = Enumerable.Range(0, 1_100).Select(index => new IdempotencyRecord(
+                Ids.Next(),
+                TestDatabase.OrganisationId,
+                TestDatabase.UserId,
+                _request with { Key = $"key-{index}" },
+                database.Now));
+            setup.IdempotencyRecords.AddRange(records);
+            await setup.SaveChangesAsync();
+        }
+
+        database.Now = database.Now.AddHours(25);
+        using var jobContext = database.CreateContext(Guid.Empty, Guid.Empty);
+        var store = CreateStore(database, jobContext, Guid.Empty, Guid.Empty);
+
+        int result = await store.PurgeExpiredAsync(CancellationToken.None);
+
+        result.Should().Be(1_100);
+    }
+
+    [Fact]
+    public async Task PurgeExpiredAsync_KeyInsideTheWindow_IsKept()
+    {
+        using var database = new TestDatabase();
+        await BeginAndCommit(database, _request);
+        database.Now = database.Now.AddHours(23);
+        using var jobContext = database.CreateContext(Guid.Empty, Guid.Empty);
+        var store = CreateStore(database, jobContext, Guid.Empty, Guid.Empty);
+
+        await store.PurgeExpiredAsync(CancellationToken.None);
+
+        CountSaved(database).Should().Be(1);
     }
 
     private static int CountSaved(TestDatabase database)

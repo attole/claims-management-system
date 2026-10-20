@@ -2,7 +2,7 @@
 
 Claims handling for a policy administration system, built end to end: a .NET 9 backend (Clean Architecture, CQRS) and an Angular frontend.
 
-Status: the Domain, the Application and the Persistence (with its migrations and seed) are built and tested. Infrastructure and the API hold only their skeletons, and the frontend is not started.
+Status: the Domain, the Application, the Persistence (with its migrations and seed) and the Infrastructure (jobs, storage adapters, clock) are built and tested. The API holds only its skeleton, and the frontend is not started.
 
 ## Documentation
 
@@ -50,11 +50,15 @@ Required settings are validated at startup; a missing one stops the app and name
 | `Hangfire:PostingSweep:MinimumAge` (optional, default `00:10:00`, must be positive) | `appsettings.json` | app settings |
 | `Hangfire:PostingSweep:IntervalMinutes` (optional, default 5, must divide 60 evenly) | `appsettings.json` | app settings |
 | `Hangfire:SlaBreach:IntervalMinutes` (optional, default 15, must divide 60 evenly) | `appsettings.json` | app settings |
+| `Hangfire:IdempotencyCleanup:IntervalHours` (optional, default 1; 1, 2, 3, 4, 6, 8 or 12) | `appsettings.json` | app settings |
+| `Hangfire:BlobSweep:MinimumAge` (optional, default `1.00:00:00`, must be positive) | `appsettings.json` | app settings |
+| `Hangfire:BlobSweep:IntervalHours` (optional, default 12; 1, 2, 3, 4, 6, 8 or 12) | `appsettings.json` | app settings |
 
-Feature switches are booleans that default to false and do not depend on the environment; `appsettings.Development.json` turns all three on.
+Feature switches are booleans that default to false and do not depend on the environment; `appsettings.Development.json` turns on the first three; the blob sweep deletes blobs, so it stays off until set.
 
 | Switch | Effect when true |
 |---|---|
 | `Swagger:Enabled` | serves the OpenAPI document and Swagger UI |
 | `Hangfire:Dashboard:Enabled` | mounts the Hangfire dashboard, open to every request |
 | `DevAuth:Enabled` | reserved for the dev token endpoint (not built yet) |
+| `Hangfire:BlobSweep:Enabled` | schedules the job that deletes stored blobs no document refers to |

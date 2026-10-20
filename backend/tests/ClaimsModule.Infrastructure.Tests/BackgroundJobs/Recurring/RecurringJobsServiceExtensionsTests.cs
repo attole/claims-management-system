@@ -14,14 +14,12 @@ public sealed class RecurringJobsServiceExtensionsTests
     [Trait("Rule", "S:JOB-Registration")]
     [InlineData(RecurringJobsServiceExtensions.SlaJobId, typeof(SlaBreachJob), "*/20 * * * *")]
     [InlineData(RecurringJobsServiceExtensions.PostingSweepJobId, typeof(PostingSweepJob), "*/10 * * * *")]
+    [InlineData(RecurringJobsServiceExtensions.IdempotencyCleanupJobId, typeof(IdempotencyCleanupJob), "0 */2 * * *")]
+    [InlineData(RecurringJobsServiceExtensions.BlobSweepJobId, typeof(BlobSweepJob), "0 */4 * * *")]
     public void UseRecurringJobs_RegistersTheJobOnItsConfiguredCadence(string jobId, Type jobType, string cron)
     {
         var manager = new Mock<IRecurringJobManager>();
-        var services = new ServiceCollection()
-            .AddSingleton(manager.Object)
-            .AddSingleton(Options.Create(new SlaBreachOptions { IntervalMinutes = 20 }))
-            .AddSingleton(Options.Create(new PostingSweepOptions { IntervalMinutes = 10 }));
-        var app = new ApplicationBuilder(services.BuildServiceProvider());
+        var app = CreateApp(manager, new BlobSweepOptions { Enabled = true, IntervalHours = 4 });
 
         app.UseRecurringJobs();
 
@@ -32,6 +30,34 @@ public sealed class RecurringJobsServiceExtensionsTests
                 cron,
                 It.IsAny<RecurringJobOptions>()),
             Times.Once());
+    }
+
+    [Fact]
+    public void UseRecurringJobs_WithTheBlobSweepDisabled_RemovesItsDefinition()
+    {
+        var manager = new Mock<IRecurringJobManager>();
+        var app = CreateApp(manager, new BlobSweepOptions { Enabled = false });
+
+        app.UseRecurringJobs();
+
+        manager.Verify(mock => mock.RemoveIfExists(RecurringJobsServiceExtensions.BlobSweepJobId), Times.Once());
+    }
+
+    [Fact]
+    public void UseRecurringJobs_WithTheBlobSweepDisabled_DoesNotScheduleIt()
+    {
+        var manager = new Mock<IRecurringJobManager>();
+        var app = CreateApp(manager, new BlobSweepOptions { Enabled = false });
+
+        app.UseRecurringJobs();
+
+        manager.Verify(
+            mock => mock.AddOrUpdate(
+                RecurringJobsServiceExtensions.BlobSweepJobId,
+                It.IsAny<Job>(),
+                It.IsAny<string>(),
+                It.IsAny<RecurringJobOptions>()),
+            Times.Never());
     }
 
     [Theory]
@@ -57,6 +83,33 @@ public sealed class RecurringJobsServiceExtensionsTests
         var provider = CreateProvider(new KeyValuePair<string, string?>("Hangfire:SlaBreach:IntervalMinutes", value));
 
         var act = () => provider.GetRequiredService<IOptions<SlaBreachOptions>>().Value;
+
+        act.Should().Throw<OptionsValidationException>();
+    }
+
+    [Theory]
+    [InlineData("0")]
+    [InlineData("5")]
+    [InlineData("24")]
+    public void AddRecurringJobs_WithAnInvalidCleanupInterval_FailsOptionsValidation(string value)
+    {
+        var key = "Hangfire:IdempotencyCleanup:IntervalHours";
+        var provider = CreateProvider(new KeyValuePair<string, string?>(key, value));
+
+        var act = () => provider.GetRequiredService<IOptions<IdempotencyCleanupOptions>>().Value;
+
+        act.Should().Throw<OptionsValidationException>();
+    }
+
+    [Theory]
+    [InlineData("Hangfire:BlobSweep:MinimumAge", "00:00:00")]
+    [InlineData("Hangfire:BlobSweep:IntervalHours", "0")]
+    [InlineData("Hangfire:BlobSweep:IntervalHours", "5")]
+    public void AddRecurringJobs_WithAnInvalidBlobSweepSetting_FailsOptionsValidation(string key, string value)
+    {
+        var provider = CreateProvider(new KeyValuePair<string, string?>(key, value));
+
+        var act = () => provider.GetRequiredService<IOptions<BlobSweepOptions>>().Value;
 
         act.Should().Throw<OptionsValidationException>();
     }
@@ -90,6 +143,58 @@ public sealed class RecurringJobsServiceExtensionsTests
         var result = provider.GetRequiredService<IOptions<PostingSweepOptions>>().Value;
 
         result.MinimumAge.Should().Be(TimeSpan.FromMinutes(10));
+    }
+
+    [Fact]
+    public void AddRecurringJobs_WithoutConfiguration_CleansIdempotencyKeysHourly()
+    {
+        var provider = CreateProvider();
+
+        var result = provider.GetRequiredService<IOptions<IdempotencyCleanupOptions>>().Value;
+
+        result.IntervalHours.Should().Be(1);
+    }
+
+    [Fact]
+    public void AddRecurringJobs_WithoutConfiguration_LeavesTheBlobSweepOff()
+    {
+        var provider = CreateProvider();
+
+        var result = provider.GetRequiredService<IOptions<BlobSweepOptions>>().Value;
+
+        result.Enabled.Should().BeFalse();
+    }
+
+    [Fact]
+    public void AddRecurringJobs_WithoutConfiguration_SweepsBlobsOlderThanADay()
+    {
+        var provider = CreateProvider();
+
+        var result = provider.GetRequiredService<IOptions<BlobSweepOptions>>().Value;
+
+        result.MinimumAge.Should().Be(TimeSpan.FromDays(1));
+    }
+
+    [Fact]
+    public void AddRecurringJobs_WithoutConfiguration_SweepsBlobsEveryTwelveHours()
+    {
+        var provider = CreateProvider();
+
+        var result = provider.GetRequiredService<IOptions<BlobSweepOptions>>().Value;
+
+        result.IntervalHours.Should().Be(12);
+    }
+
+    private static ApplicationBuilder CreateApp(Mock<IRecurringJobManager> manager, BlobSweepOptions blobs)
+    {
+        var services = new ServiceCollection()
+            .AddSingleton(manager.Object)
+            .AddSingleton(Options.Create(new SlaBreachOptions { IntervalMinutes = 20 }))
+            .AddSingleton(Options.Create(new PostingSweepOptions { IntervalMinutes = 10 }))
+            .AddSingleton(Options.Create(new IdempotencyCleanupOptions { IntervalHours = 2 }))
+            .AddSingleton(Options.Create(blobs));
+
+        return new ApplicationBuilder(services.BuildServiceProvider());
     }
 
     private static ServiceProvider CreateProvider(params KeyValuePair<string, string?>[] settings)

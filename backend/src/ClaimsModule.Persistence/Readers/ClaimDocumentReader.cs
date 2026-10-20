@@ -23,6 +23,20 @@ internal sealed class ClaimDocumentReader(ClaimsDbContext context, IMapper mappe
         return files;
     }
 
+    public async Task<IReadOnlyList<string>> FindReferencedPathsAsync(
+        IReadOnlyCollection<string> paths,
+        CancellationToken cancellationToken)
+    {
+        var referenced = await context.ClaimDocuments
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(document => paths.Contains(document.Details.BlobPath))
+            .Select(document => document.Details.BlobPath)
+            .ToListAsync(cancellationToken);
+
+        return referenced;
+    }
+
     private ClaimDocumentFile ToFile(ClaimDocument document)
     {
         var dto = mapper.Map<ClaimDocumentDto>(document);

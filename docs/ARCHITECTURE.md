@@ -9,13 +9,13 @@ Clean Architecture with five projects, dependencies pointing inward: `API` -> `A
 - **Domain:** three aggregates (the claim with its parties, risk objects, loss, issues and state changes; the reserve component with its history rows; the claim document), two reference entities (policy, cause of loss) and the roles. Aggregates refer to each other by id only. A small generic engine runs every change: rules first, then the change, with refusals returned as findings.
 - **Application:** the use cases. A handler loads the aggregate and the outside facts, builds the input, calls one aggregate method, commits and maps the result. Validators check shape only; business rules stay in the Domain. Audit and the follow-ups of an event are handlers around the commit.
 - **Persistence:** EF Core mapping, the readers that project straight into DTOs, the Unit of Work, and a save interceptor for the audit columns, soft delete, tenant and claim-row touch.
-- **Infrastructure:** the Hangfire jobs (posting, SLA, the posting sweep) and outside adapters such as Blob storage.
+- **Infrastructure:** the Hangfire jobs (posting, SLA, the posting sweep, the idempotency cleanup, the orphan blob sweep) and outside adapters such as Blob storage.
 - **API:** controllers, the error mapping, the Idempotency-Key filter and startup.
 
 | Layer | State |
 |---|---|
-| Domain, Application | complete, with tests |
-| Persistence, Infrastructure, API, frontend | not started; what the Domain and Application hand over is in `docs/layers/persistence.md`, `docs/layers/infrastructure.md` and `docs/layers/api.md` |
+| Domain, Application, Persistence, Infrastructure | complete, with tests; the contracts are in `docs/layers/persistence.md` and `docs/layers/infrastructure.md` |
+| API, frontend | not started; what the Application hands over is in `docs/layers/api.md` |
 
 Key choices:
 

@@ -8,4 +8,6 @@ public interface IIdempotencyStore
         IdempotencyRequest request,
         IdempotencyResponse response,
         CancellationToken cancellationToken);
+
+    Task<int> PurgeExpiredAsync(CancellationToken cancellationToken);
 }

@@ -9,7 +9,7 @@ One folder per aggregate root (`Claims`, `ReserveComponents`, `ClaimDocuments`),
 - A root past about six loose files uses role folders, each created with its first file: `Commands/` (writes), `Queries/` (reads), `Dtos/` (DTOs and the mapping profile that maps to them), `Contracts/` (repository and reader interfaces and the records only they use, such as a list filter or a facts record), `Requests/` (shared request records), `Handlers/` (event handlers).
 - The errors and the field lengths of a feature share one file named after the errors class (`ClaimErrors.cs` holds `ClaimErrors` and `ClaimFieldLengths`).
 - A child entity gets its own folder mirroring the Domain (`Claims/Parties/AddPartyCommand.cs`) with its files flat, and uses role folders past about six files (`ReserveComponents/History`). A small feature stays flat beside a `Queries/` folder.
-- Cross-cutting ports (clock, current user, unit of work, correlation, storage, job scheduler) are in `Abstractions/`. Shared building blocks have their own folders: `Results/`, `Messaging/` (`ICommand<T>`, `IQuery<T>`), `Paging/`, `Behaviors/`, `Events/` (`Contracts/` for the context, handler and dispatcher interfaces, `Services/` for the dispatcher) and `Idempotency/` (the store contract). `Audit/` is a feature folder with `Contracts/`, `Dtos/`, `Handlers/` (the audit event handlers) and `Queries/`.
+- Cross-cutting ports (clock, current user, unit of work, correlation, storage, job scheduler) are in `Abstractions/`. Shared building blocks have their own folders: `Results/`, `Messaging/` (`ICommand<T>`, `IQuery<T>`), `Paging/`, `Behaviors/`, `Events/` (`Contracts/` for the context, handler and dispatcher interfaces, `Services/` for the dispatcher) and `Idempotency/` (the store contract, plus the purge job command and its DTO). `Audit/` is a feature folder with `Contracts/`, `Dtos/`, `Handlers/` (the audit event handlers) and `Queries/`.
 - Test folders mirror the source folders; `Support/` holds the fixtures.
 
 ## Command file
@@ -83,7 +83,7 @@ A background job sends an ordinary command (`DetectSlaBreachesCommand`, `ResendS
 
 ## Provides and expects
 
-- **Provides:** the commands, queries and DTOs, the `Result` type, the event dispatcher (`AddEvents`), the job commands (`DetectSlaBreachesCommand`, `ResendStalePostingsCommand` and the posting commands) and the ports below.
+- **Provides:** the commands, queries and DTOs, the `Result` type, the event dispatcher (`AddEvents`), the job commands (`DetectSlaBreachesCommand`, `ResendStalePostingsCommand`, `PurgeExpiredIdempotencyKeysCommand`, `SweepOrphanBlobsCommand` and the posting commands) and the ports below.
 - **Expects from Persistence:** `IClaimRepository`, `IReserveComponentRepository`, `IClaimDocumentRepository`, the readers (`IClaimReader`, `IClaimReserveReader`, `IPolicyReader`, `ICauseCodeReader`, `ISlaClaimReader`, `IAuditLogReader`), `IClaimNumberGenerator`, `IAuditLogService`, `IIdempotencyStore` and `IUnitOfWork`. It translates EF save errors into `ConcurrencyConflictException`. See `docs/layers/persistence.md`.
 - **Expects from Infrastructure:** `IStorageService` and `IPostingScheduler`, and the jobs that send the job commands. See `docs/layers/infrastructure.md`.
 - **Expects from the API:** the correlation id (`ICorrelationContext`), the current user set from the token (Infrastructure registers `IClock` and `ICurrentUser` as `ScopedCurrentUser`; the API fills it), the error mapping and the Idempotency-Key filter. See `docs/layers/api.md`.

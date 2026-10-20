@@ -1,6 +1,6 @@
 # API layer
 
-Rules and contracts of the API: controllers, the error body, identity and the Idempotency-Key filter. It supplies the clock, the current user and the correlation id the Application expects (`docs/layers/application.md` 'Provides and expects'). `.claude/CLAUDE.md` holds the short rules and points here; read this file before changing the API project or reviewing its code. Status: not built; this file holds what the Application hands over, and grows into standards as the layer is written.
+Rules and contracts of the API: controllers, the error body, identity and the Idempotency-Key filter. It fills the current user from the token and supplies the correlation id the Application expects (Infrastructure registers the clock and the current user holder) (`docs/layers/application.md` 'Provides and expects'). `.claude/CLAUDE.md` holds the short rules and points here; read this file before changing the API project or reviewing its code. Status: not built; this file holds what the Application hands over, and grows into standards as the layer is written.
 
 ## Controllers and routes
 

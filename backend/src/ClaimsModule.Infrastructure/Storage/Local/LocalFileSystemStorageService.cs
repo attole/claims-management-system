@@ -24,6 +24,35 @@ public sealed class LocalFileSystemStorageService(IOptions<StorageOptions> optio
         return Task.FromResult(url);
     }
 
+    public Task<IReadOnlyList<string>> ListAsync(
+        string container,
+        DateTimeOffset createdBefore,
+        CancellationToken cancellationToken)
+    {
+        var root = Path.GetFullPath(options.Value.LocalRoot);
+        var files = Directory.Exists(root)
+            ? Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories)
+            : [];
+        var paths = files
+            .Where(file => File.GetLastWriteTimeUtc(file) < createdBefore.UtcDateTime)
+            .Select(file => $"{container}/{Path.GetRelativePath(root, file).Replace('\\', '/')}")
+            .ToList();
+
+        return Task.FromResult<IReadOnlyList<string>>(paths);
+    }
+
+    public Task DeleteAsync(string path, CancellationToken cancellationToken)
+    {
+        var file = Resolve(path);
+
+        if (File.Exists(file))
+        {
+            File.Delete(file);
+        }
+
+        return Task.CompletedTask;
+    }
+
     public Stream OpenRead(string path)
     {
         return File.OpenRead(Resolve(path));
