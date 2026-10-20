@@ -500,3 +500,63 @@ decisions: the user chose one result type everywhere, handler names around the c
 ai-errors: a four-file use case layout and a scan test where a compile-time rule fit; the user's why-questions caught both
 human-vs-ai: the user steered the structure by questioning each type and file; the AI generated the code in bulk, kept build, tests and the workflow check green and updated the notes
 refs: CORRECTION-029, CORRECTION-030, SPLIT-007
+
+## CORRECTION-031 | p3 backend | 2026-10-20
+what: the Unit of Work was written in the Application with two extra ports whose only job was to reach EF, and the reviewer flagged the mismatch with CLAUDE.md
+caught-by: user
+fix: moved the Unit of Work to the Persistence pack and removed the two ports and the class from the Application
+lesson: an abstraction whose only job is to reach EF belongs in the layer that owns EF
+
+## CORRECTION-032 | p3 backend | 2026-10-20
+what: a review fix moved the reject reason into the new-value field of the audit entry, which contradicts the spec
+caught-by: spec-check
+fix: the reason went back to the old value for a rejection and the test was updated
+lesson: check a review fix against the spec before applying it, and run spec-check inside the pack
+
+## CORRECTION-033 | p3 backend | 2026-10-20
+what: the AI added conditions no document states (a loss-after-report rule, a report-date refusal, a narrowed approved-reserve reading) and recorded them as decisions
+caught-by: spec-check
+fix: the loss date became future-only, the approved reserve the spec's literal reading, and the remaining own rules are listed for confirmation
+lesson: list a condition no source states as an own rule, never as a decision
+
+## ASSESSMENT-012 | p3 backend | 2026-10-20
+area: mass mechanical changes
+helped: high
+note: adding a time to every claim input and moving files touched about 150 call sites, done with build-driven scripts that kept the build green
+
+## SPLIT-008 | p3 backend | 2026-10-20
+item: pack 5, the spec-alignment pack and the docs reorganisation
+who: hybrid
+note: the user decided structure and readings; the AI wrote the code, tests and docs and ran the review and spec-check
+
+## SUMMARY-019 | p3 backend | 2026-10-20
+topic: Application packs 3 and 4: status changes, reserves, documents and all reads
+story: packs 3a to 3c added status changes with a reflection-built transition list, reserve use cases with posting handlers, and document upload and removal. Pack 4 added all reads, paged and projecting into DTOs. The layer was regrouped into role folders and a review followed each pack.
+decisions: the user chose a dictionary instead of runner classes, a reflection-built status list over a hand-written table, a unique upload id in the blob name, role folders and PageWindow over PageRequest
+ai-errors: runner classes and a loader-style abstraction the user questioned away, a blob path that could collide, and a first query design that loaded entities; the user's why-questions and the reviews caught them
+human-vs-ai: the user steered structure and naming by questioning each type and folder; the AI generated the code, kept build and tests green and applied the chosen review fixes
+refs: none
+
+## SUMMARY-020 | p3 backend | 2026-10-20
+topic: Pack 5: audit handlers, event dispatch and the idempotency contract
+story: nine audit handlers cover the spec's fixed event list, an event dispatcher runs before-commit and after-commit handlers, and an idempotency store contract was defined. The Unit of Work first lived in the Application behind two extra ports; after the user's questions it moved to the Persistence pack and the ports were removed.
+decisions: the user chose one AddEvents registration, the Unit of Work in Persistence, an action filter (not a MediatR behavior) for the Idempotency-Key, and a General key for errors without a field
+ai-errors: two ports whose only job was to reach EF, caught by the user's questions; a review fix that put the reject reason in the wrong audit field, caught later by spec-check
+human-vs-ai: the user questioned every abstraction and chose the structure; the AI wrote the code, the tests and the doc updates, and the fresh review and spec-check found the gaps
+refs: CORRECTION-031, CORRECTION-032
+
+## SUMMARY-021 | p3 backend | 2026-10-20
+topic: Spec alignment of the Domain and Application
+story: a coverage spec-check of 151 rules found no missing rule and a short list of gaps. The loss date check became future-only with a time on every claim input, refused status moves list the valid next statuses, an unknown policy at intake became a warning, SLA and posting-sweep job commands were added, and message, naming and GUID tests were added.
+decisions: the user chose the spec's literal readings over the AI's narrower ones, the Domain finding carrying the spec message, the General error key, and tests that enforce naming and hard-coded GUIDs
+ai-errors: rules no document states recorded as decisions, caught by spec-check and the user
+human-vs-ai: the spec-check listed the gaps and the user decided each reading; the AI applied the changes and about 150 call-site edits with build-driven scripts
+refs: CORRECTION-033, ASSESSMENT-012
+
+## SUMMARY-022 | p3 backend | 2026-10-20
+topic: Documentation and instruction reorganisation
+story: CLAUDE.md shrank from 27 KB to 22 KB with code style, naming and tests moved to CODING-STANDARDS and one file per layer in docs/layers with rules and contracts. ARCHITECTURE became an overview with tables for interpretations and own rules. The layer notes, the design note and the plan were retired and the parking lot cleaned.
+decisions: the user chose docs/layers over a standards folder, interpretations and own rules as separate tables, one parking lot instead of layer notes, and dropping the plan note; a check now requires every layer file to be cited
+ai-errors: a first trim of CLAUDE.md saved only about 3 percent until the details moved to the layer files; the AI's own size check showed it
+human-vs-ai: the user decided the structure and what was stale; the AI proposed argued options, rewrote the files and kept the workflow check at zero findings
+refs: SPLIT-008

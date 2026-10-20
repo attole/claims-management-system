@@ -24,7 +24,7 @@ Investigates how a feature or area works by reading the actual code: entry point
 Before searching, use what is already in hand:
 
 - conversation context: paths and decisions stated this session, earlier explore or design output;
-- `docs/ARCHITECTURE.md`, the local domain documents when the question is about a business rule (CLAUDE.md 'Domain sources'; cite by source-qualified ID), and any relevant `.claude/temp/` note.
+- `docs/ARCHITECTURE.md`, the file in `docs/layers/` of the layer the question is about, the local domain documents when the question is about a business rule (CLAUDE.md 'Domain sources'; cite by source-qualified ID), and any relevant `.claude/temp/` note.
 
 A named symbol or a documented location IS the address; do not re-search it. If the code for the topic does not exist yet, say so and answer from the docs, naming the doc. In discovery keep the labels, with `flow: not implemented (docs: <name>, <rule IDs>)`.
 

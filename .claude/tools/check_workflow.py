@@ -499,12 +499,24 @@ def check_overlap(window=8):
             fail("confidentiality", f"{rel} shares {hits} run(s) of {window}+ words with the local task documents")
 
 
+def check_layer_docs():
+    claude = read(".claude/CLAUDE.md") or ""
+    skill = read(".claude/skills/code-review/SKILL.md") or ""
+    for path in sorted((ROOT / "docs/layers").glob("*.md")):
+        rel = path.relative_to(ROOT).as_posix()
+        short = path.name
+        if short not in claude:
+            fail("layers", f"{rel} is not named in .claude/CLAUDE.md")
+        if rel not in skill:
+            fail("layers", f"{rel} is not named in the code-review skill")
+
+
 def main():
     global ran
     rules = parse_register()
     for run in (check_ascii, check_citations, check_architecture_citations, check_headings, check_settings,
                 lambda: check_register(rules), lambda: check_quoted_counts(rules), check_skills, check_paths,
-                check_journal, check_parking_lot, check_code_layout, check_overlap):
+                check_journal, check_parking_lot, check_code_layout, check_overlap, check_layer_docs):
         ran += 1
         run()
     for line in findings:

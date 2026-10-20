@@ -28,7 +28,7 @@ Understand WHAT to build, then HOW to code it. Produces a code-level design and 
 
 - Business rules and product decisions come from the user, never from inference or code patterns (CLAUDE.md 'Source of truth hierarchy'). The code shows what exists; the user says what should happen.
 - "I'm not sure" is recorded as open, not resolved with a pattern. New input that contradicts earlier input is surfaced: state both versions, ask which is correct.
-- Read the local domain documents (CLAUDE.md 'Domain sources') and `docs/ARCHITECTURE.md` first. Extract settled decisions; do not re-ask what they answer. Cite rules by source-qualified ID and paraphrase confidential text. Where the documents conflict, surface a `[?]` block.
+- Read the local domain documents (CLAUDE.md 'Domain sources'), `docs/ARCHITECTURE.md` and the file in `docs/layers/` of the layer being designed first. Extract settled decisions; do not re-ask what they answer. Cite rules by source-qualified ID and paraphrase confidential text. Where the documents conflict, surface a `[?]` block.
 
 ### Order of work
 
@@ -80,7 +80,7 @@ OPEN:         unresolved questions, including known pitfalls not yet covered by 
 NEXT:         next steps
 ```
 
-Verified ANALOGUE facts and settled DECISIONS graduate to `docs/ARCHITECTURE.md`. PROVISIONAL stays provisional until built. Prune resolved lines.
+Verified ANALOGUE facts and settled DECISIONS graduate to `docs/ARCHITECTURE.md` or the layer's file in `docs/layers/`. PROVISIONAL stays provisional until built. Prune resolved lines.
 
 -
 

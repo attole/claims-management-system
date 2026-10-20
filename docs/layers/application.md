@@ -1,6 +1,6 @@
-# Application standards
+# Application layer
 
-Reference for writing and reviewing Application code: layout, the shape of each kind of file, the handler flow and the test shapes. `.claude/CLAUDE.md` holds the short rules and points here; read this file before changing the Application or reviewing Application code. The reasons are in `docs/ARCHITECTURE.md` 'The Application layer'.
+Rules and contracts of the Application: layout, the shape of each kind of file, the handler flow and the test shapes, and what the Application provides and expects. `.claude/CLAUDE.md` holds the short rules and points here; read this file before changing the Application or reviewing Application code. Status: complete, with tests. The reasons are in `docs/ARCHITECTURE.md` 'Overview'.
 
 ## Layout
 
@@ -9,7 +9,7 @@ One folder per aggregate root (`Claims`, `ReserveComponents`, `ClaimDocuments`),
 - A root past about six loose files uses role folders, each created with its first file: `Commands/` (writes), `Queries/` (reads), `Dtos/` (DTOs and the mapping profile that maps to them), `Contracts/` (repository and reader interfaces and the records only they use, such as a list filter or a facts record), `Requests/` (shared request records), `Handlers/` (event handlers).
 - The errors and the field lengths of a feature share one file named after the errors class (`ClaimErrors.cs` holds `ClaimErrors` and `ClaimFieldLengths`).
 - A child entity gets its own folder mirroring the Domain (`Claims/Parties/AddPartyCommand.cs`) with its files flat, and uses role folders past about six files (`ReserveComponents/History`). A small feature stays flat beside a `Queries/` folder.
-- Cross-cutting ports (clock, current user, unit of work, correlation, storage, job scheduler) are in `Abstractions/`. Shared building blocks have their own folders: `Results/`, `Messaging/` (`ICommand<T>`, `IQuery<T>`), `Paging/`, `Events/`, `Behaviors/`.
+- Cross-cutting ports (clock, current user, unit of work, correlation, storage, job scheduler) are in `Abstractions/`. Shared building blocks have their own folders: `Results/`, `Messaging/` (`ICommand<T>`, `IQuery<T>`), `Paging/`, `Behaviors/`, `Events/` (`Contracts/` for the context, handler and dispatcher interfaces, `Services/` for the dispatcher) and `Idempotency/` (the store contract). `Audit/` is a feature folder with `Contracts/`, `Dtos/`, `Handlers/` (the audit event handlers) and `Queries/`.
 - Test folders mirror the source folders; `Support/` holds the fixtures.
 
 ## Command file
@@ -62,7 +62,11 @@ Repository and reader interfaces are defined in the Application and implemented 
 
 ## Event handlers
 
-`IBeforeCommitEventHandler<TEvent>` runs in the same transaction (audit, components following the claim); `IAfterCommitEventHandler<TEvent>` runs after the commit (enqueue a job). They are registered by assembly scan (`AddEvents`, which also registers the dispatcher and the Unit of Work) and live in the feature's `Handlers/` folder. A handler reads the event context, not the Domain event alone, for the id, time, actor and correlation id.
+`IBeforeCommitEventHandler<TEvent>` runs in the same transaction (audit, components following the claim); `IAfterCommitEventHandler<TEvent>` runs after the commit (enqueue a job). They are registered by assembly scan (`AddEvents`, which also registers the dispatcher and the Unit of Work) and live in the feature's `Handlers/` folder. A handler reads the event context, not the Domain event alone, for the id, time, actor and correlation id. Audit handlers write through `IAuditLogService`, which takes an `AuditContext` (time, actor, correlation id); an `EventContext` is one.
+
+## Job commands
+
+A background job sends an ordinary command (`DetectSlaBreachesCommand`, `ResendStalePostingsCommand`, the posting job's mark posted and mark failed commands). It reads the time from `IClock`, acts as the system actor (`Guid.Empty`) when it writes audit, takes its readers from the same contracts as the API, and is safe to run twice (a posted row answers success without a write).
 
 ## Naming checks (S:DATA-Naming)
 
@@ -75,4 +79,11 @@ Repository and reader interfaces are defined in the Application and implemented 
 - One test class per use-case file, `<UseCase>CommandTests` or `<UseCase>QueryTests`, holding its `Handle_...` and `Validate_...` tests; a request file has `<Request>Tests`; a mapping profile `<Profile>Tests`.
 - Handlers are tested against fakes: `ClaimHandlerContext` (writes) and `QueryContext` (reads) in `Support/Claims` build the Moq readers and repositories, with `With...` methods for the arranged data and `Verify...` methods for the effects.
 - A handler test covers the success path with what it stores or commits, the not-found path and one refusal asserted by its rule code with `[Trait("Rule", ...)]`; a validator test covers one failing case per rule. Domain rules are not retested.
-- Real Domain outcomes build the arranged state (`ApplicationClaims`, `ApplicationReserves`, `ApplicationDocuments`), never private state.
+- Real Domain outcomes build the arranged state (`ApplicationClaims`, `ApplicationReserves`, `ApplicationDocuments`), never private state. `Support/Events` holds `EventContexts` and `RecordingAuditLog` for the event and audit handler tests.
+
+## Provides and expects
+
+- **Provides:** the commands, queries and DTOs, the `Result` type, the event dispatcher (`AddEvents`), the job commands (`DetectSlaBreachesCommand`, `ResendStalePostingsCommand` and the posting commands) and the ports below.
+- **Expects from Persistence:** `IClaimRepository`, `IReserveComponentRepository`, `IClaimDocumentRepository`, the readers (`IClaimReader`, `IClaimReserveReader`, `IPolicyReader`, `ICauseCodeReader`, `ISlaClaimReader`, `IAuditLogReader`), `IClaimNumberGenerator`, `IAuditLogService`, `IIdempotencyStore` and `IUnitOfWork`. See `docs/layers/persistence.md`.
+- **Expects from Infrastructure:** `IStorageService` and `IPostingScheduler`, and the jobs that send the job commands. See `docs/layers/infrastructure.md`.
+- **Expects from the API:** the clock, the current user and the correlation id (`IClock`, `ICurrentUser`, `ICorrelationContext`), the error mapping and the Idempotency-Key filter. See `docs/layers/api.md`.
