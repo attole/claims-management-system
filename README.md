@@ -44,6 +44,9 @@ Required settings are validated at startup; a missing one stops the app and name
 | `Jwt:Issuer`, `Jwt:Audience` | `appsettings.json` | app settings |
 | `ConnectionStrings:ClaimsDb` | `appsettings.Development.json` | app settings |
 | `Cors:AllowedOrigins` (at least one) | `appsettings.Development.json` | `Cors__AllowedOrigins__0`, `__1`, ... |
+| `StorageProvider` (`LocalFileSystem` default, or `AzureBlob`) | `appsettings.json` | app settings |
+| `LocalBaseUrl`, `LocalSigningKey` (secret), for `LocalFileSystem`; `LocalRoot` is optional | URL in `appsettings.Development.json`, key in user-secrets | not used |
+| `AzureConnectionString` (secret, with an account key), for `AzureBlob` | not used | Key Vault |
 
 Feature switches are booleans that default to false and do not depend on the environment; `appsettings.Development.json` turns all three on.
 

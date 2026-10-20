@@ -1,6 +1,6 @@
-using ClaimsModule.Infrastructure.Database;
 using Hangfire;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
@@ -8,6 +8,8 @@ namespace ClaimsModule.Infrastructure.BackgroundJobs;
 
 internal static class BackgroundJobsServiceExtensions
 {
+    private const string ConnectionName = "ClaimsDb";
+
     public static IServiceCollection AddBackgroundJobs(this IServiceCollection services)
     {
         services
@@ -18,7 +20,7 @@ internal static class BackgroundJobsServiceExtensions
             .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
             .UseSimpleAssemblyNameTypeSerializer()
             .UseRecommendedSerializerSettings()
-            .UseSqlServerStorage(provider.GetRequiredService<IOptions<DatabaseOptions>>().Value.ClaimsDb));
+            .UseSqlServerStorage(ReadConnectionString(provider)));
         services.AddHangfireServer();
 
         return services;
@@ -35,5 +37,12 @@ internal static class BackgroundJobsServiceExtensions
 
         return app.UseHangfireDashboard(
             options: new DashboardOptions { Authorization = [new OpenDashboardAuthorizationFilter()] });
+    }
+
+    private static string ReadConnectionString(IServiceProvider provider)
+    {
+        var configuration = provider.GetRequiredService<IConfiguration>();
+
+        return configuration.GetConnectionString(ConnectionName) ?? string.Empty;
     }
 }

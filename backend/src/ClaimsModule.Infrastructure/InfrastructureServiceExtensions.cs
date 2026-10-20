@@ -1,6 +1,6 @@
-using ClaimsModule.Infrastructure.Auth;
 using ClaimsModule.Infrastructure.BackgroundJobs;
-using ClaimsModule.Infrastructure.Database;
+using ClaimsModule.Infrastructure.Clock;
+using ClaimsModule.Infrastructure.Storage;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -11,9 +11,9 @@ public static class InfrastructureServiceExtensions
     public static IServiceCollection AddInfrastructure(this IServiceCollection services)
     {
         return services
-            .AddDatabase()
-            .AddBackgroundJobs()
-            .AddDevAuth();
+            .AddClock()
+            .AddStorage()
+            .AddBackgroundJobs();
     }
 
     public static IApplicationBuilder UseInfrastructure(this IApplicationBuilder app)

@@ -22,3 +22,5 @@ NEXT: Application - the tenancy rule for job commands (jobs have no organisation
 NEXT: Infrastructure - the cleanup job that deletes expired IdempotencyKeys rows (docs/layers/infrastructure.md)
 NEXT: Deployment - provision the claims_app database role membership for the app user (the second migration creates the role and denies update and delete on ClaimAuditLog); give CI a SQL Server service and CLAIMS_TEST_SQLSERVER, otherwise the SQL Server test set skips silently
 NEXT: Persistence - add a SQL Server test for the claim list loss-date filter (untestable on SQLite)
+NEXT: infrastructure packs: 1 clock and storage (Azure + local with signed download token), 2 posting scheduler and GL job, 3 SLA and posting sweep jobs with registration, 4 idempotency cleanup (needs Application purge command + Persistence method + job). Pack 2 to 4 blocked by the job tenancy rule.
+NEXT: API pack: local download endpoint validates LocalDownloadToken and streams the file; static files are not used.

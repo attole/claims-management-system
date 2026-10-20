@@ -5,10 +5,15 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="ClaimsModule.Infrastructure.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\ClaimsModule.Application\ClaimsModule.Application.csproj" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Azure.Storage.Blobs" />
     <PackageReference Include="Hangfire.Core" />
     <PackageReference Include="Hangfire.AspNetCore" />
     <PackageReference Include="Hangfire.SqlServer" />

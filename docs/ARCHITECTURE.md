@@ -31,7 +31,7 @@ Key choices:
 Settings, secrets and feature switches follow `.claude/CLAUDE.md` 'Configuration'; the settings table and setup steps are in the root `README.md`. Two points are specific to this design:
 
 - The Hangfire dashboard is open to every request when its switch is on, because a page load carries no Bearer token, so enabling it in a shared environment exposes job data to anyone with the URL.
-- `DevAuth:Enabled` is bound but nothing reads it until the dev token endpoint exists.
+- `DevAuth:Enabled` is only a key in the appsettings files; nothing binds or reads it until the dev token endpoint exists.
 
 ## Task documents
 

@@ -10,6 +10,7 @@
     <Project Path="tests/ClaimsModule.API.Tests/ClaimsModule.API.Tests.csproj" />
     <Project Path="tests/ClaimsModule.Application.Tests/ClaimsModule.Application.Tests.csproj" />
     <Project Path="tests/ClaimsModule.Domain.Tests/ClaimsModule.Domain.Tests.csproj" />
+    <Project Path="tests/ClaimsModule.Infrastructure.Tests/ClaimsModule.Infrastructure.Tests.csproj" />
     <Project Path="tests/ClaimsModule.Persistence.SqlServerTests/ClaimsModule.Persistence.SqlServerTests.csproj" />
     <Project Path="tests/ClaimsModule.Persistence.Tests/ClaimsModule.Persistence.Tests.csproj" />
   </Folder>
