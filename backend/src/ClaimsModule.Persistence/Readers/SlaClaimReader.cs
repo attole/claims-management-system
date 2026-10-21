@@ -7,6 +7,8 @@ namespace ClaimsModule.Persistence.Readers;
 
 internal sealed class SlaClaimReader(ClaimsDbContext context) : ISlaClaimReader
 {
+    private const int BatchSize = 500;
+
     private static readonly ClaimState[] _watchedStates = [new ClaimDraftState(), new ClaimOpenState()];
 
     public async Task<IReadOnlyList<Guid>> ListBreachedClaimIdsAsync(
@@ -29,6 +31,8 @@ internal sealed class SlaClaimReader(ClaimsDbContext context) : ISlaClaimReader
                 ?? EF.Property<DateTimeOffset>(claim, RowColumns.CreatedAt)) < notUpdatedSince)
             .Where(claim => !recentBreaches.Any(entry => entry.ClaimId == claim.Id))
             .Select(claim => claim.Id)
+            .OrderBy(claimId => claimId)
+            .Take(BatchSize)
             .ToListAsync(cancellationToken);
 
         return breached;

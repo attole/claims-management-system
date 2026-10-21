@@ -8,6 +8,10 @@ namespace ClaimsModule.Application.Audit.Handlers;
 public sealed class ReservePostingAuditHandler(IAuditLogService audit)
     : IBeforeCommitEventHandler<ReserveHistoryPostingStateChangedEvent>
 {
+    private const string DebitAccount = "Change in Outstanding Reserves";
+
+    private const string CreditAccount = "Outstanding Loss Reserves";
+
     private static readonly IReadOnlyDictionary<string, string> _eventTypesByTarget = new Dictionary<string, string>
     {
         [nameof(ReservePostingStateKind.Posted)] = AuditEventTypes.GlPostingSimulated,
@@ -29,7 +33,11 @@ public sealed class ReservePostingAuditHandler(IAuditLogService audit)
 
     private static AuditEntry CreateEntry(ReserveHistoryPostingStateChangedEvent domainEvent, string eventType)
     {
-        var description = $"Reserve posting changed from {domainEvent.From} to {domainEvent.To}.";
+        bool isPosted = string.Equals(eventType, AuditEventTypes.GlPostingSimulated, StringComparison.Ordinal);
+        var description = isPosted
+            ? FormattableString.Invariant(
+                $"Simulated GL journal: DR {DebitAccount} / CR {CreditAccount}, {domainEvent.Amount:0.00}.")
+            : $"Reserve posting failed: {domainEvent.FailureReason}";
 
         return new AuditEntry(domainEvent.ClaimId, eventType, description)
         {
@@ -41,6 +49,8 @@ public sealed class ReservePostingAuditHandler(IAuditLogService audit)
                 domainEvent.Amount,
                 domainEvent.ReserveComponentId,
                 domainEvent.FailureReason,
+                Debit = isPosted ? DebitAccount : string.Empty,
+                Credit = isPosted ? CreditAccount : string.Empty,
             }),
             RelatedEntityId = domainEvent.ReserveHistoryId,
             RelatedEntityType = nameof(ReserveHistory),

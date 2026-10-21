@@ -24,6 +24,21 @@ public sealed class ReservePostingAuditHandlerTests
         entry.NewValue.Should().Contain("job-1").And.Contain("gateway down").And.Contain("2500");
     }
 
+    [Fact]
+    [Trait("Rule", "S:JOB-GL")]
+    public async Task HandleAsync_ForAPostedRow_DescribesTheDebitAndCreditJournal()
+    {
+        var log = new RecordingAuditLog();
+        var handler = new ReservePostingAuditHandler(log);
+        var domainEvent = CreateEvent("Posted");
+
+        await handler.HandleAsync(domainEvent, ExtendedEvents.For(domainEvent), CancellationToken.None);
+
+        var entry = log.Entries.Should().ContainSingle().Subject;
+        entry.Description.Should().Contain("DR").And.Contain("CR").And.Contain("2500.00");
+        entry.NewValue.Should().Contain("Outstanding Loss Reserves");
+    }
+
     [Theory]
     [Trait("Rule", "S:AUD-Events")]
     [InlineData("Pending")]

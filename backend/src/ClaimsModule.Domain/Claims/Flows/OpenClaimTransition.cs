@@ -13,7 +13,11 @@ internal sealed class OpenClaimTransition : ClaimBaseTransition<OpenClaimTransit
             .Require(new HasNoUnacknowledgedPolicyWarning())
             .Require(new HasClaimant())
             .Require(new HasAssignedHandler());
-        AllowedFrom(new ClaimUnderInvestigationState());
+        AllowedFrom(new ClaimUnderInvestigationState())
+            .Require(new HasNoCriticalIssuesForOpen())
+            .Require(new HasNoUnacknowledgedPolicyWarning())
+            .Require(new HasClaimant())
+            .Require(new HasAssignedHandler());
         AllowedFrom(new ClaimReopenedState());
     }
 }

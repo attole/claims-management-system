@@ -24,6 +24,6 @@ internal sealed class AuditLogEntryConfiguration(ClaimsDbContext context) : Tena
         builder.Property(entry => entry.RelatedEntityType).HasMaxLength(NameLength);
         builder.Property(entry => entry.CorrelationId);
         builder.HasIndex(entry => new { entry.ClaimId, entry.EventType });
-        builder.HasOne<Claim>().WithMany().HasForeignKey(entry => entry.ClaimId);
+        builder.HasOne<Claim>().WithMany().HasForeignKey(entry => entry.ClaimId).OnDelete(DeleteBehavior.Restrict);
     }
 }

@@ -30,6 +30,7 @@ internal sealed class ReserveComponentConfiguration(ClaimsDbContext context)
         builder.HasMany(component => component.History)
             .WithOne()
             .HasForeignKey(history => history.ReserveComponentId)
+            .OnDelete(DeleteBehavior.Restrict)
             .MarksRootModified();
         builder.Navigation(component => component.History).UsePropertyAccessMode(PropertyAccessMode.Field);
         builder.HasIndex(component => component.ClaimId);

@@ -1,3 +1,5 @@
+using ClaimsModule.Domain.Common;
+using ClaimsModule.Persistence.Audit;
 using ClaimsModule.Persistence.Rows;
 using ClaimsModule.Persistence.Schema;
 using ClaimsModule.Persistence.Schema.Seed;
@@ -11,6 +13,8 @@ namespace ClaimsModule.Persistence.SqlServerTests.Schema;
 public sealed class DatabaseSchemaTests(SqlServerFixture database)
 {
     private const int PermissionDenied = 229;
+
+    private const int ForeignKeyConflict = 547;
 
     [SqlServerFact]
     public void Migrations_AllApplied_LeaveNoPendingModelChanges()
@@ -101,6 +105,21 @@ public sealed class DatabaseSchemaTests(SqlServerFixture database)
         Action act = () => RunAsAppRoleMember(statement);
 
         act.Should().Throw<SqlException>().Which.Number.Should().Be(PermissionDenied);
+    }
+
+    [SqlServerFact]
+    [Trait("Rule", "S:AUD-NoUpdateDelete")]
+    public void Claims_HardDeleteOfAClaimWithAuditRows_IsRefusedByTheForeignKey()
+    {
+        using var context = database.CreateContext(SeedIds.Organisation);
+        var claim = SqlServerClaims.Create(SeedIds.Organisation);
+        context.Claims.Add(claim);
+        context.AuditLog.Add(new AuditLogEntry(Ids.Next(), SeedIds.Organisation, claim.Id, "CLAIM_CREATED", "created"));
+        context.SaveChanges();
+
+        Action act = () => context.Database.ExecuteSqlInterpolated($"DELETE FROM Claims WHERE ClaimId = {claim.Id}");
+
+        act.Should().Throw<SqlException>().Which.Number.Should().Be(ForeignKeyConflict);
     }
 
     [SqlServerFact]

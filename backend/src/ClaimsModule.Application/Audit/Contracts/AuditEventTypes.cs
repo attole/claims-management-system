@@ -33,4 +33,17 @@ public static class AuditEventTypes
     public const string ValidationIssueAdded = "VALIDATION_ISSUE_ADDED";
 
     public const string SlaBreachDetected = "SLA_BREACH_DETECTED";
+
+    public static class Additional
+    {
+        public const string ValidationIssueAcknowledged = "VALIDATION_ISSUE_ACKNOWLEDGED";
+
+        public const string ValidationIssueWaived = "VALIDATION_ISSUE_WAIVED";
+
+        public const string LimitOverrideChanged = "LIMIT_OVERRIDE_CHANGED";
+
+        public const string ReserveComponentStateChanged = "RESERVE_COMPONENT_STATE_CHANGED";
+
+        public const string DocumentRemoved = "DOCUMENT_REMOVED";
+    }
 }

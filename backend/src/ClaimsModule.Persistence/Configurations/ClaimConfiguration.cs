@@ -50,6 +50,7 @@ internal sealed class ClaimConfiguration(ClaimsDbContext context)
         builder.HasMany(claim => claim.StateChanges)
             .WithOne()
             .HasForeignKey(stateChange => stateChange.ClaimId)
+            .OnDelete(DeleteBehavior.Restrict)
             .MarksRootModified();
         builder.Navigation(claim => claim.Parties).UsePropertyAccessMode(PropertyAccessMode.Field);
         builder.Navigation(claim => claim.RiskObjects).UsePropertyAccessMode(PropertyAccessMode.Field);

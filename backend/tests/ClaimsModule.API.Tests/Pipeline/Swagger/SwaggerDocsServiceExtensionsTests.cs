@@ -55,6 +55,21 @@ public sealed class SwaggerDocsServiceExtensionsTests(ApiFixture database) : IDi
     }
 
     [ApiFact]
+    public async Task UseSwaggerDocs_WhenEnabled_DocumentsEnumsAsTheirNames()
+    {
+        using var enabled = _factory.WithSettings(new Dictionary<string, string?> { ["Swagger:Enabled"] = "true" });
+        using var client = enabled.CreateClient();
+
+        var response = await client.GetAsync("/openapi/v1.json");
+
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var schemas = document.RootElement.GetProperty("components").GetProperty("schemas");
+        var status = schemas.GetProperty("ClaimStateKind");
+        var names = status.GetProperty("enum").EnumerateArray().Select(value => value.GetString()).ToList();
+        names.Should().Contain(["Draft", "Open", "Closed"]);
+    }
+
+    [ApiFact]
     public async Task UseSwaggerDocs_WhenEnabled_DocumentsTheBearerSchemeAndTheDevTokenNote()
     {
         using var enabled = _factory.WithSettings(new Dictionary<string, string?> { ["Swagger:Enabled"] = "true" });

@@ -25,7 +25,7 @@ public sealed partial class ApiControllerBaseTests(ApiFixture database) : IDispo
     private static readonly string[] _singularSegments =
     [
         "api", "audit", "status", "status-check", "search", "reference", "approve", "reject", "retract",
-        "retry-posting", "download", "dev", "token",
+        "retry-posting", "download", "dev", "token", "handler", "policy", "acknowledge", "waive",
     ];
 
     private readonly ApiFactory _factory = new(database);

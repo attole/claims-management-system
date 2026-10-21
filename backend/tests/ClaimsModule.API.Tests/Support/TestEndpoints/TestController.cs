@@ -136,6 +136,14 @@ public sealed class TestController(
         return Created("/test/echo-created", new EchoResponse(Interlocked.Increment(ref _echoCalls), request.Text));
     }
 
+    [HttpPost("echo-refused")]
+    public IActionResult EchoRefused()
+    {
+        Interlocked.Increment(ref _echoCalls);
+
+        return UnprocessableEntity();
+    }
+
     [HttpPost("echo-no-content")]
     public IActionResult EchoNoContent()
     {

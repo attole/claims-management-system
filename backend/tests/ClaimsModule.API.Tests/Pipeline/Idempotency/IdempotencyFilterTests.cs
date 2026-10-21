@@ -114,6 +114,21 @@ public sealed class IdempotencyFilterTests(ApiFixture database) : IDisposable
 
     [ApiFact]
     [Trait("Rule", "S:API-IdempotencyKey")]
+    public async Task OnResourceExecutionAsync_RefusedRequest_IsNotStoredSoTheSameKeyRunsAgain()
+    {
+        using var client = CreateClient();
+        var key = NewKey();
+        await Send(client, HttpMethod.Post, "/test/echo-refused", body: null, key);
+        var callsAfterFirst = TestController.EchoCalls;
+
+        var retry = await Send(client, HttpMethod.Post, "/test/echo-refused", body: null, key);
+
+        retry.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        TestController.EchoCalls.Should().BeGreaterThan(callsAfterFirst);
+    }
+
+    [ApiFact]
+    [Trait("Rule", "S:API-IdempotencyKey")]
     public async Task OnResourceExecutionAsync_MultipartUpload_IsReplayedLikeAnyWrite()
     {
         using var client = CreateClient();

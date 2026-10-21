@@ -85,7 +85,7 @@ public sealed class CreateClaimCommandHandler(
             return created.ToFailure<ClaimDto>();
         }
 
-        var assembled = Assemble(created.Value, intake, period, codes, now);
+        var assembled = Assemble(created.Value, intake, period, codes, user.Id, now);
 
         if (!assembled.IsSuccess)
         {
@@ -100,13 +100,7 @@ public sealed class CreateClaimCommandHandler(
             return reserved.ToFailure<ClaimDto>();
         }
 
-        await claims.AddAsync(assembled.Value, cancellationToken);
-
-        foreach (var component in opened)
-        {
-            await components.AddAsync(component, cancellationToken);
-        }
-
+        await StageAsync(assembled.Value, opened, cancellationToken);
         await unitOfWork.CommitAsync(cancellationToken);
 
         var warnings = policyWarnings
@@ -123,11 +117,12 @@ public sealed class CreateClaimCommandHandler(
         CreateClaimCommand command,
         PolicyPeriod period,
         CauseCodes codes,
+        Guid handlerId,
         DateTimeOffset now)
     {
         var warnings = new List<Warning>();
 
-        foreach (var step in Populate(claim, command, period, codes, now))
+        foreach (var step in Populate(claim, command, period, codes, handlerId, now))
         {
             if (!step.IsSuccess)
             {
@@ -185,6 +180,7 @@ public sealed class CreateClaimCommandHandler(
         CreateClaimCommand command,
         PolicyPeriod period,
         CauseCodes codes,
+        Guid handlerId,
         DateTimeOffset now)
     {
         if (command.PolicyId != Guid.Empty)
@@ -193,6 +189,8 @@ public sealed class CreateClaimCommandHandler(
 
             yield return claim.LinkPolicy(policyInput).ToResult();
         }
+
+        yield return claim.AssignHandler(new AssignHandlerInput(handlerId, period, codes, now)).ToResult();
 
         var lossInput = new UpdateLossDetailsInput(command.Loss.ToDetails(), period, codes, now);
 
@@ -210,6 +208,19 @@ public sealed class CreateClaimCommandHandler(
             var partyInput = new AddPartyInput(party.ToDetails(), period, codes, now);
 
             yield return claim.AddParty(partyInput).ToResult();
+        }
+    }
+
+    private async Task StageAsync(
+        Claim claim,
+        IReadOnlyList<ReserveComponent> opened,
+        CancellationToken cancellationToken)
+    {
+        await claims.AddAsync(claim, cancellationToken);
+
+        foreach (var component in opened)
+        {
+            await components.AddAsync(component, cancellationToken);
         }
     }
 

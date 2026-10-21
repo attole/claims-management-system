@@ -26,6 +26,8 @@ public static class ApiPipelineServiceExtensions
         services.AddControllers()
             .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(
                 new JsonStringEnumConverter(allowIntegerValues: false)));
+        services.ConfigureHttpJsonOptions(options => options.SerializerOptions.Converters.Add(
+            new JsonStringEnumConverter(allowIntegerValues: false)));
         services.AddProblemDetails();
 
         return services;

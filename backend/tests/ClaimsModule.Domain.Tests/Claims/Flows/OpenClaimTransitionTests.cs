@@ -64,6 +64,35 @@ public sealed class OpenClaimTransitionTests
     }
 
     [Fact]
+    [Trait("Rule", "S:BR-ST-02")]
+    public void Run_FromUnderInvestigationWithoutAClaimant_ReturnsTheFindingAndKeepsTheState()
+    {
+        var claim = TestClaims.InStateWithoutClaimant<ClaimUnderInvestigationState>();
+        var input = new ClaimTransitionInput(TestClaims.Period(), TestClaims.Codes(), TestClaims.Start);
+
+        var outcome = OpenClaimTransition.Run(claim, input);
+
+        outcome.CriticalFindings.Select(finding => finding.Code).Should().Contain(HasClaimant.Code);
+        claim.State.Should().BeOfType<ClaimUnderInvestigationState>();
+    }
+
+    [Fact]
+    [Trait("Rule", "S:BR-ST-02")]
+    [Trait("Rule", HasNoUnacknowledgedPolicyWarning.Code)]
+    public void Run_FromUnderInvestigationWithAnUnacknowledgedPolicyPeriodWarning_ReturnsTheFinding()
+    {
+        var claim = TestClaims.InState<ClaimUnderInvestigationState>();
+        TestClaims.SetLoss(claim, TestClaims.Loss(TestClaims.OutsidePolicyPeriod, TestClaims.Description));
+        var input = new ClaimTransitionInput(TestClaims.Period(), TestClaims.Codes(), TestClaims.Start);
+
+        var outcome = OpenClaimTransition.Run(claim, input);
+
+        var codes = outcome.CriticalFindings.Select(finding => finding.Code);
+        codes.Should().Contain(HasNoUnacknowledgedPolicyWarning.Code);
+        claim.State.Should().BeOfType<ClaimUnderInvestigationState>();
+    }
+
+    [Fact]
     [Trait("Rule", "S:ST-Reopened-Open")]
     public void Run_FromReopened_OpensItWithoutFurtherRules()
     {

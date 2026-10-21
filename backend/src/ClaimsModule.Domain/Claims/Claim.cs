@@ -153,8 +153,11 @@ public sealed class Claim : AggregateRoot, ISoftDeletable, IStateful<ClaimState>
 
     public Outcome<Claim> SetLimitOverride(SetLimitOverrideInput input)
     {
+        bool wasOverridden = HasAggregateLimitOverride;
+
         return SetLimitOverrideOperation.Run(this, input)
-            .OnSuccess(claim => Raise(new AggregateLimitOverrideChangedEvent(Id, claim.HasAggregateLimitOverride)))
+            .OnSuccess(claim => Raise(
+                new AggregateLimitOverrideChangedEvent(Id, wasOverridden, claim.HasAggregateLimitOverride)))
             .OnSuccess(() => Settle(input));
     }
 

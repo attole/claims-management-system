@@ -68,24 +68,21 @@ internal sealed class IdempotencyStore(ClaimsDbContext context, IClock clock, IC
 
     private async Task<IdempotencyRecord?> FindAsync(IdempotencyRequest request, CancellationToken cancellationToken)
     {
-        var organisationId = currentUser.OrganisationId;
         var userId = currentUser.Id;
-        var staged = context.IdempotencyRecords.Local.FirstOrDefault(record =>
-            record.OrganisationId == organisationId
-            && record.UserId == userId
-            && record.Key == request.Key
-            && record.Method == request.Method
-            && record.Route == request.Route);
+        var staged = context.IdempotencyRecords.Local.FirstOrDefault(record => IsTheRequest(record, userId, request));
 
-        if (staged is not null)
-        {
-            return staged;
-        }
-
-        return await context.IdempotencyRecords
-            .Where(record => record.Key == request.Key && record.UserId == userId)
+        return staged ?? await context.IdempotencyRecords
+            .Where(record => record.UserId == userId && record.Key == request.Key)
             .Where(record => record.Method == request.Method && record.Route == request.Route)
             .SingleOrDefaultAsync(cancellationToken);
+    }
+
+    private static bool IsTheRequest(IdempotencyRecord record, Guid userId, IdempotencyRequest request)
+    {
+        return record.UserId == userId
+            && record.Key == request.Key
+            && record.Method == request.Method
+            && record.Route == request.Route;
     }
 
     private IdempotencyDecision Resolve(IdempotencyRecord record, IdempotencyRequest request)

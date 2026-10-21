@@ -45,18 +45,25 @@ public static class RequestFingerprint
             Append(hash, file.Name);
             Append(hash, file.FileName);
             Append(hash, file.Length.ToString());
-
-            await using var stream = file.OpenReadStream();
-            var buffer = new byte[BufferSize];
-            int read;
-
-            while ((read = await stream.ReadAsync(buffer, cancellationToken)) > 0)
-            {
-                hash.AppendData(buffer, 0, read);
-            }
+            await AppendContentAsync(hash, file, cancellationToken);
         }
 
         return Convert.ToHexString(hash.GetHashAndReset());
+    }
+
+    private static async Task AppendContentAsync(
+        IncrementalHash hash,
+        IFormFile file,
+        CancellationToken cancellationToken)
+    {
+        await using var stream = file.OpenReadStream();
+        var buffer = new byte[BufferSize];
+        int read;
+
+        while ((read = await stream.ReadAsync(buffer, cancellationToken)) > 0)
+        {
+            hash.AppendData(buffer, 0, read);
+        }
     }
 
     private static void Append(IncrementalHash hash, string value)

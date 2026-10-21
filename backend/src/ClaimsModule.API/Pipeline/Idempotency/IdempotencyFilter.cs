@@ -33,10 +33,9 @@ public sealed class IdempotencyFilter(IIdempotencyStore store, IOptions<JsonOpti
     public async Task OnResourceExecutionAsync(ResourceExecutingContext context, ResourceExecutionDelegate next)
     {
         var http = context.HttpContext;
-        var method = http.Request.Method;
         string key = http.Request.Headers[HeaderName].ToString();
 
-        if (key.Length == 0 || !_writeMethods.Contains(method))
+        if (key.Length == 0 || !_writeMethods.Contains(http.Request.Method))
         {
             await next();
 
@@ -50,21 +49,29 @@ public sealed class IdempotencyFilter(IIdempotencyStore store, IOptions<JsonOpti
             return;
         }
 
-        var hash = await RequestFingerprint.ComputeAsync(http.Request, http.RequestAborted);
-        var request = new IdempotencyRequest(key, method, http.Request.Path.Value ?? string.Empty, hash);
+        var request = await DescribeAsync(http.Request, key);
         var decision = await store.BeginAsync(request, http.RequestAborted);
 
         if (decision.Status != IdempotencyStatus.Started)
         {
-            context.Result = Reply(decision);
+            context.Result = Answer(decision);
 
             return;
         }
 
-        await CompleteAsync(request, await next(), http);
+        var executed = await next();
+
+        await RememberSuccessAsync(request, executed, http.Response.StatusCode);
     }
 
-    private static IActionResult Reply(IdempotencyDecision decision)
+    private static async Task<IdempotencyRequest> DescribeAsync(HttpRequest http, string key)
+    {
+        var bodyHash = await RequestFingerprint.ComputeAsync(http, http.HttpContext.RequestAborted);
+
+        return new IdempotencyRequest(key, http.Method, http.Path.Value ?? string.Empty, bodyHash);
+    }
+
+    private static IActionResult Answer(IdempotencyDecision decision)
     {
         return decision.Status switch
         {
@@ -79,23 +86,27 @@ public sealed class IdempotencyFilter(IIdempotencyStore store, IOptions<JsonOpti
         };
     }
 
-    private async Task CompleteAsync(IdempotencyRequest request, ResourceExecutedContext executed, HttpContext http)
+    private async Task RememberSuccessAsync(IdempotencyRequest request, ResourceExecutedContext executed, int status)
     {
-        if (executed.Exception is not null && !executed.ExceptionHandled)
-        {
-            return;
-        }
+        bool isSuccess = status is >= StatusCodes.Status200OK and < StatusCodes.Status300MultipleChoices;
+        bool isUnhandledFailure = executed.Exception is not null && !executed.ExceptionHandled;
 
-        var body = executed.Result switch
+        if (isSuccess && !isUnhandledFailure)
         {
-            ObjectResult { Value: not null } result => JsonSerializer.Serialize(
-                result.Value,
-                json.Value.JsonSerializerOptions),
-            ContentResult result => result.Content ?? string.Empty,
+            var response = new IdempotencyResponse(status, ReadBody(executed.Result));
+
+            await store.CompleteAsync(request, response, CancellationToken.None);
+        }
+    }
+
+    private string ReadBody(IActionResult? result)
+    {
+        return result switch
+        {
+            ObjectResult { Value: not null } objectResult =>
+                JsonSerializer.Serialize(objectResult.Value, json.Value.JsonSerializerOptions),
+            ContentResult content => content.Content ?? string.Empty,
             _ => string.Empty,
         };
-        var response = new IdempotencyResponse(http.Response.StatusCode, body);
-
-        await store.CompleteAsync(request, response, CancellationToken.None);
     }
 }

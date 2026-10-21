@@ -10,6 +10,8 @@ namespace ClaimsModule.Persistence.Readers;
 
 internal sealed class ClaimReserveReader(ClaimsDbContext context, IMapper mapper) : IClaimReserveReader
 {
+    private const int ResendBatchSize = 500;
+
     private static readonly ReserveApprovalState[] _approvedStates =
     [
         new ReserveApprovedState(),
@@ -79,6 +81,8 @@ internal sealed class ClaimReserveReader(ClaimsDbContext context, IMapper mapper
 
         var stale = unposted
             .Where(row => row.ReviewedAt < approvedBefore)
+            .OrderBy(row => row.ReviewedAt)
+            .Take(ResendBatchSize)
             .Select(row => new UnpostedReserve(row.OrganisationId, row.ClaimId, row.Id))
             .ToList();
 

@@ -620,7 +620,7 @@ public sealed class ClaimTests
         claim.SetLimitOverride(input);
 
         claim.PopEvents().OfType<AggregateLimitOverrideChangedEvent>().Should().ContainSingle()
-            .Which.HasAggregateLimitOverride.Should().BeTrue();
+            .Which.Should().Be(new AggregateLimitOverrideChangedEvent(claim.Id, false, true));
     }
 
     private static CreateClaimInput CreateInput()

@@ -1450,7 +1450,7 @@ namespace ClaimsModule.Persistence.Schema.Migrations
                     b.HasOne("ClaimsModule.Domain.Claims.Claim", null)
                         .WithMany("StateChanges")
                         .HasForeignKey("ClaimId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasAnnotation("Claims:MarksRootModified", true);
                 });
@@ -1460,7 +1460,7 @@ namespace ClaimsModule.Persistence.Schema.Migrations
                     b.HasOne("ClaimsModule.Domain.ReserveComponents.ReserveComponent", null)
                         .WithMany("History")
                         .HasForeignKey("ReserveComponentId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasAnnotation("Claims:MarksRootModified", true);
                 });
@@ -1480,7 +1480,7 @@ namespace ClaimsModule.Persistence.Schema.Migrations
                     b.HasOne("ClaimsModule.Domain.Claims.Claim", null)
                         .WithMany()
                         .HasForeignKey("ClaimId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 

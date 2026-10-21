@@ -1,6 +1,7 @@
 using ClaimsModule.API.Controllers.Requests;
 using ClaimsModule.Application.Audit.Dtos;
 using ClaimsModule.Application.Claims.Dtos;
+using ClaimsModule.Application.Claims.Loss;
 using ClaimsModule.Application.Claims.Queries;
 using ClaimsModule.Application.Claims.StateChanges;
 using ClaimsModule.Application.Paging;
@@ -53,6 +54,36 @@ public sealed class ClaimsController(ISender sender) : ApiControllerBase(sender)
         CancellationToken cancellationToken)
     {
         return QueryAsync(new CheckClaimStatusQuery(claimId, targetStatus), cancellationToken);
+    }
+
+    [HttpPut("{claimId:guid}/handler")]
+    [ProducesResponseType<CommandResponse<ClaimDto>>(StatusCodes.Status200OK)]
+    public Task<IActionResult> AssignHandler(
+        Guid claimId,
+        [FromBody] AssignHandlerRequest request,
+        CancellationToken cancellationToken)
+    {
+        return CommandAsync(request.ToCommand(claimId), cancellationToken);
+    }
+
+    [HttpPut("{claimId:guid}/policy")]
+    [ProducesResponseType<CommandResponse<ClaimDto>>(StatusCodes.Status200OK)]
+    public Task<IActionResult> LinkPolicy(
+        Guid claimId,
+        [FromBody] LinkPolicyRequest request,
+        CancellationToken cancellationToken)
+    {
+        return CommandAsync(request.ToCommand(claimId), cancellationToken);
+    }
+
+    [HttpPut("{claimId:guid}/loss")]
+    [ProducesResponseType<CommandResponse<LossDetailsDto>>(StatusCodes.Status200OK)]
+    public Task<IActionResult> UpdateLoss(
+        Guid claimId,
+        [FromBody] LossRequest request,
+        CancellationToken cancellationToken)
+    {
+        return CommandAsync(new UpdateLossDetailsCommand(claimId, request), cancellationToken);
     }
 
     [HttpPut("{claimId:guid}/notes")]

@@ -7,7 +7,9 @@ using ClaimsModule.API.Errors;
 using ClaimsModule.API.Tests.Support;
 using ClaimsModule.Application.Audit.Dtos;
 using ClaimsModule.Application.Claims.Dtos;
+using ClaimsModule.Application.Claims.Loss;
 using ClaimsModule.Application.Paging;
+using ClaimsModule.Application.Policies;
 using ClaimsModule.Application.ReserveComponents.History.Dtos;
 
 namespace ClaimsModule.API.Tests.Controllers;
@@ -137,6 +139,25 @@ public sealed class ClaimsControllerTests(ApiFixture database) : IDisposable
         page!.Items.Should().BeEmpty();
     }
 
+    [ApiTheory]
+    [Trait("Rule", "S:API-GET-claims")]
+    [InlineData(-5, 0, 1)]
+    [InlineData(-20, -10, 0)]
+    [InlineData(-2, 0, 0)]
+    public async Task List_DateRange_FiltersByTheLossDateOnSqlServer(int fromDays, int toDays, int expected)
+    {
+        var organisationId = Guid.NewGuid();
+        await _factory.SeedClaimAsync(organisationId);
+        using var client = CreateClient(organisationId);
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var range = $"dateFrom={today.AddDays(fromDays):yyyy-MM-dd}&dateTo={today.AddDays(toDays):yyyy-MM-dd}";
+
+        var response = await client.GetAsync($"/api/claims?{range}");
+
+        var page = await response.Content.ReadFromJsonAsync<PagedResult<ClaimSummaryDto>>();
+        page!.TotalCount.Should().Be(expected);
+    }
+
     [ApiFact]
     [Trait("Rule", "S:API-ErrorShape")]
     public async Task List_UnknownStatusName_Answers422InTheErrorBody()
@@ -244,6 +265,59 @@ public sealed class ClaimsControllerTests(ApiFixture database) : IDisposable
     }
 
     [ApiFact]
+    [Trait("Rule", "S:API-POST-claims")]
+    public async Task Create_AsAHandler_AssignsTheCreatorAsTheHandler()
+    {
+        using var client = CreateSeedClient();
+
+        var response = await client.PostAsJsonAsync("/api/claims", CreateBody(null));
+
+        var envelope = await response.Content.ReadFromJsonAsync<ApiControllerBase.CommandResponse<ClaimDto>>();
+        envelope!.Data.AssignedHandlerId.Should().Be(ApiFactory.HandlerId);
+    }
+
+    [ApiFact]
+    [Trait("Rule", "S:ST-Draft-Open")]
+    public async Task Journey_CreateWithPolicyAndReserveThenOpen_LeavesAnOpenClaimWithItsAuditTrail()
+    {
+        using var client = CreateSeedClient();
+        var policy = await FindPolicyAsync(client);
+        var created = await client.PostAsJsonAsync("/api/claims", CreateBody(policy));
+        var envelope = await created.Content.ReadFromJsonAsync<ApiControllerBase.CommandResponse<ClaimDto>>();
+        var claimId = envelope!.Data.Id;
+
+        var opened = await client.PutAsJsonAsync($"/api/claims/{claimId}/status", new { TargetStatus = "Open" });
+
+        var detail = await client.GetFromJsonAsync<ClaimDetailDto>($"/api/claims/{claimId}");
+        var trail = $"/api/claims/{claimId}/audit?pageSize=100";
+        var audit = await client.GetFromJsonAsync<PagedResult<AuditEntryDto>>(trail);
+        opened.StatusCode.Should().Be(HttpStatusCode.OK);
+        detail!.Claim.State.Should().Be("Open");
+        audit!.Items.Select(entry => entry.EventType)
+            .Should().Contain(["CLAIM_CREATED", "RESERVE_CREATED", "STATUS_CHANGED"]);
+    }
+
+    [ApiFact]
+    [Trait("Rule", "S:API-IdempotencyKey")]
+    public async Task ChangeStatus_RefusedWithAKey_RunsAgainWhenTheSameRequestIsRetriedAfterTheFix()
+    {
+        using var client = CreateSeedClient();
+        var created = await client.PostAsJsonAsync("/api/claims", CreateBody(null, hasClaimant: false));
+        var envelope = await created.Content.ReadFromJsonAsync<ApiControllerBase.CommandResponse<ClaimDto>>();
+        var claimId = envelope!.Data.Id;
+        var key = Guid.NewGuid().ToString();
+        var open = new { TargetStatus = "Open" };
+        var refused = await PutAsync(client, $"/api/claims/{claimId}/status", key, open);
+        var claimant = new { Role = "Claimant", Type = "Person", FirstName = "Ada" };
+        await client.PostAsJsonAsync($"/api/claims/{claimId}/parties", claimant);
+
+        var retry = await PutAsync(client, $"/api/claims/{claimId}/status", key, open);
+
+        refused.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        retry.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [ApiFact]
     [Trait("Rule", "S:API-GET-claim")]
     public async Task Get_ClaimOfTheOrganisation_ReturnsTheDetail()
     {
@@ -339,6 +413,56 @@ public sealed class ClaimsControllerTests(ApiFixture database) : IDisposable
     }
 
     [ApiFact]
+    [Trait("Rule", "S:API-PUT-claims-handler")]
+    public async Task AssignHandler_ToADraft_ReturnsTheClaimWithTheNewHandler()
+    {
+        var organisationId = await _factory.CreateOrganisationAsync();
+        var (claimId, _) = await _factory.SeedClaimAsync(organisationId);
+        using var client = CreateClient(organisationId);
+        var handlerId = Guid.NewGuid();
+
+        var response = await client.PutAsJsonAsync($"/api/claims/{claimId}/handler", new { HandlerId = handlerId });
+
+        var envelope = await response.Content.ReadFromJsonAsync<ApiControllerBase.CommandResponse<ClaimDto>>();
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        envelope!.Data.AssignedHandlerId.Should().Be(handlerId);
+    }
+
+    [ApiFact]
+    [Trait("Rule", "S:API-PUT-claims-policy")]
+    public async Task LinkPolicy_UnknownPolicy_Answers404()
+    {
+        var organisationId = await _factory.CreateOrganisationAsync();
+        var (claimId, _) = await _factory.SeedClaimAsync(organisationId);
+        using var client = CreateClient(organisationId);
+
+        var response = await client.PutAsJsonAsync($"/api/claims/{claimId}/policy", new { PolicyId = Guid.NewGuid() });
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [ApiFact]
+    [Trait("Rule", "S:API-PUT-claims-loss")]
+    public async Task UpdateLoss_ADraftClaim_ReturnsTheNewLossDetails()
+    {
+        var organisationId = await _factory.CreateOrganisationAsync();
+        var (claimId, _) = await _factory.SeedClaimAsync(organisationId);
+        using var client = CreateClient(organisationId);
+        var body = new
+        {
+            LossDate = DateTimeOffset.UtcNow.AddDays(-1),
+            Description = "A pipe burst in the kitchen and flooded the floor",
+            CauseOfLossCode = $"TEST-{organisationId:N}",
+        };
+
+        var response = await client.PutAsJsonAsync($"/api/claims/{claimId}/loss", body);
+
+        var envelope = await response.Content.ReadFromJsonAsync<ApiControllerBase.CommandResponse<LossDetailsDto>>();
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        envelope!.Data.Description.Should().Be(body.Description);
+    }
+
+    [ApiFact]
     [Trait("Rule", "S:API-GET-claims-audit")]
     public async Task ListAudit_ClaimOfTheOrganisation_ReturnsAPage()
     {
@@ -365,6 +489,59 @@ public sealed class ClaimsControllerTests(ApiFixture database) : IDisposable
         request.Headers.Add("Idempotency-Key", key);
 
         return await client.SendAsync(request);
+    }
+
+    private static async Task<HttpResponseMessage> PutAsync(HttpClient client, string url, string key, object body)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Put, url) { Content = JsonContent.Create(body) };
+        request.Headers.Add("Idempotency-Key", key);
+
+        return await client.SendAsync(request);
+    }
+
+    private static async Task<PolicyDto> FindPolicyAsync(HttpClient client)
+    {
+        var page = await client.GetFromJsonAsync<PagedResult<PolicyDto>>("/api/policies/search?pageSize=100");
+
+        return page!.Items.OrderBy(policy => policy.PolicyNumber).First();
+    }
+
+    private static object CreateBody(PolicyDto? policy, bool hasClaimant = true)
+    {
+        var lossDate = policy is null
+            ? DateTimeOffset.UtcNow.AddDays(-3)
+            : new DateTimeOffset(policy.EffectiveDate.AddDays(10).ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
+        var initial = new
+        {
+            TransactionType = "Add",
+            Amount = 5_000,
+            ChangeReason = "Initial",
+            ComponentType = "Indemnity",
+        };
+        var claimant = new { Role = "Claimant", Type = "Person", FirstName = "Ada", LastName = "Stone" };
+        object[] reserves = policy is null ? [] : [initial];
+        object[] parties = hasClaimant ? [claimant] : [];
+
+        return new
+        {
+            PolicyId = policy?.Id ?? Guid.Empty,
+            ReportDate = DateTimeOffset.UtcNow,
+            Loss = new
+            {
+                LossDate = lossDate,
+                Description = "Water damage in the kitchen after a pipe burst",
+                CauseOfLossCode = "COL-FIRE",
+                Location = "Kitchen",
+            },
+            Parties = parties,
+            RiskObjects = new[] { new { AssetType = "Property", AssetDescription = "Kitchen" } },
+            Reserves = reserves,
+        };
+    }
+
+    private HttpClient CreateSeedClient()
+    {
+        return _factory.CreateClientFor(ApiFactory.HandlerId, ApiFactory.SeedOrganisationId, "Handler");
     }
 
     private HttpClient CreateClient(Guid organisationId)

@@ -32,4 +32,21 @@ public sealed class AuditEventTypesTests
             "SLA_BREACH_DETECTED",
             "VALIDATION_ISSUE_ADDED");
     }
+
+    [Fact]
+    [Trait("Rule", "S:BR-A-02")]
+    public void AdditionalConstants_AreTheEventTypesBeyondTheSpecList()
+    {
+        var result = typeof(AuditEventTypes.Additional)
+            .GetFields()
+            .Select(field => (string)field.GetRawConstantValue()!)
+            .ToList();
+
+        result.Should().BeEquivalentTo(
+            "VALIDATION_ISSUE_ACKNOWLEDGED",
+            "VALIDATION_ISSUE_WAIVED",
+            "LIMIT_OVERRIDE_CHANGED",
+            "RESERVE_COMPONENT_STATE_CHANGED",
+            "DOCUMENT_REMOVED");
+    }
 }
