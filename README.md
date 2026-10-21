@@ -2,14 +2,15 @@
 
 Claims handling for a policy administration system, built end to end: a .NET 9 backend (Clean Architecture, CQRS) and an Angular frontend.
 
-Status: the backend (Domain, Application, Persistence, Infrastructure and API) is built and tested; the frontend has its workspace, theme, app shell and mock sign-in, and its screens are in progress.
+Status: the backend (Domain, Application, Persistence, Infrastructure and API) and the frontend (claims list, intake form, claim detail with its five tabs) are built and tested. Not yet done: the CI/CD pipeline and the Azure deployment.
 
 ## Documentation
 
 - `docs/ARCHITECTURE.md`: the design overview, the decisions and the reasons.
 - `docs/CODING-STANDARDS.md`: code style, naming and tests.
-- `docs/layers/`: the rules and contracts of each backend layer.
+- `docs/layers/`: the rules and contracts of each backend layer, and `frontend.md` for the Angular client.
 - `docs/AI-WORKFLOW.md`: how AI is used in this project.
+- `frontend/design/`: static HTML mockups of the three screens, the visual reference (not part of the build).
 
 ## Prerequisites
 
@@ -34,7 +35,7 @@ The tests in `ClaimsModule.Persistence.SqlServerTests` and `ClaimsModule.API.Tes
     - `dotnet user-secrets set "Jwt:SigningKey" "<32+ character test value>" --project backend/src/ClaimsModule.API`
     - `dotnet user-secrets set "LocalSigningKey" "<32+ character test value>" --project backend/src/ClaimsModule.API`
 3. Run: `dotnet run --project backend/src/ClaimsModule.API` (the `https` profile serves `https://localhost:54694`, the address `LocalBaseUrl` in `appsettings.Development.json` points at)
-4. Get a token for a user: `POST /api/dev/token` with `{ "userId": "<id>" }`, using an id from `DevAuth:Users` in `appsettings.Development.json` (a handler, a supervisor and a manager), and send it as `Authorization: Bearer <token>`. This is a simulation of sign-in, only available while `DevAuth:Enabled` is true.
+4. Get a token for a user: `POST /api/dev/token` with `{ "userId": "<id>" }`, using an id from `DevAuth:Users` in `appsettings.Development.json` (a handler, a supervisor and a manager), and send it as `Authorization: Bearer <token>`. This is a simulation of sign-in, only available while `DevAuth:Enabled` is true; when `DevAuth:Secret` is set, add the header `X-DevAuth-Secret: <secret>`.
 
 With `ASPNETCORE_ENVIRONMENT=Development`, Swagger is at `/swagger` and the Hangfire dashboard at `/hangfire`.
 
@@ -42,9 +43,15 @@ With `ASPNETCORE_ENVIRONMENT=Development`, Swagger is at `/swagger` and the Hang
 
 1. Trust the .NET development certificate once, so the browser accepts the API at `https://localhost:54694`: `dotnet dev-certs https --trust`
 2. Install the packages: `npm --prefix frontend install`
-3. With the API running, start the dev server: `npm --prefix frontend start`, then open `http://localhost:4200`. The app signs in as the handler; the header's role switcher changes the test user.
-4. Checks: `npm --prefix frontend run build`, `npm --prefix frontend test`, `npm --prefix frontend run lint`
+3. With the API running, start the dev server: `npm --prefix frontend start`, then open `http://localhost:4200`. The app signs in as the handler; the header's role switcher changes the test user. Against an API with `DevAuth:Secret` set, the app asks once for the access code.
+4. Checks: `npm --prefix frontend run build`, `npm --prefix frontend test`, `npm --prefix frontend run lint`, `npm --prefix frontend run format:check`
 5. After an API contract change, save the API's `/openapi/v1.json` over `frontend/openapi.json` and run `npm --prefix frontend run api:types`.
+
+The screens:
+
+- **Claims list** (`/claims`): filters (status, loss date range, cause, handler, search) kept in the URL, paging, status badges.
+- **Log new claim** (`/claims/new`): a three-step form (policy and loss, parties and risk objects, optional initial reserve with the approval tier and a review), with warnings confirmed before creating.
+- **Claim detail** (`/claims/{id}`): the header with the status change and its checklist, and the Overview, Parties, Reserves, Documents and Audit Log tabs. Approve and Reject show to a supervisor or manager only.
 
 ## API
 
@@ -72,7 +79,7 @@ All routes are under `/api` and need a bearer token, except `POST /api/dev/token
 
 ## Configuration
 
-Required settings are validated at startup; a missing one stops the app and names the key. Deployed, a setting is an app setting with `__` for `:` (for example `Jwt__Issuer`).
+Required settings are validated at startup; a missing one stops the app and names the key. Deployed, a setting is an app setting with `__` for `:` (for example `Jwt__Issuer`). A secret marked Key Vault is an app setting whose value is a Key Vault reference (`@Microsoft.KeyVault(SecretUri=https://<vault>.vault.azure.net/secrets/<name>/)`), resolved by App Service through the app's managed identity, so the code reads it like any other setting.
 
 | Setting | Local | Deployed |
 |---|---|---|
@@ -85,7 +92,8 @@ Required settings are validated at startup; a missing one stops the app and name
 | `AzureConnectionString` (secret, with an account key), for `AzureBlob` | not used | Key Vault |
 | `Hangfire:PostingSweep:MinimumAge` (optional, default `00:10:00`, must be positive) | `appsettings.json` | app settings |
 | `Hangfire:PostingSweep:IntervalMinutes` (optional, default 5, must divide 60 evenly) | `appsettings.json` | app settings |
-| `DevAuth:OrganisationId`, `DevAuth:Users` (id, name, role), `DevAuth:TokenLifetimeMinutes` (default 480, at most 1440), required while `DevAuth:Enabled` is true; the organisation must be the seeded one | `appsettings.Development.json` | not used |
+| `DevAuth:OrganisationId`, `DevAuth:Users` (id, name, role), `DevAuth:TokenLifetimeMinutes` (default 480, at most 1440), required while `DevAuth:Enabled` is true; the organisation must be the seeded one | `appsettings.Development.json` | app settings, for a live demo |
+| `DevAuth:Secret` (16+ characters, secret), the access code for `POST /api/dev/token`; required outside Development while `DevAuth:Enabled` is true | optional, user-secrets | Key Vault |
 | `Hangfire:SlaBreach:IntervalMinutes` (optional, default 15, must divide 60 evenly) | `appsettings.json` | app settings |
 | `Hangfire:IdempotencyCleanup:IntervalHours` (optional, default 1; 1, 2, 3, 4, 6, 8 or 12) | `appsettings.json` | app settings |
 | `Hangfire:BlobSweep:MinimumAge` (optional, default `1.00:00:00`, must be positive) | `appsettings.json` | app settings |
@@ -97,5 +105,5 @@ Feature switches are booleans that default to false and do not depend on the env
 |---|---|
 | `Swagger:Enabled` | serves the OpenAPI document and Swagger UI |
 | `Hangfire:Dashboard:Enabled` | mounts the Hangfire dashboard, open to every request |
-| `DevAuth:Enabled` | serves `POST /api/dev/token`, a simulated sign-in that issues a token for a configured user |
+| `DevAuth:Enabled` | serves `POST /api/dev/token`, a simulated sign-in that issues a token for a configured user; with `DevAuth:Secret` set, the call must send it as `X-DevAuth-Secret` |
 | `Hangfire:BlobSweep:Enabled` | schedules the job that deletes stored blobs no document refers to |

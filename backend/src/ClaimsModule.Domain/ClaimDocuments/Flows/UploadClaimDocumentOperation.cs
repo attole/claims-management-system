@@ -13,6 +13,7 @@ internal sealed class UploadClaimDocumentOperation
         Require(input => new IsClaimAcceptingDocuments(input.Claim.State));
         Require(input => new IsFileSizeAllowed(input.Details.FileSizeBytes));
         Require(input => new IsContentTypeAllowed(input.Details.ContentType));
+        Require(input => new IsContentMatchingType(input.Details.ContentType, input.Header));
     }
 
     protected override Outcome<ClaimDocument> Apply(UploadClaimDocumentInput input)

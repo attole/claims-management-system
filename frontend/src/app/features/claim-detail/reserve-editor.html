@@ -1,0 +1,45 @@
+<form class="editor" [formGroup]="form" (ngSubmit)="submit()" aria-label="New reserve">
+  <h3>Add reserve</h3>
+  <div class="fields">
+    <mat-form-field>
+      <mat-label>Component</mat-label>
+      <mat-select formControlName="component">
+        @for (choice of choices(); track choice.key) {
+          <mat-option [value]="choice.key">{{ choice.label }}</mat-option>
+        }
+      </mat-select>
+      <mat-error>{{ form.controls.component.errors | errorMessage }}</mat-error>
+    </mat-form-field>
+    @if (isNew()) {
+      <mat-form-field>
+        <mat-label>Transaction</mat-label>
+        <input matInput value="Add" disabled />
+      </mat-form-field>
+    } @else {
+      <mat-form-field>
+        <mat-label>Transaction</mat-label>
+        <mat-select formControlName="transactionType">
+          @for (transaction of transactions; track transaction) {
+            <mat-option [value]="transaction">{{ transaction | enumLabel }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    }
+    <mat-form-field>
+      <mat-label>Amount (signed change)</mat-label>
+      <input matInput type="number" formControlName="amount" />
+      <span matTextPrefix>$&nbsp;</span>
+      <mat-error>{{ form.controls.amount.errors | errorMessage }}</mat-error>
+    </mat-form-field>
+    <mat-form-field class="full">
+      <mat-label>Reason</mat-label>
+      <textarea matInput rows="2" formControlName="changeReason"></textarea>
+      <mat-error>{{ form.controls.changeReason.errors | errorMessage }}</mat-error>
+    </mat-form-field>
+  </div>
+  <app-authority-indicator [amount]="amount()" />
+  <div class="actions">
+    <button mat-flat-button type="submit" [disabled]="isSaving()">Submit</button>
+    <button mat-button type="button" (click)="cancelled.emit()">Cancel</button>
+  </div>
+</form>

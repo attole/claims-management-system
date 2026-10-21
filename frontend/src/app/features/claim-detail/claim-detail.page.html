@@ -58,6 +58,31 @@
         />
       </div>
     </mat-tab>
+    <mat-tab label="Reserves">
+      <div class="tab-body">
+        <app-reserves-tab
+          [reserves]="detail.reserves"
+          [userId]="user().id"
+          [role]="user().role"
+          [isSaving]="store.isSaving()"
+          [(isAdding)]="isAddingReserve"
+          (submitted)="submitReserve($event)"
+          (approved)="approveReserve($event)"
+          (rejected)="rejectReserve($event)"
+          (retracted)="retractReserve($event)"
+          (retried)="retryPosting($event)"
+        />
+      </div>
+    </mat-tab>
+    <mat-tab label="Documents">
+      <div class="tab-body">
+        <app-documents-tab
+          [documents]="detail.documents"
+          [uploadPercent]="uploadPercent()"
+          (uploadRequested)="uploadDocument($event)"
+        />
+      </div>
+    </mat-tab>
     <mat-tab label="Audit Log">
       <div class="tab-body">
         <app-audit-tab

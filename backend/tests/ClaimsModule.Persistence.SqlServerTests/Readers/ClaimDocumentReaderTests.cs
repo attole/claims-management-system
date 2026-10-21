@@ -40,7 +40,10 @@ public sealed class ClaimDocumentReaderTests(SqlServerFixture database)
         {
             Notes = "Filed on the day",
         };
-        var input = new UploadClaimDocumentInput(claim, details, SeedIds.SystemUser, SqlServerFixture.Now);
+        var input = new UploadClaimDocumentInput(claim, details, SeedIds.SystemUser, SqlServerFixture.Now)
+        {
+            Header = "%PDF-1.7"u8.ToArray(),
+        };
 
         return ClaimDocument.Upload(input).Value;
     }

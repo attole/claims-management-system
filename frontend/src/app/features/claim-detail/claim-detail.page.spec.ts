@@ -6,10 +6,10 @@ import { provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 import { apiUrl } from '../../core/api/api-url';
 import { NotifyService } from '../../core/notify/notify.service';
-import { CLAIM_ID, CLAIMANT, claimDetail, RAISED_ISSUE } from './claim-detail.fixtures';
+import { CLAIM_ID, CLAIMANT, claimDetail, RAISED_ISSUE, reserveHistory } from './claim-detail.fixtures';
 import { ClaimDetailPage } from './claim-detail.page';
 
-describe('ClaimDetailPage (S:UI-Detail-Header, S:UI-Detail-Tabs)', () => {
+describe('ClaimDetailPage (S:UI-Detail-Header, S:UI-Detail-Tabs, S:UI-Reserves, S:UI-Documents)', () => {
   let http: HttpTestingController;
   const notify = { success: vi.fn(), error: vi.fn() };
   const emptyAudit = { items: [], page: 1, pageSize: 10, totalCount: 0, totalPages: 0 };
@@ -53,12 +53,12 @@ describe('ClaimDetailPage (S:UI-Detail-Header, S:UI-Detail-Tabs)', () => {
 
   afterEach(() => http.verify());
 
-  it('shows the header and the overview, parties and audit tabs once the claim loads', async () => {
+  it('shows the header and the five tabs once the claim loads', async () => {
     const { element } = await render();
     const tabs = [...element.querySelectorAll('[role="tab"]')].map((tab) => tab.textContent?.trim());
 
     expect(element.querySelector('app-claim-header')?.textContent).toContain('CLM-2026-0001039');
-    expect(tabs).toEqual(['Overview', 'Parties', 'Audit Log']);
+    expect(tabs).toEqual(['Overview', 'Parties', 'Reserves', 'Documents', 'Audit Log']);
   });
 
   it('checks the target status, asks in the dialog, then changes it and reloads', async () => {
@@ -128,5 +128,35 @@ describe('ClaimDetailPage (S:UI-Detail-Header, S:UI-Detail-Tabs)', () => {
 
     http.expectNone(apiUrl('claims/abc'));
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('The claim could not be loaded.');
+  });
+
+  it('rejects a reserve with the reason given in the prompt', async () => {
+    const { call } = await render();
+    const history = reserveHistory({});
+    vi.spyOn(TestBed.inject(MatDialog), 'open').mockReturnValue({ afterClosed: () => of('Not supported.') } as never);
+
+    call('rejectReserve', history);
+    const rejection = http.expectOne(apiUrl(`claims/${CLAIM_ID}/reserves/${history.id}/reject`));
+    rejection.flush({
+      data: { reserveHistoryId: history.id, previousStatus: 'PendingApproval', newStatus: 'Rejected' },
+      warnings: [],
+    });
+    await expectReload();
+
+    expect(rejection.request.body).toEqual({ rejectionReason: 'Not supported.' });
+    expect(notify.success).toHaveBeenCalledWith('Reserve rejected.');
+  });
+
+  it('uploads a document, then reloads and reports its name', async () => {
+    const { call } = await render();
+    const file = new File(['x'], 'photo.png', { type: 'image/png' });
+
+    call('uploadDocument', { file, documentType: 'Photo', notes: '' });
+    const upload = http.expectOne(apiUrl(`claims/${CLAIM_ID}/documents`));
+    upload.flush({ data: { documentName: 'photo.png' }, warnings: [] }, { status: 201, statusText: 'Created' });
+    await expectReload();
+
+    expect((upload.request.body as FormData).get('documentType')).toBe('Photo');
+    expect(notify.success).toHaveBeenCalledWith('Document photo.png uploaded.');
   });
 });

@@ -11,11 +11,13 @@ Clean Architecture with five projects, dependencies pointing inward: `API` -> `A
 - **Persistence:** EF Core mapping, the readers that project straight into DTOs, the Unit of Work, and a save interceptor for the audit columns, soft delete, tenant and claim-row touch.
 - **Infrastructure:** the Hangfire jobs (posting, SLA, the posting sweep, the idempotency cleanup, the orphan blob sweep) and outside adapters such as Blob storage.
 - **API:** controllers, the error mapping, the Idempotency-Key filter and startup.
+- **Frontend:** an Angular client with one page and one store per screen, standalone OnPush components on signals, and every HTTP call in hand-written typed services over types generated from the API's OpenAPI document. It validates shape and shows hints (the in-force badge, the approval tier, the closure checklist from `status-check`); every business decision is the server's, and a refusal comes back as a 422 mapped onto the form or a banner.
 
 | Layer | State |
 |---|---|
 | Domain, Application, Persistence, Infrastructure, API | complete, with tests; the rules and contracts of each are in `docs/layers/` |
-| Frontend | Angular 22 workspace with the theme, the app shell, the mock sign-in and the HTTP pipeline; the three screens follow; rules in `docs/layers/frontend.md` |
+| Frontend | complete, with tests: the claims list, the intake form and the claim detail with its five tabs; rules in `docs/layers/frontend.md` |
+| Deployment | not built: no CI/CD pipeline or Azure resources yet; secrets are planned as Key Vault references (README 'Configuration') |
 
 Key choices:
 
@@ -25,13 +27,14 @@ Key choices:
 - **The reserve component owns its history rows,** and there is no stored balance: the balance is the sum of the approved rows, as the specification describes.
 - **Cross-aggregate effects by event:** a frozen claim closes its components through its state-changed event, so each aggregate guards itself from its own state.
 - **No runtime rule engine:** rules are classes declared in code, visible to review and tests.
+- **Client mirrors, server decides:** the frontend repeats a few constants to give feedback before a request (field lengths, the approval tiers, the 50 MB upload limit and the file type allowlist, all in `core/api/api-limits.ts` and `shared/util/reserve-authority.ts`). A change to one of them on the server must be copied there; a missed copy only changes a hint, because the server still refuses.
 
 ## Configuration
 
 Settings, secrets and feature switches follow `.claude/CLAUDE.md` 'Configuration'; the settings table and setup steps are in the root `README.md`. Two points are specific to this design:
 
 - The Hangfire dashboard is open to every request when its switch is on, because a page load carries no Bearer token, so enabling it in a shared environment exposes job data to anyone with the URL.
-- `DevAuth:Enabled` serves `POST /api/dev/token`, a simulated sign-in that needs no secret: anyone who reaches it gets a token for any configured user, a manager included. A deployment that needs test credentials therefore has to decide how to protect that endpoint (a parked decision) or keep it off.
+- `DevAuth:Enabled` serves `POST /api/dev/token`, a simulated sign-in for the configured users. Outside Development it needs `DevAuth:Secret` (16+ characters, a secret kept in Key Vault): the call must send it in the `X-DevAuth-Secret` header, compared as SHA-256 hashes in constant time (so neither the content nor the length leaks), or it answers 403 before any user lookup, so a caller without the code cannot tell which user ids exist; the app refuses to start without it. In Development a missing secret leaves the call open, as before. The frontend asks for the code ("access code") on the first 403 and keeps it in sessionStorage, so the code never ships in the bundle. It guards a live demo against casual use; it is not real authentication, and every holder of the code can sign in as any configured user, a manager included.
 
 ## Task documents
 
@@ -83,7 +86,7 @@ How the documents are read and carried out where they are ambiguous, silent or i
 | Approved reserve for payment | any transaction of the claim that is Approved or AutoApproved; the Application reader owns the definition | S:ST-Open-PendingPayment, S:ST-UnderInvestigation-PendingPayment | reading |
 | Amount messages | the amount and balance refusals use their own wording, because the specification's message assumes positive amounts | none | departure |
 | Reversal during payment | allowed; a reserve is independent of the claim state | none | gap |
-| Document aggregate | its own root, frozen with the claim; the size limit and the content-type allowlist are Domain rules; the Application builds the path and talks to storage | S:DOC-MaxSize, S:DOC-MimeAllowlist | mechanism |
+| Document aggregate | its own root, frozen with the claim; the size limit, the content-type allowlist and the content signature are Domain rules (the Application reads the first bytes and hands them in on the input); the Application builds the path and talks to storage | S:DOC-MaxSize, S:DOC-MimeAllowlist | mechanism |
 | Blob name | the specification's path with a random upload id before the file name (`{uploadId}_{name}`): a path is unique by construction, so a failed commit or a removed document never blocks a name, and an orphan blob only costs storage | S:BR-D-01 | departure |
 | Lazy-loaded feature modules | each screen is a lazily loaded route file of standalone components; Angular no longer needs NgModules for lazy loading | S:UI-General | reading |
 | Mock authentication | the header's role switcher signs in through the API's dev token route as one of three configured users, so the interceptor sends a real bearer token | S:UI-General | mechanism |
@@ -91,7 +94,8 @@ How the documents are read and carried out where they are ambiguous, silent or i
 | Guarded times and actors | a missing time or actor, or a business time earlier than the one it follows, throws | none | mechanism |
 | Error body | an error without a field goes under the key `General`, set in the API's one error mapper | S:API-ErrorShape | gap |
 | Claim list date range | filters the loss date of the claim | none | gap |
-| Unspecified cases | authentication failures (401 and 403 in the error body), concurrent edits (a 409 in the error body) and idempotency-key replays (the stored success replayed, 409 while running, 422 for another body; a refused request is not stored) are decided in `docs/layers/api.md` 'Errors' and 'Idempotency-Key'; oversized uploads are decided with the upload pack | none | gap |
+| Unspecified cases | authentication failures (401 and 403 in the error body), concurrent edits (a 409 in the error body) and idempotency-key replays (the stored success replayed, 409 while running, 422 for another body; a refused request is not stored) are decided in `docs/layers/api.md` 'Errors' and 'Idempotency-Key'; an upload up to 51 MB reaches the Domain's 50 MB rule (a 422), a larger body is refused by the server | none | gap |
+| Reserve request | one request opens or adjusts a component: `componentType` opens a new one (always an Add), `componentId` adds a row to an existing one, exactly one of the two; the specification names a single component field | S:API-POST-reserves | departure |
 
 ### Schema departures from the spec
 
@@ -145,6 +149,8 @@ Conditions and constants that no document states and that this repo added. Each 
 | Reserve | Claim limit | a change that does not increase the total passes the limit; one that would pass it is never auto-approved; the override cannot be removed while the total is over | CLAIM_OVERRIDE_STILL_NEEDED |
 | Reserve | Tiers | the auto-approval limit and the approval tiers compare the absolute amount; a handler may submit any amount and the row waits for an approver | S:BR-R-02 |
 | Reserve | Posting moves | posted, failed and retry need a job id; cancel has none | RESERVE_POSTING_JOB_REQUIRED |
+| Reserve | Intake without a policy | an intake with an initial reserve and no linked policy is refused as a whole (the create is one transaction); the intake form blocks it before sending and links back to the policy step | S:BR-C-06 |
+| Document | Content signature | one table in `DocumentContentTypes` lists every allowed type with its signature, so the allowlist and the signature check cannot drift apart; the first 512 bytes must match the declared type: `%PDF` for PDF, the PNG and JPEG headers, a ZIP header for docx and xlsx, no NUL byte for text and CSV; a ZIP header alone does not tell a docx from any other ZIP | DOC_CONTENT_MISMATCH |
 | Policy | Status | shown only: Active up to the effective end date (the earlier of expiry and cancellation), then Cancelled when a cancellation ended the cover, otherwise Expired; the date is an argument, the Domain reads no clock | none |
 | Read | Recent audit entries | the claim detail shows 10 | none |
 | Read | Page size cap | a page holds at most 100 rows | none |

@@ -35,6 +35,7 @@ public class ApiFactory(ApiFixture database, bool isDevAuthEnabled = true) : Web
 {
     public static readonly Guid SeedOrganisationId = Guid.Parse("3a44da3d-69e0-b835-4a7c-2859c519e664");
     public const string SeedCauseOfLossCode = "WATER";
+    public const string DevAuthSecret = "test-devauth-secret-0123456789";
 
     public static readonly Guid HandlerId = Guid.Parse("b2000000-0000-4000-8000-000000000001");
     public static readonly Guid SupervisorId = Guid.Parse("b2000000-0000-4000-8000-000000000002");
@@ -176,6 +177,7 @@ public class ApiFactory(ApiFixture database, bool isDevAuthEnabled = true) : Web
             ["LocalRoot"] = _storageRoot,
             ["LocalSigningKey"] = "test-local-signing-key-0123456789",
             ["DevAuth:Enabled"] = isDevAuthEnabled.ToString(),
+            ["DevAuth:Secret"] = DevAuthSecret,
             ["DevAuth:OrganisationId"] = SeedOrganisationId.ToString(),
             ["DevAuth:Users:0:Id"] = HandlerId.ToString(),
             ["DevAuth:Users:0:Name"] = "Test Handler",

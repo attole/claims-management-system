@@ -3,10 +3,10 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { firstValueFrom } from 'rxjs';
 import { apiUrl } from '../api/api-url';
-import { AuthService } from './auth.service';
+import { AuthService, DEV_AUTH_SECRET_HEADER } from './auth.service';
 import { DEV_USERS } from './dev-users';
 
-describe('AuthService (S:UI-General)', () => {
+describe('AuthService (S:UI-General, S:API-Auth)', () => {
   let service: AuthService;
   let http: HttpTestingController;
 
@@ -70,6 +70,48 @@ describe('AuthService (S:UI-General)', () => {
 
     expect(service.token()).toBe('new');
     expect(service.role()).toBe('Supervisor');
+  });
+
+  it('asks for the access code when the API refuses the sign-in, then sends it', async () => {
+    const handler = DEV_USERS[0];
+    const refused = service.initialize();
+    http.expectOne(apiUrl('dev/token')).flush(null, { status: 403, statusText: 'Forbidden' });
+    await refused;
+    const neededBefore = service.needsAccessCode();
+
+    const signedIn = service.useAccessCode('demo-access-code-0123');
+
+    const request = http.expectOne(apiUrl('dev/token'));
+    request.flush({ token: 'jwt', expiresAt: '', userId: handler.id, name: handler.name, role: 'Handler' });
+    await signedIn;
+    expect(neededBefore).toBe(true);
+    expect(request.request.headers.get(DEV_AUTH_SECRET_HEADER)).toBe('demo-access-code-0123');
+    expect(service.needsAccessCode()).toBe(false);
+    expect(sessionStorage.getItem('claims.accessCode')).toBe('demo-access-code-0123');
+  });
+
+  it('asks again on a later refusal after the first prompt was dismissed', async () => {
+    const first = service.initialize();
+    http.expectOne(apiUrl('dev/token')).flush(null, { status: 403, statusText: 'Forbidden' });
+    await first;
+    const states: boolean[] = [service.needsAccessCode()];
+
+    const second = service.switchTo(DEV_USERS[1]).catch(() => undefined);
+    states.push(service.needsAccessCode());
+    http.expectOne(apiUrl('dev/token')).flush(null, { status: 403, statusText: 'Forbidden' });
+    await second;
+
+    expect([...states, service.needsAccessCode()]).toEqual([true, false, true]);
+  });
+
+  it('sends no access code header while none was given', async () => {
+    const signedIn = firstValueFrom(service.signInAs(DEV_USERS[0]));
+
+    const request = http.expectOne(apiUrl('dev/token'));
+    request.flush({ token: 'jwt', expiresAt: '', userId: DEV_USERS[0].id, name: 'Hana', role: 'Handler' });
+    await signedIn;
+
+    expect(request.request.headers.has(DEV_AUTH_SECRET_HEADER)).toBe(false);
   });
 
   it('initialize when the API is down keeps the user signed out', async () => {

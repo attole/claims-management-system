@@ -1,6 +1,8 @@
 using ClaimsModule.Domain.CauseOfLoss;
 using ClaimsModule.Domain.Claims;
 using ClaimsModule.Domain.Claims.Inputs;
+using ClaimsModule.Domain.Claims.Loss;
+using ClaimsModule.Domain.Claims.Loss.Inputs;
 using ClaimsModule.Domain.Policies;
 
 namespace ClaimsModule.Persistence.SqlServerTests.Support;
@@ -21,6 +23,18 @@ internal static class SqlServerClaims
             _codes);
 
         return Claim.Create(input).Value;
+    }
+
+    public static Claim CreateWithLoss(Guid organisationId, DateTimeOffset lossDate)
+    {
+        var claim = Create(organisationId);
+        var today = DateOnly.FromDateTime(SqlServerFixture.Now.UtcDateTime);
+        var period = new PolicyPeriod(Guid.Empty, today.AddYears(-1), today.AddYears(1), DateOnly.MinValue);
+        var loss = new LossDetails(new LossDate(lossDate), "Water damage in the kitchen", "WATER");
+
+        claim.UpdateLossDetails(new UpdateLossDetailsInput(loss, period, _codes, SqlServerFixture.Now));
+
+        return claim;
     }
 
     public static Claim CreateLinked(Guid organisationId, Guid policyId)

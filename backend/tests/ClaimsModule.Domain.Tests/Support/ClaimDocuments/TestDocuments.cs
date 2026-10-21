@@ -9,6 +9,8 @@ public static class TestDocuments
 {
     public const string Pdf = "application/pdf";
 
+    public static readonly byte[] PdfHeader = "%PDF-1.7"u8.ToArray();
+
     public static readonly Guid ClaimId = Guid.Parse("88888888-8888-8888-8888-888888888888");
 
     public static ClaimReference Claim(ClaimState state)
@@ -31,7 +33,10 @@ public static class TestDocuments
 
     public static UploadClaimDocumentInput UploadInput()
     {
-        return new UploadClaimDocumentInput(Claim(new ClaimOpenState()), Details(), TestClaims.Actor, TestClaims.Start);
+        return new UploadClaimDocumentInput(Claim(new ClaimOpenState()), Details(), TestClaims.Actor, TestClaims.Start)
+        {
+            Header = PdfHeader,
+        };
     }
 
     public static ClaimDocument Upload()

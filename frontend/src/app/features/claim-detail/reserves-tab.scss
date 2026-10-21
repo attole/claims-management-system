@@ -1,0 +1,107 @@
+.card {
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  background: var(--app-surface);
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: var(--app-gap);
+}
+
+.stat {
+  padding: 14px var(--app-gap);
+}
+
+.closed {
+  opacity: 0.6;
+}
+
+.label {
+  font-size: 12px;
+  color: var(--app-muted);
+}
+
+.big {
+  margin-top: 2px;
+  font-size: 20px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.pending {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--status-reopened);
+}
+
+.small {
+  margin-top: 6px;
+  font-size: 12px;
+}
+
+.title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+
+  h2 {
+    margin: 0;
+    font: var(--mat-sys-title-medium);
+  }
+}
+
+.spacer {
+  flex: 1;
+}
+
+.editor {
+  display: block;
+  margin-bottom: var(--app-gap);
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+.actions {
+  display: flex;
+  gap: var(--app-gap-small);
+  justify-content: flex-end;
+  white-space: nowrap;
+}
+
+.muted {
+  color: var(--app-muted);
+}
+
+.empty {
+  margin: 0;
+  padding: var(--app-gap);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+@media (max-width: 1100px) {
+  .cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

@@ -1,4 +1,4 @@
-import { computed, effect, inject, Injectable, signal, untracked } from '@angular/core';
+import { computed, effect, inject, Injectable, signal, untracked, WritableSignal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { finalize, Observable, tap } from 'rxjs';
 import { EMPTY_ID, isGuid } from '../../core/api/api-ids';
@@ -7,16 +7,22 @@ import {
   ChangeStatusRequest,
   ClaimDetail,
   ClaimStatus,
+  DocumentUpload,
   Issue,
   PagedResult,
   Party,
   PartyRequest,
+  ReserveHistory,
+  ReserveRequest,
   StatusCheck,
+  UploadProgress,
 } from '../../core/api/api.model';
 import { ClaimsService } from '../../core/api/claims.service';
+import { DocumentsService } from '../../core/api/documents.service';
 import { IssuesService } from '../../core/api/issues.service';
 import { PartiesService } from '../../core/api/parties.service';
 import { ReferenceService } from '../../core/api/reference.service';
+import { ReservesService } from '../../core/api/reserves.service';
 import { isRefusal } from '../../core/http/error-body';
 import { newIdempotencyKey } from '../../core/http/idempotency';
 
@@ -74,12 +80,18 @@ export class ClaimDetailStore {
   private readonly claims = inject(ClaimsService);
   private readonly parties = inject(PartiesService);
   private readonly issues = inject(IssuesService);
+  private readonly reserves = inject(ReservesService);
+  private readonly documents = inject(DocumentsService);
   private readonly reference = inject(ReferenceService);
   private readonly keys = new Map<string, string>();
 
   readonly claimId = signal('');
   readonly auditPaging = signal<AuditPaging>({ page: 1, pageSize: AUDIT_PAGE_SIZES[0] });
-  readonly isSaving = signal(false);
+  private readonly pendingWrites = signal(0);
+  private readonly pendingUploads = signal(0);
+
+  readonly isSaving = computed(() => this.pendingWrites() > 0);
+  readonly isUploading = computed(() => this.pendingUploads() > 0);
 
   private readonly detailResource = rxResource({
     params: () => (isGuid(this.claimId()) ? this.claimId() : undefined),
@@ -176,16 +188,55 @@ export class ClaimDetailStore {
     return this.save(`issue:${issue.id}`, (key) => this.issues.waive(this.claimId(), issue.id, key));
   }
 
-  private save<TResult>(action: string, write: (key: string) => Observable<TResult>): Observable<TResult> {
+  submitReserve(reserve: ReserveRequest) {
+    return this.save('reserve', (key) => this.reserves.submit(this.claimId(), reserve, key));
+  }
+
+  approveReserve(history: ReserveHistory) {
+    return this.save(`reserve:${history.id}`, (key) => this.reserves.approve(this.claimId(), history.id, key));
+  }
+
+  rejectReserve(history: ReserveHistory, reason: string) {
+    return this.save(`reserve:${history.id}`, (key) => this.reserves.reject(this.claimId(), history.id, reason, key));
+  }
+
+  retractReserve(history: ReserveHistory) {
+    return this.save(`reserve:${history.id}`, (key) => this.reserves.retract(this.claimId(), history.id, key));
+  }
+
+  retryPosting(history: ReserveHistory) {
+    return this.save(`posting:${history.id}`, (key) => this.reserves.retryPosting(this.claimId(), history.id, key));
+  }
+
+  uploadDocument(upload: DocumentUpload): Observable<UploadProgress> {
+    const { name, size, lastModified } = upload.file;
+    const action = `upload:${name}:${size}:${lastModified}`;
+
+    return this.save(
+      action,
+      (key) => this.documents.upload(this.claimId(), upload, key),
+      (progress) => progress.kind === 'done',
+      this.pendingUploads,
+    );
+  }
+
+  private save<TResult>(
+    action: string,
+    write: (key: string) => Observable<TResult>,
+    isFinal: (result: TResult) => boolean = () => true,
+    pending: WritableSignal<number> = this.pendingWrites,
+  ): Observable<TResult> {
     const key = this.keys.get(action) ?? newIdempotencyKey();
     this.keys.set(action, key);
-    this.isSaving.set(true);
+    pending.update((count) => count + 1);
 
     return write(key).pipe(
       tap({
-        next: () => {
-          this.keys.delete(action);
-          this.reload();
+        next: (result) => {
+          if (isFinal(result)) {
+            this.keys.delete(action);
+            this.reload();
+          }
         },
         error: (error: unknown) => {
           if (isRefusal(error)) {
@@ -193,7 +244,7 @@ export class ClaimDetailStore {
           }
         },
       }),
-      finalize(() => this.isSaving.set(false)),
+      finalize(() => pending.update((count) => count - 1)),
     );
   }
 }

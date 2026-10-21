@@ -57,6 +57,24 @@ public sealed class UploadDocumentCommandTests
     }
 
     [Fact]
+    [Trait("Rule", "DOC_CONTENT_MISMATCH")]
+    public async Task Handle_ForContentThatIsNotItsDeclaredType_ReturnsTheRuleErrorAndStoresNothing()
+    {
+        var claim = ApplicationClaims.Opened();
+        var context = new ClaimHandlerContext().WithClaim(claim);
+        var handler = CreateHandler(context);
+        var command = CreateCommand(claim.Id, "invoice.pdf", "application/pdf") with
+        {
+            Content = new MemoryStream([0x4D, 0x5A, 0x90, 0x00]),
+        };
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        result.Errors.Select(error => error.Code).Should().Equal("DOC_CONTENT_MISMATCH");
+        context.VerifyAnyUpload(Times.Never());
+    }
+
+    [Fact]
     [Trait("Rule", "S:DOC-MaxSize")]
     public async Task Handle_ForATooLargeFile_ReturnsTheRuleErrorAndStoresNothing()
     {
@@ -175,7 +193,7 @@ public sealed class UploadDocumentCommandTests
     {
         return new UploadDocumentCommand(claimId, "PoliceReport", fileName, contentType, 2048)
         {
-            Content = new MemoryStream([1, 2, 3]),
+            Content = new MemoryStream("%PDF-1.7 sample"u8.ToArray()),
         };
     }
 }

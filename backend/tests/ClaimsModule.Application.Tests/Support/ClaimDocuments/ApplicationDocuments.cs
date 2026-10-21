@@ -15,7 +15,10 @@ public static class ApplicationDocuments
             "application/pdf",
             2048);
         var uploadedAt = new DateTimeOffset(2026, 10, 12, 8, 0, 0, TimeSpan.Zero);
-        var input = new UploadClaimDocumentInput(claim.Reference, details, Guid.NewGuid(), uploadedAt);
+        var input = new UploadClaimDocumentInput(claim.Reference, details, Guid.NewGuid(), uploadedAt)
+        {
+            Header = "%PDF-1.7"u8.ToArray(),
+        };
 
         return ClaimDocument.Upload(input).Value;
     }

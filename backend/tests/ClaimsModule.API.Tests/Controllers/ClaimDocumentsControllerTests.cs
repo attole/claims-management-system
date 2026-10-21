@@ -200,7 +200,9 @@ public sealed class ClaimDocumentsControllerTests(ApiFixture database) : IDispos
 
     private static MultipartFormDataContent Form(int size, string fileName, string contentType = "application/pdf")
     {
-        var file = new ByteArrayContent(new byte[size]);
+        var content = new byte[size];
+        "%PDF"u8.CopyTo(content);
+        var file = new ByteArrayContent(content);
         file.Headers.ContentType = new MediaTypeHeaderValue(contentType);
 
         return new MultipartFormDataContent
