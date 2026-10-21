@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace ClaimsModule.API.Configuration.Cors;
+namespace ClaimsModule.API.Cors;
 
 public sealed class FrontendCorsOptions
 {

@@ -5,6 +5,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="ClaimsModule.API.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\ClaimsModule.Application\ClaimsModule.Application.csproj" />
     <ProjectReference Include="..\ClaimsModule.Infrastructure\ClaimsModule.Infrastructure.csproj" />
     <ProjectReference Include="..\ClaimsModule.Persistence\ClaimsModule.Persistence.csproj" />

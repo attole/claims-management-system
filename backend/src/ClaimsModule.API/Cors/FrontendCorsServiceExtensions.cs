@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Cors.Infrastructure;
 using Microsoft.Extensions.Options;
 
-namespace ClaimsModule.API.Configuration.Cors;
+namespace ClaimsModule.API.Cors;
 
 public static class FrontendCorsServiceExtensions
 {

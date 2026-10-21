@@ -24,13 +24,14 @@ dotnet test backend
 python -I .claude/tools/check_workflow.py
 ```
 
-The tests in `ClaimsModule.Persistence.SqlServerTests` create a temporary database on LocalDB (or on the server in `CLAIMS_TEST_SQLSERVER`) and are skipped when no server answers.
+The tests in `ClaimsModule.Persistence.SqlServerTests` and `ClaimsModule.API.Tests` create a temporary database on LocalDB (or on the server in `CLAIMS_TEST_SQLSERVER`) and are skipped when no server answers.
 
 ## Run locally
 
 1. Create and seed the database. The app does not migrate at startup. From the `backend` folder run `dotnet tool restore`, then `dotnet dotnet-ef database update --project src/ClaimsModule.Persistence` (Hangfire creates its own tables later). It targets LocalDB; set `CLAIMS_DB_CONNECTION` to use another server.
 2. Set the signing key (32 or more characters, any test value locally): `dotnet user-secrets set "Jwt:SigningKey" "<32+ character test value>" --project backend/src/ClaimsModule.API`
 3. Run: `dotnet run --project backend/src/ClaimsModule.API`
+4. Get a token for a user: `POST /api/dev/token` with `{ "userId": "<id>" }`, using an id from `DevAuth:Users` in `appsettings.Development.json` (a handler, a supervisor and a manager), and send it as `Authorization: Bearer <token>`. This is a simulation of sign-in, only available while `DevAuth:Enabled` is true.
 
 With `ASPNETCORE_ENVIRONMENT=Development`, Swagger is at `/swagger` and the Hangfire dashboard at `/hangfire`.
 
@@ -49,6 +50,7 @@ Required settings are validated at startup; a missing one stops the app and name
 | `AzureConnectionString` (secret, with an account key), for `AzureBlob` | not used | Key Vault |
 | `Hangfire:PostingSweep:MinimumAge` (optional, default `00:10:00`, must be positive) | `appsettings.json` | app settings |
 | `Hangfire:PostingSweep:IntervalMinutes` (optional, default 5, must divide 60 evenly) | `appsettings.json` | app settings |
+| `DevAuth:OrganisationId`, `DevAuth:Users` (id, name, role), `DevAuth:TokenLifetimeMinutes` (default 480, at most 1440), required while `DevAuth:Enabled` is true; the organisation must be the seeded one | `appsettings.Development.json` | not used |
 | `Hangfire:SlaBreach:IntervalMinutes` (optional, default 15, must divide 60 evenly) | `appsettings.json` | app settings |
 | `Hangfire:IdempotencyCleanup:IntervalHours` (optional, default 1; 1, 2, 3, 4, 6, 8 or 12) | `appsettings.json` | app settings |
 | `Hangfire:BlobSweep:MinimumAge` (optional, default `1.00:00:00`, must be positive) | `appsettings.json` | app settings |
@@ -60,5 +62,5 @@ Feature switches are booleans that default to false and do not depend on the env
 |---|---|
 | `Swagger:Enabled` | serves the OpenAPI document and Swagger UI |
 | `Hangfire:Dashboard:Enabled` | mounts the Hangfire dashboard, open to every request |
-| `DevAuth:Enabled` | reserved for the dev token endpoint (not built yet) |
+| `DevAuth:Enabled` | serves `POST /api/dev/token`, a simulated sign-in that issues a token for a configured user |
 | `Hangfire:BlobSweep:Enabled` | schedules the job that deletes stored blobs no document refers to |

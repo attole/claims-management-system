@@ -1,4 +1,4 @@
-namespace ClaimsModule.API.Configuration.Swagger;
+namespace ClaimsModule.API.Swagger;
 
 public sealed class SwaggerDocsOptions
 {

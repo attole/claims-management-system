@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace ClaimsModule.API.Configuration.Jwt;
+namespace ClaimsModule.API.Jwt;
 
 public sealed class JwtOptions
 {

@@ -1,40 +1,86 @@
 # API layer
 
-Rules and contracts of the API: controllers, the error body, identity and the Idempotency-Key filter. It fills the current user from the token and supplies the correlation id the Application expects (Infrastructure registers the clock and the current user holder) (`docs/layers/application.md` 'Provides and expects'). `.claude/CLAUDE.md` holds the short rules and points here; read this file before changing the API project or reviewing its code. Status: not built; this file holds what the Application hands over, and grows into standards as the layer is written.
+Rules and contracts of the API: controllers, the error body, identity, correlation, the Idempotency-Key filter, uploads and downloads. It fills the current user from the token and supplies the correlation id the Application expects (Infrastructure registers the clock and the current user holder) (`docs/layers/application.md` 'Provides and expects'). `.claude/CLAUDE.md` holds the short rules and points here; read this file before changing the API project or reviewing its code. Status: pack 1 (host and identity) is built: correlation, the current-user middleware, the fallback authorization policy, the dev token endpoint and the API test fixture. Errors, the Idempotency-Key filter and the endpoints are not. The decisions below were settled on 2026-10-21 and are binding for the pack; the 'Tests' section lists how each one is enforced as the layer is written.
+
+## Layout
+
+- The API project has one folder per feature at its root, with no catch-all `Configuration/` folder: `Controllers/`, `Correlation/`, `Cors/`, `DevAuth/`, `Identity/`, `Jwt/`, `Swagger/`, and later `Errors/` and `Idempotency/`. A feature folder holds its options, its `<Feature>ServiceExtensions` class and any middleware or filter together; a feature with its own options and validator may put them in a `Configuration/` subfolder and its wire types in `Dtos/`.
+- Namespaces follow the folders (`ClaimsModule.API.Identity`), and the test project mirrors them (`ClaimsModule.API.Tests.Identity`). A folder is never named `Options`: the namespace would shadow `Options.Create` in the code and the tests around it.
 
 ## Controllers and routes
 
 - A controller action maps the request to one command or query, sends it through MediatR and returns the mapped `Result`. It holds no business logic and builds no error JSON by hand.
-- Routes use plural nouns in kebab-case, under `/api`. The reserve decision routes are the specification's, which name a history row. Two assessment routes are deliberately not built (a reserve update and a combined decision route).
+- Routes use plural nouns in kebab-case, under `/api`. The specification's own routes keep their names even where they are not plural (`/status`, `/reference/...`); the route test allows exactly the routes listed in this section. The reserve decision routes are the specification's, which name a history row. Two assessment routes are deliberately not built (a reserve update and a combined decision route).
+- Only the routes the three screens and the specification's route table need exist. Every other Application command (risk object add, update and remove, loss details, severity, limit override, assign handler, link policy, acknowledge and waive an issue, remove a document) stays without a route; the Domain and the Application carry them and a route is added when a screen needs it.
+- The routes (S:API-POST-claims, S:API-GET-claims, S:API-GET-claim, S:API-PUT-claims-status, S:API-GET-claims-audit, S:API-POST-claims-parties, S:API-DELETE-claims-parties, S:API-POST-claims-documents, S:API-GET-claims-documents, S:API-POST-reserves, S:API-GET-reserves, S:API-POST-reserve-approve, S:API-POST-reserve-reject, S:API-POST-reserve-retract, S:API-GET-causes, S:API-GET-statuses, S:API-GET-policies-search):
+  - the specification's table, under `/api/claims`, `/api/reference` and `/api/policies`;
+  - three routes beyond the table, each for a screen element: the claim notes update (Overview tab), the retry of a failed GL posting (Reserves tab, `RetryReservePostingCommand`) and the closure pre-check below.
 - Reads reuse the composed queries; every list is paged and the page size is capped by the Application.
+
+## Closure pre-check
+
+- `GET /api/claims/{id}/status-check?targetStatus=Closed` shows the user what blocks a transition before the click (S:UI-Detail-Header, S:BR-ST-03). It works for any target status.
+- It is backed by `CheckClaimStatusQuery(ClaimId, TargetStatus)`. The handler loads the claim, runs the same transition as `ChangeClaimStatusCommand` through a runner map the two handlers share, and never commits, so no event is dispatched and nothing is saved. It uses the user and role of the request, so a reopen check answers for that role.
+- It returns only the failing findings (code, severity, message, field). The frontend keeps the fixed list of the closure conditions (S:CC-01 to S:CC-04) keyed by finding code: no finding is a pass, and the warning for S:CC-04 shows the justification note field. Confirm is enabled while no Critical finding remains. The result is advisory: `PUT /api/claims/{id}/status` runs the rules again and its 422 is authoritative.
+- It is a read, so the Idempotency-Key filter does not apply.
 
 ## Errors
 
-- One error mapper turns a `Result` into the response: validation 422, not found 404, forbidden 403, conflict 409.
+- One error mapper turns a `Result` into the response: validation 422, not found 404, forbidden 403, conflict 409. An unknown id is always a 404, including an id that belongs to another claim or a child (a party, a reserve row) the claim does not own; only the Application creates one.
 - A `ConcurrencyConflictException` from the Unit of Work (a concurrent edit or a duplicate key) is caught by middleware and returned as a 409 with the same body.
-- The body follows the specification's sample: `type`, `title`, `status` and `errors` grouped by field. An error without a field goes under the key `General` (S:API-ErrorShape). The error code is not on the wire.
+- The body follows the specification's sample: `type`, `title`, `status` and `errors` grouped by field (S:API-ErrorShape). `type` is the short name of the error kind, as in the sample, not a URI: `ValidationError`, `NotFoundError`, `ForbiddenError` or `ConflictError`. `title` is readable text. An error without a field goes under the key `General`. The error code is not on the wire.
 - Only a request that cannot be bound at all is rejected before a command runs, and that rejection uses the same 422 body, not an own 400 body (a missing non-nullable value included).
-- The warnings of a successful `Result` are returned with the success body (the shape is decided when the first endpoint is written); the Application never returns HTTP types.
+- A successful write that carries warnings returns `{ data, warnings }`; the Application never returns HTTP types. A write without warnings returns the same envelope with an empty list, so the frontend reads one shape.
 
 ## Identity and correlation
 
-- The actor and the role come from the authenticated user, never from the request. The role from the token becomes a `UserRole` with `UserRole.From`. A dev token endpoint behind `DevAuth:Enabled` is parked in `.claude/temp/notes-parking-lot.md`.
-- Persistence builds `ClaimsDbContext` and its save interceptors from the scoped `ICurrentUser` and `IClock`, so the API must register `IClock` (Infrastructure registers it) and `ICorrelationContext`, and set the scoped `ScopedCurrentUser` that Infrastructure registers as `ICurrentUser` (id, organisation and role from the token) before any request reaches a handler. The organisation of the user is the tenant filter value; the dev users carry the seeded organisation id, or the seeded policies and cause-of-loss codes are invisible to them (`docs/layers/persistence.md` 'Migrations and seed data').
-- Middleware sets the correlation id that `ICorrelationContext` exposes, so every audit entry of one request carries it (S:AUD-Correlation).
+- The actor and the role come from the authenticated user, never from the request. The role from the token becomes a `UserRole` with `UserRole.From`, and only an exact role name is accepted (`RoleNames.IsKnown`): a number, a comma list, different casing or padding is refused, in the token and in the dev user settings alike.
+- Authentication is a bearer token (S:API-Auth). The claims are `sub` (the user id), `org` (the organisation id), `role` (`Handler`, `Supervisor` or `Manager`) and `name` (for the header display). `sub` is the standard JWT subject claim; the inbound claim mapping stays off so the middleware reads the names as written.
+- Persistence builds `ClaimsDbContext` and its save interceptors from the scoped `ICurrentUser` and `IClock`, so the API must register `IClock` (Infrastructure registers it) and `ICorrelationContext`, and a middleware right after authentication sets the scoped `ScopedCurrentUser` that Infrastructure registers as `ICurrentUser` (id, organisation and role from the token) before any request reaches a handler. The organisation of the user is the tenant filter value; the dev users carry the seeded organisation id, or the seeded policies and cause-of-loss codes are invisible to them (`docs/layers/persistence.md` 'Migrations and seed data').
+- Dev token (the specification asks for a mock authentication service): a `DevTokenIssuer` and a `DevAuthController` with `POST /api/dev/token` live in the API's `DevAuth/` feature folder (the controller, the issuer and the extensions at its root, `Configuration/` for the options and their validator, `Dtos/` for the request and the response), behind `DevAuth:Enabled`. The users and the seeded organisation id are settings. There is no Application port and no Infrastructure token service. The request is `{ userId }` and the response carries the token, its expiry and the user; an unknown user, or `DevAuth:Enabled` false, answers 404. The options are validated at startup while the switch is on, and the token lifetime is capped at 1440 minutes. It is a simulation and is documented as one in the README (Swagger documents it when pack 7 adds the note).
+- Anonymous routes are only the dev token endpoint, Swagger and the signed local download route. Every other action requires an authenticated user, and a test enforces it.
+- Role checks stay in the Domain rules (`HasApprovalAuthority`, `HasRejectionAuthority`, `IsNotSelfApproval`, the reopen transition) (S:ROLE-Enforcement). A role failure is therefore the 422 of its finding, with the specification's message. No action uses `[Authorize(Roles = ...)]`; the API requires an authenticated user and nothing more. One source of truth keeps the message and the status the same however the rule is reached.
+- Correlation (S:AUD-Correlation): a scoped `CorrelationContext` holds a new GUID for every request (a job scope gets its own), so every audit entry of the request reads it, and a middleware at the start of the pipeline returns it as the `X-Correlation-Id` response header when the response starts (so an error response carries it too). An incoming `X-Correlation-Id` is ignored, because it is untrusted input and the audit column is a GUID. Accepting a valid inbound GUID is the extension if a gateway is ever added.
+- The Hangfire dashboard cannot be protected by the bearer token, because a browser page cannot send the header. It stays behind its feature switch (default off, on only in development) and is documented as open to every request when on. It must not be enabled in a deployed environment. Because the fallback policy covers every request after the authorization middleware, `Program.cs` adds the dashboard (`UseInfrastructure`) and Swagger before `UseAuthentication`, and the OpenAPI document is mapped with `AllowAnonymous()`; the pipeline order is correlation, exception handler, HTTPS redirection, CORS, dashboard, Swagger, authentication, current user, authorization, controllers.
 
 ## Idempotency-Key
 
-A write operation with an `Idempotency-Key` header is idempotent (S:API-IdempotencyKey). It is an action filter, not a MediatR behavior, because only the API knows the header, the route and the final status and body.
+A write operation with an `Idempotency-Key` header is idempotent (S:API-IdempotencyKey). The specification applies it to all write operations when the header is provided, so there is no exemption, uploads included. It is an action filter, not a MediatR behavior, because only the API knows the header, the route and the final status and body.
 
-1. Before the action the filter hashes the body and calls `IIdempotencyStore.BeginAsync` with the key, method, route and hash.
-2. `Started`: run the action. `Completed`: return the stored response without running it. `InProgress`: return 409. `BodyMismatch` (the same key with another body): return 422.
-3. After the action the filter calls `CompleteAsync` with the status code and body.
+1. A key longer than 200 characters (the column length) is rejected with the 422 body before anything else.
+2. Before the action the filter hashes the body (a multipart body is hashed through request buffering, which spills to a temporary file, so a file of up to 50 MB is one extra sequential read) and calls `IIdempotencyStore.BeginAsync` with the key, method, route and hash.
+3. `Started`: run the action. `Completed`: return the stored response without running it. `InProgress`: return 409. `BodyMismatch` (the same key with another body): return 422.
+4. After the action the filter calls `CompleteAsync` with the status code and body.
 
 The store saves the key with the command's own commit, so a key with no stored response means the request is still running or crashed after its commit: it answers 409 and the action is never run again until the key expires. Completion (the response) is its own save after the action.
 
-The header is optional and the filter applies to every write action; a request without it runs normally and is not stored. A replay returns the first response even if the claim has changed since; fresh state comes from a read. A stored key expires after about 24 hours and then counts as new.
+The header is optional and the filter applies to every write action; a request without it runs normally and is not stored. A replay returns the first response even if the claim has changed since; fresh state comes from a read. A stored key expires after about 24 hours and then counts as new (the cleanup job in `docs/layers/infrastructure.md` removes the rows).
+
+## Wire format
+
+- Lists are paged with `page` and `pageSize`, and the response is `{ items, total, page, pageSize }`; the Application caps the page size.
+- JSON is camelCase. Closed sets (statuses, roles, components) are their names as strings, dates and times are ISO 8601, money is a number.
+- Filters of the claims list bind from the query string with the names of the specification (`status`, `dateFrom`, `dateTo`, `assignedHandlerId`, `causeOfLossCode`, `policyId`, `search`).
+
+## Documents
+
+- The upload is multipart (S:API-POST-claims-documents). The size and the type rules are Domain rules (S:DOC-MaxSize, S:DOC-MimeAllowlist), so the user gets their 422 message. The server must not reject first: Kestrel's default request body limit is about 28.6 MB, so the upload action raises its request size limit to just above 50 MB (the Domain limit plus the multipart overhead), and a larger body is refused by the server before it is buffered.
+- The document list returns a download URL for each file (S:API-GET-claims-documents). For Azure it points at the blob; for the local provider the API serves the signed route: it validates `LocalDownloadToken`, reads the path from the token and streams `LocalFileSystemStorageService.OpenRead` with the stored content type and a download file name. The token is the only check on that route, which is why it is anonymous. Static files are not used.
+
+## Swagger
+
+- Swagger shows a bearer authorize button and a note that the dev token is a simulation (`Swagger:Enabled`, default off, on in development).
 
 ## Tests
 
-- A route test checks that every route is kebab-case plural (S:DATA-Naming).
-- The error mapper has a test per error kind and for the `General` key.
+The rules above are enforced by tests once the layer is written; a rule without a test here is a rule to add one for.
+
+- A route test checks that every route is kebab-case plural (S:DATA-Naming), with the listed exceptions as an explicit allow-list.
+- A reflection test checks that no action uses `[Authorize(Roles = ...)]`, that every action is authenticated except the three anonymous routes, and that every write action is covered by the Idempotency-Key filter.
+- The error mapper has a test per error kind (status and `type`), for the `General` key and for the concurrency conflict middleware.
+- The Idempotency-Key filter has a test per outcome (`Started`, `Completed`, `InProgress`, `BodyMismatch`), one for a key over 200 characters and one for a multipart upload.
+- The correlation middleware has a test that it ignores an incoming header, returns a new GUID in `X-Correlation-Id` and exposes the same value through `ICorrelationContext`.
+- The pre-check has a handler test per closure condition and a test that `CommitAsync` is never called.
+- The upload action has a test that a body just under 50 MB reaches the Domain and one that a larger body is refused by the server.
+- The API tests run on `WebApplicationFactory` against LocalDB (or `CLAIMS_TEST_SQLSERVER`) and skip when no server answers, like the SQL Server tests of Persistence. One shared fixture migrates the database once, and every test creates its own organisation, so the tenant filter isolates the tests from each other.
+- The test host removes every hosted service, which stops the Hangfire server; the startup validation of options still runs (a test proves that a bad dev user stops the host). It replaces `IPostingScheduler` with a recording fake and `IRecurringJobManager` with a mock, so a test proves which jobs are enqueued and never runs one. The real Hangfire path is checked once, separately (`docs/layers/infrastructure.md` 'Jobs').

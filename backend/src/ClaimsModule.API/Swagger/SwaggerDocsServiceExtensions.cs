@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Options;
 
-namespace ClaimsModule.API.Configuration.Swagger;
+namespace ClaimsModule.API.Swagger;
 
 public static class SwaggerDocsServiceExtensions
 {
@@ -24,7 +24,7 @@ public static class SwaggerDocsServiceExtensions
             return app;
         }
 
-        app.MapOpenApi();
+        app.MapOpenApi().AllowAnonymous();
         app.UseSwaggerUI(ui => ui.SwaggerEndpoint("/openapi/v1.json", "Claims API v1"));
 
         return app;

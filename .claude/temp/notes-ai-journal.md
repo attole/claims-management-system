@@ -608,3 +608,39 @@ what: Infrastructure pack 1 passed build, tests and the workflow check, yet the 
 caught-by: code-review
 fix: all five were fixed, then build, tests and the workflow check were run again
 lesson: a green build does not replace a fresh-context review of the whole pack
+
+## CORRECTION-041 | p3 backend | 2026-10-21
+what: the AI recommended a URI per error kind for the error body type, without comparing it with the spec's sample, which uses a short kind name
+caught-by: user
+fix: the user asked what the URI was, the AI explained the problem-details convention, then followed the spec: ValidationError, NotFoundError, ForbiddenError, ConflictError
+lesson: compare a recommendation with the spec's sample before proposing a standard convention
+
+## CORRECTION-042 | p3 backend | 2026-10-21
+what: the AI recommended exempting file uploads from the Idempotency-Key filter and said hashing a 50 MB file would read it into memory; both points were unverified
+caught-by: user
+fix: the user asked where the spec says to use it; it says all write operations, and ASP.NET buffers uploads to a temporary file, so there is no exemption and the body is hashed through buffering
+lesson: check the spec's scope and the framework's real behaviour before recommending an exemption or citing a cost
+
+## PROMPT-011 | p3 backend | 2026-10-21
+purpose: settle the API layer's open questions by making the AI verify each point against the specs and the code
+prompt: answered each open question inline and, when unsure, asked what a term means or told the AI to check the docs, the frontend section and the existing rules before deciding
+outcome: kept
+note: two recommendations were reversed after those checks (the error type and the upload exemption), so the questions drove the evidence
+
+## ASSESSMENT-014 | p3 backend | 2026-10-21
+area: mapping the specification's routes and frontend screens onto the Application's use cases
+helped: high
+note: comparing the route table and the screens with the commands found two missing routes (notes update, retry posting) and showed which commands need none; the AI had to be told to check rather than infer
+
+## SPLIT-010 | p3 backend | 2026-10-21
+item: API layer design: open questions, settled decisions and the rewrite of docs/layers/api.md
+who: hybrid
+note: the AI drafted the questions with defaults; the user decided each, including a dry-run closure route the AI had advised against; the AI wrote the layer note and its test list
+
+## SUMMARY-024 | p3 backend | 2026-10-21
+topic: API layer design and the layer note
+story: before any code the AI listed the open API questions with a default each, grounded in the spec's route table, the frontend screens and the Application's commands. Over several rounds the user settled identity, correlation, error shape, idempotency scope, upload limits, wire format and tests, and the AI rewrote docs/layers/api.md with an enforcement test list and cleared the parking lot.
+decisions: the user chose the dev token endpoint in the API, a server-generated correlation id, the spec's error type names, no idempotency exemption, a request limit just above 50 MB, Domain-only role checks, the dashboard kept off outside development, and a new dry-run route for the closure checklist, overruling the AI's advice.
+ai-errors: the AI misread which layer was meant and recommended a URI error type and an upload exemption without checking the spec; it also proposed a bearer-token requirement for the dashboard that a browser page cannot satisfy, which it caught itself while answering. The user's questions caught the rest.
+human-vs-ai: the user drove by asking what each term meant and which source said it; the AI verified against the specs and code, argued options, wrote the layer note and the parking-lot update, and made no code changes in this flow.
+refs: CORRECTION-041, CORRECTION-042, PROMPT-011, ASSESSMENT-014, SPLIT-010

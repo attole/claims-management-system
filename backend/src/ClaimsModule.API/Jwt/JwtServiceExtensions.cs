@@ -1,9 +1,11 @@
 using System.Text;
+using ClaimsModule.API.Identity;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
-namespace ClaimsModule.API.Configuration.Jwt;
+namespace ClaimsModule.API.Jwt;
 
 public static class JwtServiceExtensions
 {
@@ -24,8 +26,11 @@ public static class JwtServiceExtensions
             .Configure<IOptions<JwtOptions>>((bearer, options) =>
             {
                 var jwt = options.Value;
+                bearer.MapInboundClaims = false;
                 bearer.TokenValidationParameters = new TokenValidationParameters
                 {
+                    NameClaimType = IdentityClaims.Name,
+                    RoleClaimType = IdentityClaims.Role,
                     ValidateIssuer = true,
                     ValidIssuer = jwt.Issuer,
                     ValidateAudience = true,
@@ -37,7 +42,9 @@ public static class JwtServiceExtensions
                 };
             });
 
-        services.AddAuthorization();
+        services
+            .AddAuthorizationBuilder()
+            .SetFallbackPolicy(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
 
         return services;
     }
