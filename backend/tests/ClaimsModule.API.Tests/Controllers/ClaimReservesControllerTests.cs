@@ -1,7 +1,9 @@
 using System.Net;
 using System.Net.Http.Json;
+using ClaimsModule.API.Controllers;
 using ClaimsModule.API.Tests.Support;
 using ClaimsModule.Application.ReserveComponents.Dtos;
+using ClaimsModule.Application.ReserveComponents.History.Dtos;
 
 namespace ClaimsModule.API.Tests.Controllers;
 
@@ -107,6 +109,146 @@ public sealed class ClaimReservesControllerTests(ApiFixture database) : IDisposa
             new { RejectionReason = "Not covered" });
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [ApiFact]
+    [Trait("Rule", "S:API-POST-reserves")]
+    public async Task Submit_AmountWithinTheAutoApprovalLimit_Answers201AsAutoApproved()
+    {
+        var claimId = await _factory.SeedOpenClaimAsync();
+        using var handler = CreateSeedClient(ApiFactory.HandlerId, "Handler");
+
+        var response = await SubmitAsync(handler, claimId, 5_000);
+
+        var envelope = await response.Content.ReadFromJsonAsync<ApiControllerBase.CommandResponse<ReserveHistoryDto>>();
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        envelope!.Data.ApprovalStatus.Should().Be("AutoApproved");
+    }
+
+    [ApiFact]
+    [Trait("Rule", "S:API-POST-reserves")]
+    public async Task Submit_AmountAboveTheAutoApprovalLimit_Answers201AsPending()
+    {
+        var claimId = await _factory.SeedOpenClaimAsync();
+        using var handler = CreateSeedClient(ApiFactory.HandlerId, "Handler");
+
+        var response = await SubmitAsync(handler, claimId, 50_000);
+
+        var envelope = await response.Content.ReadFromJsonAsync<ApiControllerBase.CommandResponse<ReserveHistoryDto>>();
+        envelope!.Data.ApprovalStatus.Should().Be("PendingApproval");
+    }
+
+    [ApiFact]
+    [Trait("Rule", "S:API-POST-reserve-approve")]
+    public async Task Approve_ASupervisorApprovingAnotherUsersReserve_Answers200AsApproved()
+    {
+        var claimId = await _factory.SeedOpenClaimAsync();
+        using var handler = CreateSeedClient(ApiFactory.HandlerId, "Handler");
+        using var supervisor = CreateSeedClient(ApiFactory.SupervisorId, "Supervisor");
+        var historyId = await SubmitPendingAsync(handler, claimId);
+
+        var response = await supervisor.PostAsync($"/api/claims/{claimId}/reserves/{historyId}/approve", null);
+
+        var envelope = await ReadStatusAsync(response);
+        envelope!.Data.NewStatus.Should().Be("Approved");
+    }
+
+    [ApiFact]
+    [Trait("Rule", "S:BR-R-03")]
+    public async Task Approve_TheSubmitterApprovingTheirOwnReserve_Answers422()
+    {
+        var claimId = await _factory.SeedOpenClaimAsync();
+        using var supervisor = CreateSeedClient(ApiFactory.SupervisorId, "Supervisor");
+        var historyId = await SubmitPendingAsync(supervisor, claimId);
+
+        var response = await supervisor.PostAsync($"/api/claims/{claimId}/reserves/{historyId}/approve", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+    }
+
+    [ApiFact]
+    [Trait("Rule", "S:BR-R-02")]
+    public async Task Approve_AHandler_IsRefused()
+    {
+        var claimId = await _factory.SeedOpenClaimAsync();
+        using var supervisor = CreateSeedClient(ApiFactory.SupervisorId, "Supervisor");
+        using var handler = CreateSeedClient(ApiFactory.HandlerId, "Handler");
+        var historyId = await SubmitPendingAsync(supervisor, claimId);
+
+        var response = await handler.PostAsync($"/api/claims/{claimId}/reserves/{historyId}/approve", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+    }
+
+    [ApiFact]
+    [Trait("Rule", "S:API-POST-reserve-reject")]
+    public async Task Reject_ASupervisorWithAReason_Answers200AsRejected()
+    {
+        var claimId = await _factory.SeedOpenClaimAsync();
+        using var handler = CreateSeedClient(ApiFactory.HandlerId, "Handler");
+        using var supervisor = CreateSeedClient(ApiFactory.SupervisorId, "Supervisor");
+        var historyId = await SubmitPendingAsync(handler, claimId);
+
+        var response = await supervisor.PostAsJsonAsync(
+            $"/api/claims/{claimId}/reserves/{historyId}/reject",
+            new { RejectionReason = "Not supported by the file" });
+
+        var envelope = await ReadStatusAsync(response);
+        envelope!.Data.NewStatus.Should().Be("Rejected");
+    }
+
+    [ApiFact]
+    [Trait("Rule", "S:API-POST-reserve-retract")]
+    public async Task Retract_TheSubmitterOfAPendingReserve_Answers200AsCancelled()
+    {
+        var claimId = await _factory.SeedOpenClaimAsync();
+        using var handler = CreateSeedClient(ApiFactory.HandlerId, "Handler");
+        var historyId = await SubmitPendingAsync(handler, claimId);
+
+        var response = await handler.PostAsync($"/api/claims/{claimId}/reserves/{historyId}/retract", null);
+
+        var envelope = await ReadStatusAsync(response);
+        envelope!.Data.NewStatus.Should().Be("Cancelled");
+    }
+
+    [ApiFact]
+    [Trait("Rule", "S:API-POST-reserve-retract")]
+    public async Task Retract_SomeoneElseThanTheSubmitter_Answers422()
+    {
+        var claimId = await _factory.SeedOpenClaimAsync();
+        using var handler = CreateSeedClient(ApiFactory.HandlerId, "Handler");
+        using var supervisor = CreateSeedClient(ApiFactory.SupervisorId, "Supervisor");
+        var historyId = await SubmitPendingAsync(handler, claimId);
+
+        var response = await supervisor.PostAsync($"/api/claims/{claimId}/reserves/{historyId}/retract", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+    }
+
+    private static async Task<HttpResponseMessage> SubmitAsync(HttpClient client, Guid claimId, decimal amount)
+    {
+        var body = new { TransactionType = "Add", Amount = amount, ChangeReason = "Why", ComponentType = "Indemnity" };
+
+        return await client.PostAsJsonAsync($"/api/claims/{claimId}/reserves", body);
+    }
+
+    private static async Task<ApiControllerBase.CommandResponse<ReserveHistoryStatusDto>?> ReadStatusAsync(
+        HttpResponseMessage response)
+    {
+        return await response.Content.ReadFromJsonAsync<ApiControllerBase.CommandResponse<ReserveHistoryStatusDto>>();
+    }
+
+    private static async Task<Guid> SubmitPendingAsync(HttpClient client, Guid claimId)
+    {
+        var response = await SubmitAsync(client, claimId, 50_000);
+        var envelope = await response.Content.ReadFromJsonAsync<ApiControllerBase.CommandResponse<ReserveHistoryDto>>();
+
+        return envelope!.Data.Id;
+    }
+
+    private HttpClient CreateSeedClient(Guid userId, string role)
+    {
+        return _factory.CreateClientFor(userId, ApiFactory.SeedOrganisationId, role);
     }
 
     private HttpClient CreateClient(Guid organisationId)

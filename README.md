@@ -2,7 +2,7 @@
 
 Claims handling for a policy administration system, built end to end: a .NET 9 backend (Clean Architecture, CQRS) and an Angular frontend.
 
-Status: the Domain, the Application, the Persistence (with its migrations and seed) and the Infrastructure (jobs, storage adapters, clock) are built and tested. The API has its host, identity, error handling and Idempotency-Key filter (the endpoints are not built yet), and the frontend is not started.
+Status: the Domain, the Application, the Persistence (with its migrations and seed) and the Infrastructure (jobs, storage adapters, clock) are built and tested. The API is built and tested (host, identity, error handling, the Idempotency-Key filter and the claim, reserve, document and reference endpoints), and the frontend is not started.
 
 ## Documentation
 
@@ -34,6 +34,27 @@ The tests in `ClaimsModule.Persistence.SqlServerTests` and `ClaimsModule.API.Tes
 4. Get a token for a user: `POST /api/dev/token` with `{ "userId": "<id>" }`, using an id from `DevAuth:Users` in `appsettings.Development.json` (a handler, a supervisor and a manager), and send it as `Authorization: Bearer <token>`. This is a simulation of sign-in, only available while `DevAuth:Enabled` is true.
 
 With `ASPNETCORE_ENVIRONMENT=Development`, Swagger is at `/swagger` and the Hangfire dashboard at `/hangfire`.
+
+## API
+
+All routes are under `/api` and need a bearer token, except `POST /api/dev/token`, Swagger and the signed local document download. The routes, with `{id}` for a claim:
+
+| Route | What it does |
+|---|---|
+| `GET /claims`, `POST /claims` | paged list with filters; create a draft with its children (201) |
+| `GET /claims/{id}`, `PUT /claims/{id}/status`, `GET /claims/{id}/status-check?targetStatus=` | detail; change the status; what blocks a status change, without saving |
+| `PUT /claims/{id}/notes`, `GET /claims/{id}/audit` | update the notes; paged audit log |
+| `POST /claims/{id}/parties`, `DELETE /claims/{id}/parties/{partyId}` | add and remove a party |
+| `GET /claims/{id}/reserves`, `POST /claims/{id}/reserves` | balances and history; open or adjust a reserve (201) |
+| `POST /claims/{id}/reserves/{historyId}/approve`, `reject`, `retract`, `retry-posting` | decide on a pending reserve; retry a failed posting |
+| `GET /claims/{id}/documents`, `POST /claims/{id}/documents` | list with download links; multipart upload up to 50 MB (201) |
+| `GET /policies/search?q=`, `GET /reference/cause-of-loss-codes`, `GET /reference/claim-statuses` | reference data |
+
+- A successful write answers `{ "data": ..., "warnings": [...] }`; a read answers the bare object or page. Lists take `page` and `pageSize` (default 25, at most 100).
+- A refusal answers `{ "type", "title", "status", "errors" }` with 401, 403, 404, 409 or 422.
+- Enums are sent and read as their names. Every response carries `X-Correlation-Id`.
+- Send `Idempotency-Key: <value>` on any write to make a retry safe: the same key with the same body returns the first response, with a different body it answers 422.
+- `docs/layers/api.md` has the rules behind all of this.
 
 ## Configuration
 

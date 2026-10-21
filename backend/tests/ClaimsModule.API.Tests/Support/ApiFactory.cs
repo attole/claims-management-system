@@ -1,13 +1,19 @@
 using System.Net.Http.Headers;
 using ClaimsModule.API.Tests.Support.TestEndpoints;
 using ClaimsModule.Application.Abstractions;
+using ClaimsModule.Application.CauseOfLoss;
 using ClaimsModule.Application.Paging;
+using ClaimsModule.Application.Policies;
 using ClaimsModule.Application.Results;
 using ClaimsModule.Domain.CauseOfLoss;
 using ClaimsModule.Domain.Claims;
 using ClaimsModule.Domain.Claims.Inputs;
 using ClaimsModule.Domain.Claims.Loss;
 using ClaimsModule.Domain.Claims.Loss.Inputs;
+using ClaimsModule.Domain.Claims.Parties;
+using ClaimsModule.Domain.Claims.Parties.Inputs;
+using ClaimsModule.Domain.Claims.RiskObjects;
+using ClaimsModule.Domain.Claims.RiskObjects.Inputs;
 using ClaimsModule.Domain.Policies;
 using ClaimsModule.Domain.Roles;
 using ClaimsModule.Infrastructure.Identity;
@@ -61,6 +67,41 @@ public sealed class ApiFactory(ApiFixture database, bool isDevAuthEnabled = true
             """);
 
         return organisationId;
+    }
+
+    public async Task<Guid> SeedOpenClaimAsync()
+    {
+        using var scope = Services.CreateScope();
+        var provider = scope.ServiceProvider;
+        provider.GetRequiredService<ScopedCurrentUser>()
+            .Set(HandlerId, SeedOrganisationId, UserRole.From(UserRoleKind.Handler));
+        var context = provider.GetRequiredService<ClaimsDbContext>();
+        var policy = await context.Policies.OrderBy(item => item.PolicyNumber).FirstAsync();
+        var period = await provider.GetRequiredService<IPolicyReader>().GetPeriodAsync(policy.Id, default);
+        var codes = await provider.GetRequiredService<ICauseCodeReader>().GetActiveAsync(default);
+        var now = DateTimeOffset.UtcNow;
+        var number = ClaimNumber.Create(2026, Random.Shared.Next(1, 9_999_999));
+        var input = new CreateClaimInput(SeedOrganisationId, number, now, now, PolicyPeriod.Empty, codes);
+        var claim = Claim.Create(input).Value;
+        var lossDay = period.StartDate.AddDays(10).ToDateTime(TimeOnly.MinValue);
+        var lossDate = new LossDate(new DateTimeOffset(lossDay, TimeSpan.Zero));
+        var loss = new LossDetails(lossDate, "Water damage in the kitchen", codes.Active.First());
+        var claimant = new PartyDetails(new PartyClaimantRole(), new PartyPersonType())
+        {
+            FirstName = "Ada",
+            LastName = "Stone",
+        };
+        var riskObject = new RiskObjectDetails(AssetType.Property, "Kitchen");
+        claim.LinkPolicy(new LinkPolicyInput(policy.Id, period, codes, now));
+        claim.UpdateLossDetails(new UpdateLossDetailsInput(loss, period, codes, now));
+        claim.AddRiskObject(new AddRiskObjectInput(riskObject, period, codes, now));
+        claim.AssignHandler(new AssignHandlerInput(HandlerId, period, codes, now));
+        claim.AddParty(new AddPartyInput(claimant, period, codes, now));
+        claim.Open(new ClaimTransitionInput(period, codes, now));
+        context.Claims.Add(claim);
+        await context.SaveChangesAsync();
+
+        return claim.Id;
     }
 
     public async Task<(Guid Id, string Number)> SeedClaimAsync(Guid organisationId)
