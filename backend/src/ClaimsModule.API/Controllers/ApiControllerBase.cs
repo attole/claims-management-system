@@ -8,7 +8,7 @@ namespace ClaimsModule.API.Controllers;
 
 public abstract class ApiControllerBase(ISender sender) : ControllerBase
 {
-    public sealed record WriteEnvelope<TData>(TData Data, IReadOnlyList<Warning> Warnings);
+    public sealed record CommandResponse<TData>(TData Data, IReadOnlyList<Warning> Warnings);
 
     protected async Task<IActionResult> QueryAsync<TData>(
         IRequest<Result<TData>> request,
@@ -30,9 +30,9 @@ public abstract class ApiControllerBase(ISender sender) : ControllerBase
             return ErrorBody.From(result.Errors).ToResult();
         }
 
-        var envelope = new WriteEnvelope<TData>(result.Value, result.Warnings);
+        var response = new CommandResponse<TData>(result.Value, result.Warnings);
 
-        return new ObjectResult(envelope) { StatusCode = ReadSuccessStatus() };
+        return new ObjectResult(response) { StatusCode = ReadSuccessStatus() };
     }
 
     private int ReadSuccessStatus()

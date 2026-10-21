@@ -17,6 +17,7 @@ using MediatR;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -41,7 +42,24 @@ public sealed class ApiFactory(ApiFixture database, bool isDevAuthEnabled = true
             (_, configuration) => configuration.AddInMemoryCollection(settings)));
     }
 
-    public async Task<string> SeedClaimAsync(Guid organisationId)
+    public async Task<Guid> CreateOrganisationAsync()
+    {
+        var organisationId = Guid.NewGuid();
+        string code = $"TEST-{organisationId:N}";
+        using var scope = Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<ClaimsDbContext>();
+        await context.Database.ExecuteSqlInterpolatedAsync(
+            $"""
+            INSERT INTO CauseOfLossCodes
+                (Code, Name, PerilCategory, IsActive, IsDeleted, CreatedAt, SortOrder, OrganisationId)
+            VALUES
+                ({code}, 'Water damage', 'Property', 1, 0, SYSDATETIMEOFFSET(), 1, {organisationId})
+            """);
+
+        return organisationId;
+    }
+
+    public async Task<(Guid Id, string Number)> SeedClaimAsync(Guid organisationId)
     {
         using var scope = Services.CreateScope();
         scope.ServiceProvider.GetRequiredService<ScopedCurrentUser>()
@@ -59,7 +77,7 @@ public sealed class ApiFactory(ApiFixture database, bool isDevAuthEnabled = true
         context.Claims.Add(claim);
         await context.SaveChangesAsync();
 
-        return number.Value;
+        return (claim.Id, number.Value);
     }
 
     public HttpClient CreateClientFor(Guid userId, Guid organisationId, string role)

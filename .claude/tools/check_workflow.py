@@ -448,7 +448,7 @@ def check_application_names(rel):
     for folder, suffixes in expected.items():
         if folder in folders and not stem.endswith(suffixes):
             fail("naming", f"backend/src/{rel}: a file in {folder}/ is named ...{' or ...'.join(suffixes)} (S:DATA-Naming)")
-    if "Queries" in folders and not re.match(r"^(Get|List)[A-Z]\w*Query$", stem):
+    if "Queries" in folders and not re.match(r"^(Get|List|Check)[A-Z]\w*Query$", stem):
         fail("naming", f"backend/src/{rel}: a file in Queries/ is named GetNounQuery or ListNounsQuery (S:DATA-Naming)")
 
 

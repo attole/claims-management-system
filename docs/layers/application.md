@@ -70,7 +70,7 @@ A background job sends an ordinary command (`DetectSlaBreachesCommand`, `ResendS
 
 ## Naming checks (S:DATA-Naming)
 
-- A command is `<Verb><Noun>Command` with the verb from the list in `ICommandTests`; a query is `Get<Noun>Query` or `List<Nouns>Query` with a plural noun (`IQueryTests`). Both are reflection tests, so a new verb is added to the list on purpose.
+- A command is `<Verb><Noun>Command` with the verb from the list in `ICommandTests`; a query is `Get<Noun>Query`, `List<Nouns>Query` with a plural noun, or `Check<Noun>Query` for a read that runs a rule without saving (`IQueryTests`). Both are reflection tests, so a new verb is added to the list on purpose.
 - The workflow check requires a file in `Dtos/` to end with `Dto` or `MappingProfile`, in `Requests/` with `Request`, in `Commands/` with `Command` and in `Queries/` with the query name shape.
 - Table, column, entity and route names are checked in the Persistence and API packs (tests over the EF model and the route table).
 

@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using ClaimsModule.API.DevAuth;
 using ClaimsModule.API.Errors;
 using ClaimsModule.API.Pipeline.Correlation;
@@ -22,7 +23,9 @@ public static class ApiPipelineServiceExtensions
             .AddIdempotency()
             .AddFrontendCors()
             .AddSwaggerDocs();
-        services.AddControllers();
+        services.AddControllers()
+            .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(
+                new JsonStringEnumConverter(allowIntegerValues: false)));
         services.AddProblemDetails();
 
         return services;

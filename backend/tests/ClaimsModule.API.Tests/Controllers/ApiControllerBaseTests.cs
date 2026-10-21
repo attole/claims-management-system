@@ -62,7 +62,7 @@ public sealed class ApiControllerBaseTests(ApiFixture database) : IDisposable
 
         var response = await client.PostAsync("/test/write-created", content: null);
 
-        var body = await response.Content.ReadFromJsonAsync<ApiControllerBase.WriteEnvelope<int>>();
+        var body = await response.Content.ReadFromJsonAsync<ApiControllerBase.CommandResponse<int>>();
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         body!.Data.Should().Be(1);
         body.Warnings.Should().Equal(new Warning("TEST_WARNING", "be careful", "Notes"));
@@ -75,7 +75,7 @@ public sealed class ApiControllerBaseTests(ApiFixture database) : IDisposable
 
         var response = await client.PostAsync("/test/write-plain", content: null);
 
-        var body = await response.Content.ReadFromJsonAsync<ApiControllerBase.WriteEnvelope<int>>();
+        var body = await response.Content.ReadFromJsonAsync<ApiControllerBase.CommandResponse<int>>();
         body!.Warnings.Should().BeEmpty();
     }
 

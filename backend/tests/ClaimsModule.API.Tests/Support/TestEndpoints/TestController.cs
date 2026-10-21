@@ -75,7 +75,7 @@ public sealed class TestController(
         return QueryAsync(new CannedRequest<int>(Result<int>.Failure(errors)), cancellationToken);
     }
 
-    [ProducesResponseType<WriteEnvelope<int>>(StatusCodes.Status201Created)]
+    [ProducesResponseType<CommandResponse<int>>(StatusCodes.Status201Created)]
     [HttpPost("write-created")]
     public Task<IActionResult> WriteCreated(CancellationToken cancellationToken)
     {
@@ -84,7 +84,7 @@ public sealed class TestController(
         return CommandAsync(new CannedRequest<int>(Result<int>.Success(1, warning)), cancellationToken);
     }
 
-    [ProducesResponseType<WriteEnvelope<int>>(StatusCodes.Status202Accepted)]
+    [ProducesResponseType<CommandResponse<int>>(StatusCodes.Status202Accepted)]
     [HttpPost("write-accepted")]
     public Task<IActionResult> WriteAccepted(CancellationToken cancellationToken)
     {
@@ -97,8 +97,8 @@ public sealed class TestController(
         return CommandAsync(new CannedRequest<int>(Result<int>.Success(1)), cancellationToken);
     }
 
-    [ProducesResponseType<WriteEnvelope<int>>(StatusCodes.Status200OK)]
-    [ProducesResponseType<WriteEnvelope<int>>(StatusCodes.Status201Created)]
+    [ProducesResponseType<CommandResponse<int>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<CommandResponse<int>>(StatusCodes.Status201Created)]
     [HttpPost("write-ambiguous")]
     public Task<IActionResult> WriteAmbiguous(CancellationToken cancellationToken)
     {

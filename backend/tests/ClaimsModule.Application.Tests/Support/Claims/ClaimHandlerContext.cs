@@ -151,6 +151,14 @@ public sealed class ClaimHandlerContext
         return this;
     }
 
+    public ClaimHandlerContext WithActiveCauseCodes(CauseCodes codes)
+    {
+        _causes.Setup(mock => mock.GetActiveAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(codes);
+
+        return this;
+    }
+
     public ClaimHandlerContext WithReserveFacts(ClaimReserveFacts facts)
     {
         _reserves.Setup(mock => mock.GetFactsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))

@@ -10,12 +10,12 @@ public sealed class IQueryTests
 
     [Fact]
     [Trait("Rule", "S:DATA-Naming")]
-    public void Queries_AreNamedGetNounOrListNouns()
+    public void Queries_AreNamedGetListOrCheckNoun()
     {
         var queries = FindQueries();
 
         var result = queries
-            .Where(query => !Regex.IsMatch(query.Name, "^(Get|List)[A-Z][A-Za-z0-9]*Query$"))
+            .Where(query => !Regex.IsMatch(query.Name, "^(Get|List|Check)[A-Z][A-Za-z0-9]*Query$"))
             .ToList();
 
         queries.Should().NotBeEmpty();

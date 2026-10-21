@@ -1,4 +1,3 @@
-using System.Collections.Frozen;
 using ClaimsModule.Application.Abstractions;
 using ClaimsModule.Application.CauseOfLoss;
 using ClaimsModule.Application.Claims.Contracts;
@@ -7,7 +6,6 @@ using ClaimsModule.Application.Policies;
 using ClaimsModule.Application.ReserveComponents.Contracts;
 using ClaimsModule.Application.Results;
 using ClaimsModule.Domain.Claims;
-using ClaimsModule.Domain.Core.Flows;
 using FluentValidation;
 using MediatR;
 
@@ -45,17 +43,6 @@ public sealed class ChangeClaimStatusCommandHandler(
     IClock clock,
     ICurrentUser user) : IRequestHandler<ChangeClaimStatusCommand, Result<ClaimStatusDto>>
 {
-    private static readonly FrozenDictionary<ClaimStateKind, Func<Claim, ClaimStatusContext, Outcome<Move<ClaimState>>>>
-        _runners = new Dictionary<ClaimStateKind, Func<Claim, ClaimStatusContext, Outcome<Move<ClaimState>>>>
-        {
-            [ClaimStateKind.Open] = (claim, context) => claim.Open(context.ToTransitionInput()),
-            [ClaimStateKind.UnderInvestigation] = (claim, context) => claim.Investigate(context.ToTransitionInput()),
-            [ClaimStateKind.PendingPayment] = (claim, context) => claim.SendToPayment(context.ToSendToPaymentInput()),
-            [ClaimStateKind.Closed] = (claim, context) => claim.Close(context.ToFreezeInput()),
-            [ClaimStateKind.Withdrawn] = (claim, context) => claim.Withdraw(context.ToFreezeInput()),
-            [ClaimStateKind.Reopened] = (claim, context) => claim.Reopen(context.ToReopenInput()),
-        }.ToFrozenDictionary();
-
     public async Task<Result<ClaimStatusDto>> Handle(
         ChangeClaimStatusCommand command,
         CancellationToken cancellationToken)
@@ -69,18 +56,11 @@ public sealed class ChangeClaimStatusCommandHandler(
 
         var claim = loaded.Value;
 
-        if (!_runners.TryGetValue(command.TargetStatus, out var run))
-        {
-            var unsupported = ClaimErrors.StatusUnsupported(command.TargetStatus.ToString(), NextStatusNames(claim));
-
-            return Result<ClaimStatusDto>.Failure([unsupported]);
-        }
-
         var period = await policies.GetPeriodAsync(claim.PolicyId, cancellationToken);
         var codes = await causes.GetActiveAsync(cancellationToken);
         var facts = await reserves.GetFactsAsync(claim.Id, cancellationToken);
         var context = new ClaimStatusContext(command, period, codes, facts, user.Role, clock.UtcNow);
-        var result = ExplainRefusal(claim, run(claim, context).ToResult());
+        var result = ClaimStatusRunner.Run(claim, context);
 
         if (result.IsSuccess)
         {
@@ -88,26 +68,5 @@ public sealed class ChangeClaimStatusCommandHandler(
         }
 
         return result.Map(move => new ClaimStatusDto(claim.Id, move.From.Name, claim.State.Name));
-    }
-
-    private static Result<Move<ClaimState>> ExplainRefusal(Claim claim, Result<Move<ClaimState>> result)
-    {
-        var refusal = result.Errors.FirstOrDefault(error => error.Code == TransitionCodes.NotPermitted);
-
-        if (refusal is null)
-        {
-            return result;
-        }
-
-        var explained = ClaimErrors.WithNextStatuses(refusal, NextStatusNames(claim));
-
-        return Result<Move<ClaimState>>.Failure([explained]);
-    }
-
-    private static IReadOnlyList<string> NextStatusNames(Claim claim)
-    {
-        return ClaimTransitions.NextFrom(claim.State)
-            .Select(state => state.Name)
-            .ToList();
     }
 }
