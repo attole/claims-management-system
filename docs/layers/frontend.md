@@ -48,12 +48,12 @@ frontend/
 ## Services and HTTP
 
 - Only services in `core/api/` call `HttpClient`, one service per resource (`claims.service.ts`, `reserves.service.ts`, ...). A service returns typed Observables, builds every URL with `apiUrl(path)` and unwraps the `WriteResult` envelope where the caller only needs the data.
-- Interceptors, in this order: `loadingInterceptor` (the global progress bar), `errorInterceptor` (a snackbar for every failure except 422) and `authInterceptor` (adds the bearer token to API calls; on a 401 it signs in again once and repeats the request).
+- Interceptors, in this order: `loadingInterceptor` (the global progress bar), `errorInterceptor` (a snackbar for every failure except 422; a body that is not the API's error body is reported by its status code) and `authInterceptor` (adds the bearer token to API calls, never to the dev token call; on a 401 it waits for one shared re-sign-in, `AuthService.refresh()`, however many requests failed, and repeats the request).
 - Idempotency: a write that the user may repeat (create a claim, submit a reserve, upload) gets a key from `newIdempotencyKey()` when the user starts the action and sends it with `idempotencyHeaders(key)`. A retry of the same action reuses the key; the API stores only successful responses, so retrying a refused request with the same key is safe. Keys are never generated inside an interceptor.
 
 ## Sign-in
 
-- The mock sign-in uses the API's dev token route: `AuthService.signInAs(user)` posts `{ userId }` to `/api/dev/token` and keeps the token in memory and the user id in sessionStorage. At startup the app signs in as the stored user, or the handler. The header's role switcher changes the user.
+- The mock sign-in uses the API's dev token route: `AuthService.signInAs(user)` posts `{ userId }` to `/api/dev/token` and keeps the token in memory and the user id in sessionStorage. The signed-in user (id, name, role) is taken from the token response, never from the local list, and a sign-in that finishes after a newer one is ignored, so a late 401 retry cannot switch the user back. At startup the app signs in as the stored user, or the handler. The header's role switcher changes the user.
 - The three users in `core/auth/dev-users.ts` must equal `DevAuth:Users` in the API's development settings, or sign-in answers 404.
 
 ## API types
@@ -83,4 +83,5 @@ frontend/
 
 - One spec per source file, next to it (`auth.service.spec.ts` beside `auth.service.ts`); the workflow check enforces the mirror.
 - A test name reads as condition and result (`'on a 401 signs in again once and repeats the request with the new token'`), arranged, acted and asserted in that order.
+- The rules a spec covers ride on its `describe` name in parentheses, as the backend's `Rule` traits do; the auth interceptor spec, for example, is described as `authInterceptor (S:UI-General, A:UI-General)`. spec-check reads them there.
 - Services and interceptors are tested with `HttpTestingController` (URL, method, body, headers, the unwrapped result); validators, pipes and stores as plain classes; components through `TestBed` with their inputs and the rendered DOM. HTTP is never called for real.

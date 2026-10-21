@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claim detail</title>
+<link rel="stylesheet" href="theme.css">
+<style>
+  .head { padding: 16px 20px; margin-bottom: 16px; }
+  .head-top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .claim-no { font-size: 22px; font-weight: 500; }
+  .copy {
+    border: 1px solid var(--border); background: transparent; color: var(--muted); border-radius: 12px; padding: 3px 10px;
+    cursor: pointer; font: inherit; font-size: 12px; font-weight: 500; line-height: 1.4;
+  }
+  .copy:hover { background: var(--hover); color: var(--text); }
+  .kv span { margin-bottom: 3px; }
+  .rows { gap: 14px; }
+  .card.pad h2 { margin-bottom: 16px; }
+  .card.pad .field { margin-bottom: 14px; }
+  .add-row { margin-top: 14px; }
+  .inline-form { padding: 16px 16px 20px; }
+  .head-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px 24px; margin-top: 14px; }
+  .kv span { display: block; font-size: 12px; color: var(--muted); }
+  .kv strong { font-weight: 500; }
+  .spacer { flex: 1; }
+  .menu { position: relative; }
+  .menu-list { position: absolute; right: 0; top: 100%; margin-top: 4px; min-width: 200px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; z-index: 5; padding: 4px; }
+  .menu-list button { display: block; width: 100%; text-align: left; background: transparent; border: 0; color: var(--text); font: inherit; padding: 8px 10px; border-radius: 4px; cursor: pointer; }
+  .menu-list button:hover { background: var(--hover); }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .rows { display: grid; gap: 10px; }
+  .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+  .stat { padding: 14px 16px; }
+  .stat .label { font-size: 12px; color: var(--muted); }
+  .stat .big { font-size: 20px; font-weight: 500; font-variant-numeric: tabular-nums; margin-top: 2px; }
+  .stat .pending { margin-top: 6px; font-size: 12px; color: var(--amber); }
+  .party { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+  .party:last-child { border-bottom: 0; }
+  .party .who { flex: 1; }
+  .inline-form { padding: 16px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; align-items: end; border-bottom: 1px solid var(--border); }
+  .dialog-wrap { border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); padding: 20px; width: min(460px, 92vw); }
+  dialog::backdrop { background: #0009; }
+  .check { display: flex; gap: 10px; align-items: center; padding: 6px 0; }
+  .panel { position: fixed; top: 0; right: 0; bottom: 0; width: min(380px, 100vw); background: var(--surface); border-left: 1px solid var(--border); padding: 20px; z-index: 10; transform: translateX(100%); transition: transform .2s; overflow-y: auto; }
+  .panel.open { transform: none; }
+  .panel .field { margin-bottom: 14px; }
+  .indicator { padding: 8px 12px; border-radius: 6px; font-size: 13px; margin-bottom: 14px; }
+  .progress { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; margin-top: 8px; }
+  .progress > div { height: 100%; width: 0; background: var(--primary); transition: width .2s; }
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--green); padding: 10px 16px; border-radius: 6px; z-index: 20; }
+  .pager { display: flex; justify-content: flex-end; align-items: center; gap: 12px; padding: 10px 16px; color: var(--muted); font-size: 13px; }
+  .pager button { border: 0; background: transparent; font-size: 18px; cursor: pointer; color: var(--text); padding: 2px 8px; }
+  .pager button:disabled { color: var(--disabled); cursor: default; }
+  .actions { white-space: nowrap; }
+  @media (max-width: 1100px) { .head-grid, .cards { grid-template-columns: 1fr 1fr; } .grid2, .inline-form { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main>
+  <section class="card head">
+    <div class="head-top">
+      <span class="claim-no" id="num">CLM-2026-1039</span>
+      <button class="copy" id="copy" type="button" title="Copy claim number">Copy</button>
+      <span class="badge Open" id="chip">Open</span>
+      <span class="spacer"></span>
+      <div class="menu">
+        <button class="btn" id="move" type="button">Change status</button>
+        <div class="menu-list hidden" id="moves"></div>
+      </div>
+    </div>
+    <div class="head-grid">
+      <div class="kv"><span>Policy</span><strong>POL-48111</strong></div>
+      <div class="kv"><span>Client</span><strong>Harbor Logistics</strong></div>
+      <div class="kv"><span>Loss date</span><strong>2026-07-22</strong></div>
+      <div class="kv"><span>Cause of loss</span><strong>Water damage</strong></div>
+      <div class="kv"><span>Assigned handler</span><strong>Hana Handler</strong></div>
+    </div>
+  </section>
+
+  <div class="tabs" id="tabs">
+    <button class="on" data-tab="overview">Overview</button>
+    <button data-tab="parties">Parties</button>
+    <button data-tab="reserves">Reserves</button>
+    <button data-tab="documents">Documents</button>
+    <button data-tab="audit">Audit Log</button>
+  </div>
+
+  <section id="overview">
+    <div class="grid2">
+      <div class="card pad">
+        <h2>Loss event</h2>
+        <div class="rows">
+          <div class="kv"><span>Date</span><strong>2026-07-22 09:40</strong></div>
+          <div class="kv"><span>Description</span><strong>Pipe burst under the kitchen floor flooded the ground-floor warehouse office.</strong></div>
+          <div class="kv"><span>Location</span><strong>14 Dockside Road, Unit 3</strong></div>
+          <div class="kv"><span>Cause</span><strong>Water damage</strong></div>
+          <div class="kv"><span>Severity</span><span class="badge warn" style="display:inline-block;width:fit-content">Moderate</span></div>
+          <div class="kv"><span>Estimated loss amount</span><strong>$62,500.00</strong></div>
+        </div>
+      </div>
+      <div class="card pad">
+        <h2>Claim notes</h2>
+        <div class="field"><textarea id="notes" rows="8">Insured called on the 23rd; plumber report requested.</textarea></div>
+        <button class="btn" id="saveNotes" type="button">Save notes</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="parties" class="hidden">
+    <div class="card">
+      <div class="inline-form hidden" id="partyForm">
+        <div class="field"><label>Role</label><select><option>Claimant</option><option>Witness</option><option>Adjuster</option><option>Legal Representative</option></select></div>
+        <div class="field"><label>Type</label><select><option>Person</option><option>Company</option></select></div>
+        <div class="field"><label>Name</label><input placeholder="First and last name"></div>
+        <div class="field"><label>Email</label><input type="email" placeholder="name@example.com"></div>
+        <div class="field"><label>Phone</label><input placeholder="+1 555 0100"></div>
+        <div style="display:flex;gap:8px"><button class="btn" id="partySave" type="button">Add</button><button class="btn ghost" id="partyCancel" type="button">Cancel</button></div>
+      </div>
+      <div id="partyList"></div>
+    </div>
+    <div class="add-row"><button class="btn outline" id="partyAdd" type="button">Add party</button></div>
+  </section>
+
+  <section id="reserves" class="hidden">
+    <div class="cards" id="reserveCards"></div>
+    <div class="title-row"><h2 style="margin:0">Transaction history</h2><button class="btn" id="addReserve" type="button">Add reserve</button></div>
+    <div class="card"><div class="table-scroll"><table>
+      <thead><tr><th>Date</th><th>Type</th><th>Component</th><th class="num">Amount</th><th>Status</th><th>GL posting</th><th>Submitted by</th><th>Approved by</th><th></th></tr></thead>
+      <tbody id="history"></tbody>
+    </table></div></div>
+  </section>
+
+  <section id="documents" class="hidden">
+    <div class="title-row"><h2 style="margin:0">Documents</h2><div><input type="file" id="file" class="hidden"><button class="btn" id="upload" type="button">Upload document</button></div></div>
+    <div class="card"><div class="table-scroll"><table>
+      <thead><tr><th>Name</th><th>Type</th><th>Uploaded</th><th>Uploaded by</th><th class="num">Size</th><th></th></tr></thead>
+      <tbody id="docs"></tbody>
+    </table></div><div id="progressWrap" class="hidden" style="padding:12px 16px"><span class="muted" id="progressName"></span><div class="progress"><div id="bar"></div></div></div></div>
+  </section>
+
+  <section id="audit" class="hidden">
+    <div class="card"><div class="table-scroll"><table>
+      <thead><tr><th>Time</th><th>Event</th><th>Description</th><th>User</th><th>Related</th></tr></thead>
+      <tbody id="log"></tbody>
+    </table></div>
+    <div class="pager"><span id="logRange"></span><span><button id="logPrev" aria-label="Previous page">&lsaquo;</button><button id="logNext" aria-label="Next page">&rsaquo;</button></span></div></div>
+    <div class="note">Read-only: the audit log cannot be edited or deleted.</div>
+  </section>
+  <div class="note">Design preview only: sample data. Switch the role in the header to see the role-gated buttons.</div>
+</main>
+
+<aside class="panel" id="panel" aria-label="Add reserve">
+  <h2>Add reserve</h2>
+  <div class="field"><label>Component</label><select id="rComp"><option>Indemnity</option><option>Expense</option><option>ALAE</option><option>SubrogationRecoverable</option></select></div>
+  <div class="field"><label>Amount (signed change)</label><input id="rAmount" type="number" placeholder="0.00"></div>
+  <div class="indicator banner neutral" id="authority">Enter an amount to see who can approve it.</div>
+  <div class="field"><label>Reason</label><textarea id="rReason" rows="3"></textarea></div>
+  <button class="btn" id="rSubmit" type="button">Submit</button> <button class="btn ghost" id="rCancel" type="button">Cancel</button>
+</aside>
+
+<dialog class="dialog-wrap" id="dlg">
+  <h2 id="dlgTitle">Change status</h2>
+  <p id="dlgText" class="muted"></p>
+  <div id="checklist" class="hidden"></div>
+  <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+    <button class="btn ghost" id="dlgCancel" type="button">Cancel</button>
+    <button class="btn" id="dlgOk" type="button">Confirm</button>
+  </div>
+</dialog>
+
+<script src="shell.js"></script>
+<script>
+  const $ = (id) => document.getElementById(id);
+  const money = (n) => (n < 0 ? "-" : "") + "$" + Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2 });
+  const NEXT = {
+    Draft: ["Open"], Open: ["UnderInvestigation", "PendingPayment", "Closed", "Withdrawn"],
+    UnderInvestigation: ["Open", "PendingPayment", "Closed", "Withdrawn"], PendingPayment: ["Closed"],
+    Closed: ["Reopened"], Reopened: ["Open"], Withdrawn: []
+  };
+  const label = (s) => s.replace(/([a-z])([A-Z])/g, "$1 $2");
+  const toast = (text) => { const t = document.createElement("div"); t.className = "toast"; t.textContent = text; document.body.appendChild(t); setTimeout(() => t.remove(), 2200); };
+  let status = "Open";
+
+  // tabs
+  document.querySelectorAll("#tabs button").forEach((b) => b.onclick = () => {
+    document.querySelectorAll("#tabs button").forEach((x) => x.classList.toggle("on", x === b));
+    ["overview", "parties", "reserves", "documents", "audit"].forEach((id) => $(id).classList.toggle("hidden", id !== b.dataset.tab));
+  });
+  $("copy").onclick = () => { try { navigator.clipboard.writeText($("num").textContent); } catch (e) { /* clipboard unavailable */ } toast("Claim number copied"); };
+  $("saveNotes").onclick = () => toast("Notes saved");
+
+  // status transition
+  function renderMoves() {
+    $("chip").className = "badge " + status; $("chip").textContent = label(status);
+    $("moves").innerHTML = NEXT[status].map((s) => "<button data-to='" + s + "'>" + label(s) + "</button>").join("");
+    $("move").disabled = NEXT[status].length === 0;
+    $("moves").querySelectorAll("button").forEach((b) => b.onclick = () => { $("moves").classList.add("hidden"); confirmMove(b.dataset.to); });
+  }
+  $("move").onclick = () => $("moves").classList.toggle("hidden");
+  function confirmMove(to) {
+    $("dlgTitle").textContent = "Change status to " + label(to);
+    $("dlgText").textContent = "The claim moves from " + label(status) + " to " + label(to) + ".";
+    const list = $("checklist");
+    list.classList.toggle("hidden", to !== "Closed");
+    list.innerHTML = to === "Closed"
+      ? "<div class='muted' style='margin:8px 0'>Pre-flight checklist (from the status-check route)</div>" +
+        ["Closure condition 1", "Closure condition 2", "Closure condition 3"].map((c) => "<div class='check'><span class='badge ok'>Pass</span>" + c + "</div>").join("") +
+        "<div class='check'><span class='badge warn'>Note</span>Closure condition 4: add a justification note</div>"
+      : "";
+    $("dlgOk").onclick = () => { status = to; $("dlg").close(); renderMoves(); toast("Status changed to " + label(to)); };
+    $("dlg").showModal();
+  }
+  $("dlgCancel").onclick = () => $("dlg").close();
+
+  // parties
+  const parties = [
+    { role: "Claimant", name: "Maria Lopez", contact: "maria@harbor.example, +1 555 0142", active: true },
+    { role: "Witness", name: "J. Whitfield", contact: "+1 555 0177", active: true },
+    { role: "Adjuster", name: "Priya Nair", contact: "priya@insurer.example", active: false }
+  ];
+  function renderParties() {
+    const activeClaimants = parties.filter((p) => p.role === "Claimant" && p.active).length;
+    $("partyList").innerHTML = parties.map((p, i) =>
+      "<div class='party'><span class='badge " + (p.role === "Claimant" ? "info" : "neutral") + "'>" + p.role + "</span><div class='who'><strong>" + p.name + "</strong><div class='muted'>" + p.contact + "</div></div>" +
+      "<span class='badge " + (p.active ? "ok" : "neutral") + "'>" + (p.active ? "Active" : "Inactive") + "</span>" +
+      "<button class='btn small danger' data-i='" + i + "' " + (!p.active || (p.role === "Claimant" && activeClaimants === 1) ? "disabled title='The last claimant cannot be removed'" : "") + ">Remove</button></div>").join("");
+    $("partyList").querySelectorAll("button[data-i]").forEach((b) => b.onclick = () => { parties[b.dataset.i].active = false; renderParties(); toast("Party removed"); });
+  }
+  $("partyAdd").onclick = () => $("partyForm").classList.remove("hidden");
+  $("partyCancel").onclick = () => $("partyForm").classList.add("hidden");
+  $("partySave").onclick = () => { $("partyForm").classList.add("hidden"); toast("Party added"); };
+
+  // reserves
+  const comps = [
+    { name: "Indemnity", balance: 45000, pending: 60000 }, { name: "Expense", balance: 3500, pending: 0 },
+    { name: "ALAE", balance: 0, pending: 0 }, { name: "SubrogationRecoverable", balance: 0, pending: 0 }
+  ];
+  const rows = [
+    { date: "2026-08-02", type: "Add", comp: "Indemnity", amount: 45000, st: "AutoApproved", gl: "Posted", by: "Hana Handler", appr: "-" },
+    { date: "2026-08-04", type: "Add", comp: "Expense", amount: 3500, st: "AutoApproved", gl: "Posted", by: "Hana Handler", appr: "-" },
+    { date: "2026-08-09", type: "Adjust", comp: "Indemnity", amount: 60000, st: "PendingApproval", gl: "Pending", by: "Hana Handler", appr: "-" },
+    { date: "2026-08-10", type: "Reverse", comp: "Expense", amount: -500, st: "PendingApproval", gl: "Pending", by: "Tom Becker", appr: "-" },
+    { date: "2026-08-12", type: "Add", comp: "ALAE", amount: 1200, st: "Approved", gl: "Failed", by: "Hana Handler", appr: "Sam Supervisor" },
+    { date: "2026-08-15", type: "Add", comp: "Indemnity", amount: 30000, st: "Rejected", gl: "Pending", by: "Tom Becker", appr: "Sam Supervisor" }
+  ];
+  const stClass = { AutoApproved: "ok", Approved: "ok", PendingApproval: "warn", Rejected: "bad", Retracted: "neutral" };
+  const glClass = { Posted: "ok", Pending: "warn", Failed: "bad" };
+  function renderReserves() {
+    $("reserveCards").innerHTML = comps.map((c) =>
+      "<div class='card stat'><div class='label'>" + c.name + "</div><div class='big'>" + money(c.balance) + "</div>" +
+      (c.pending ? "<div class='pending'>Pending approval: " + money(c.pending) + "</div>" : "<div class='muted' style='margin-top:6px;font-size:12px'>Nothing pending</div>") + "</div>").join("");
+    const role = window.Shell.role();
+    const canDecide = role === "Supervisor" || role === "Manager";
+    $("history").innerHTML = rows.map((r, i) => {
+      const pending = r.st === "PendingApproval";
+      const actions = [];
+      if (pending && canDecide) actions.push("<button class='btn small' data-a='approve'>Approve</button> <button class='btn small danger' data-a='reject'>Reject</button>");
+      if (pending && r.by === "Hana Handler" && role === "Handler") actions.push("<button class='btn small outline' data-a='retract'>Retract</button>");
+      if (r.gl === "Failed") actions.push("<button class='btn small outline' data-a='retry'>Retry posting</button>");
+      return "<tr><td>" + r.date + "</td><td>" + r.type + "</td><td>" + r.comp + "</td><td class='num " + (r.amount < 0 ? "down" : "up") + "'>" + money(r.amount) + "</td>" +
+        "<td><span class='badge " + stClass[r.st] + "'>" + label(r.st) + "</span></td><td><span class='badge " + glClass[r.gl] + "'>" + r.gl + "</span></td><td>" + r.by + "</td><td>" + r.appr + "</td><td class='actions'>" + actions.join(" ") + "</td></tr>";
+    }).join("");
+    $("history").querySelectorAll("button[data-a]").forEach((b) => b.onclick = () => toast("Design preview: " + b.dataset.a));
+  }
+  document.addEventListener("rolechange", renderReserves);
+  const authority = (a) => {
+    const v = Math.abs(a);
+    if (!v) return ["neutral", "Enter an amount to see who can approve it."];
+    if (v <= 10000) return ["ok", "Auto-approved (up to $10,000)"];
+    if (v <= 100000) return ["warn", "Supervisor approval required"];
+    return ["warn", "Manager approval required"];
+  };
+  $("rAmount").oninput = () => { const [c, t] = authority(Number($("rAmount").value)); $("authority").className = "indicator banner " + c; $("authority").textContent = t; };
+  $("addReserve").onclick = () => $("panel").classList.add("open");
+  $("rCancel").onclick = () => $("panel").classList.remove("open");
+  $("rSubmit").onclick = () => { $("panel").classList.remove("open"); toast("Reserve submitted"); };
+
+  // documents
+  const docs = [
+    { name: "plumber-report.pdf", type: "Report", date: "2026-07-24", by: "Hana Handler", size: "1.2 MB" },
+    { name: "site-photos.zip", type: "Photo", date: "2026-07-25", by: "Tom Becker", size: "18.4 MB" },
+    { name: "policy-schedule.pdf", type: "Policy", date: "2026-07-26", by: "Hana Handler", size: "240 KB" }
+  ];
+  $("docs").innerHTML = docs.map((d) => "<tr><td>" + d.name + "</td><td>" + d.type + "</td><td>" + d.date + "</td><td>" + d.by + "</td><td class='num'>" + d.size + "</td><td><button class='btn small outline' data-d>Download</button></td></tr>").join("");
+  $("docs").querySelectorAll("button[data-d]").forEach((b) => b.onclick = () => toast("Opens the download link in a new tab"));
+  $("upload").onclick = () => $("file").click();
+  $("file").onchange = () => {
+    const f = $("file").files[0]; if (!f) return;
+    $("progressName").textContent = "Uploading " + f.name; $("progressWrap").classList.remove("hidden");
+    let p = 0; const t = setInterval(() => { p += 20; $("bar").style.width = p + "%"; if (p >= 100) { clearInterval(t); setTimeout(() => { $("progressWrap").classList.add("hidden"); toast("Document uploaded"); }, 300); } }, 200);
+  };
+
+  // audit
+  const types = ["CLAIM_CREATED", "PARTY_ADDED", "RESERVE_CREATED", "RESERVE_AUTO_APPROVED", "GL_POSTING_SIMULATED", "STATUS_CHANGED", "DOCUMENT_UPLOADED", "VALIDATION_ISSUE_ADDED"];
+  const users = ["Hana Handler", "Sam Supervisor", "Tom Becker", "System"];
+  const log = Array.from({ length: 27 }, (_, i) => ({ t: "2026-08-" + String(28 - Math.floor(i / 2)).padStart(2, "0") + " " + String(17 - (i % 9)).padStart(2, "0") + ":" + String((i * 7) % 60).padStart(2, "0"), e: types[i % types.length], u: users[i % users.length] }));
+  let logPage = 0; const LOG_SIZE = 8;
+  function renderLog() {
+    const slice = log.slice(logPage * LOG_SIZE, logPage * LOG_SIZE + LOG_SIZE);
+    $("log").innerHTML = slice.map((r) => "<tr><td>" + r.t + "</td><td><span class='badge info'>" + r.e + "</span></td><td>" + r.e.toLowerCase().replace(/_/g, " ") + " recorded</td><td>" + r.u + "</td><td><a href='#'>Open</a></td></tr>").join("");
+    $("logRange").textContent = (logPage * LOG_SIZE + 1) + "-" + (logPage * LOG_SIZE + slice.length) + " of " + log.length;
+    $("logPrev").disabled = logPage === 0; $("logNext").disabled = (logPage + 1) * LOG_SIZE >= log.length;
+  }
+  $("logPrev").onclick = () => { logPage--; renderLog(); };
+  $("logNext").onclick = () => { logPage++; renderLog(); };
+
+  renderMoves(); renderParties(); renderReserves(); renderLog();
+</script>
+</body>
+</html>

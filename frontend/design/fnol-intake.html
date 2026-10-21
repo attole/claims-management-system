@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>New claim</title>
+<link rel="stylesheet" href="theme.css">
+<style>
+  main { max-width: 900px; }
+  .steps { display: flex; gap: 8px; margin-bottom: 16px; }
+  .step { flex: 1; display: flex; align-items: center; gap: 10px; padding: 10px 14px; border: 1px solid var(--border); border-radius: 6px; color: var(--muted); background: var(--surface); }
+  .step .n { width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--border); font-size: 12px; }
+  .step.on { color: var(--text); border-color: var(--primary); }
+  .step.on .n { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
+  .step.done .n { background: var(--green); color: #0b1620; border-color: var(--green); }
+  .form { padding: 20px; display: grid; gap: 16px; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .three { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; align-items: end; }
+  .suggest { position: relative; }
+  .suggest-list { position: absolute; left: 0; right: 0; top: 100%; z-index: 5; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; margin-top: 2px; max-height: 220px; overflow-y: auto; }
+  .suggest-list button { display: block; width: 100%; text-align: left; background: transparent; border: 0; color: var(--text); font: inherit; padding: 8px 10px; cursor: pointer; }
+  .suggest-list button:hover { background: var(--hover); }
+  .picked { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--input-bg); flex-wrap: wrap; }
+  .toggle { display: flex; align-items: center; gap: 8px; }
+  .nav { display: flex; justify-content: space-between; margin-top: 16px; }
+  .item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--input-bg); }
+  .item .grow { flex: 1; }
+  .items { display: grid; gap: 8px; margin: 10px 0; }
+  .sub { border-top: 1px solid var(--border); padding-top: 16px; }
+  .three { margin: 14px 0; }
+  .add-row { margin-top: 14px; }
+  .btn-row { display: flex; gap: 8px; }
+  .step { cursor: pointer; }
+  .step:hover { border-color: var(--primary); }
+  .banner a { text-decoration: underline; font-weight: 500; }
+  .review td:first-child { color: var(--muted); width: 34%; }
+  .review td { white-space: normal; }
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--green); padding: 10px 16px; border-radius: 6px; z-index: 20; }
+  dialog::backdrop { background: #0009; }
+  .dialog-wrap { border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); padding: 20px; width: min(460px, 92vw); }
+  @media (max-width: 720px) { .two, .three { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main>
+  <div class="title-row"><h1>Log new claim</h1><a class="btn ghost" href="claims-list.html">Cancel</a></div>
+
+  <div class="steps" id="steps">
+    <div class="step on"><span class="n">1</span>Policy and loss</div>
+    <div class="step"><span class="n">2</span>Parties and risk objects</div>
+    <div class="step"><span class="n">3</span>Reserve and review</div>
+  </div>
+
+  <!-- step 1 -->
+  <section class="card form" id="s1">
+    <div class="field">
+      <label for="policySearch">Policy (number or client name)</label>
+      <div class="suggest">
+        <input id="policySearch" autocomplete="off" placeholder="Start typing, for example POL-48 or Harbor">
+        <div class="suggest-list hidden" id="suggest"></div>
+      </div>
+      <div class="picked hidden" id="picked"></div>
+    </div>
+    <label class="toggle"><input type="checkbox" id="unknown"> Unknown policy: continue without a policy link</label>
+
+    <div class="two">
+      <div class="field"><label for="lossDate">Loss date and time</label><input id="lossDate" type="datetime-local"><div class="hint" id="lossHint"></div></div>
+      <div class="field"><label for="cause">Cause of loss</label><input id="cause" list="causes" placeholder="Search a cause code"><datalist id="causes"></datalist><div class="hint" id="causeHint"></div></div>
+    </div>
+    <div class="field"><label for="desc">Loss description</label><textarea id="desc" placeholder="What happened?"></textarea><div class="hint" id="descHint">0 / 20 characters minimum</div></div>
+    <div class="two">
+      <div class="field"><label for="loc">Loss location</label><input id="loc"></div>
+      <div class="field"><label for="est">Estimated loss amount (optional)</label><input id="est" type="number" min="0" placeholder="0.00"></div>
+    </div>
+    <div class="banner bad hidden" id="e1"></div>
+  </section>
+
+  <!-- step 2 -->
+  <section class="card form hidden" id="s2">
+    <div>
+      <h2>Parties</h2>
+      <div class="banner warn" id="claimantWarn">Add at least one claimant before the claim can be created.</div>
+      <div class="items" id="partyItems"></div>
+      <div class="three hidden" id="partyForm">
+        <div class="field"><label>Role</label><select id="pRole"><option>Claimant</option><option>Witness</option><option>Adjuster</option><option>Legal Representative</option></select></div>
+        <div class="field"><label>Type</label><select id="pType"><option>Person</option><option>Company</option></select></div>
+        <div class="field"><label>Name</label><input id="pName"></div>
+        <div class="field"><label>Email</label><input id="pEmail" type="email"></div>
+        <div class="field"><label>Phone</label><input id="pPhone"></div>
+        <div class="btn-row"><button class="btn" id="pSave" type="button">Add</button><button class="btn ghost" id="pCancel" type="button">Cancel</button></div>
+      </div>
+      <div class="add-row"><button class="btn outline" id="pAdd" type="button">Add party</button></div>
+    </div>
+    <div class="sub">
+      <h2>Risk objects</h2>
+      <div class="banner info" id="riskAdvice">At least one risk object is recommended.</div>
+      <div class="items" id="riskItems"></div>
+      <div class="three hidden" id="riskForm">
+        <div class="field"><label>Asset type</label><select id="rType"><option>Property</option><option>Vehicle</option><option>Equipment</option><option>Inventory</option></select></div>
+        <div class="field"><label>Asset description</label><input id="rDesc"></div>
+        <div class="field"><label>Damage description</label><input id="rDamage"></div>
+        <div class="field"><label>Reference number (optional)</label><input id="rRef"></div>
+        <div class="btn-row"><button class="btn" id="rSave" type="button">Add</button><button class="btn ghost" id="rCancel" type="button">Cancel</button></div>
+      </div>
+      <div class="add-row"><button class="btn outline" id="rAdd" type="button">Add risk object</button></div>
+    </div>
+  </section>
+
+  <!-- step 3 -->
+  <section class="card form hidden" id="s3">
+    <div>
+      <h2>Initial reserve (optional)</h2>
+      <div class="two">
+        <div class="field"><label for="comp">Component</label><select id="comp"><option value="">No initial reserve</option><option>Indemnity</option><option>Expense</option><option>ALAE</option><option>SubrogationRecoverable</option></select></div>
+        <div class="field"><label for="amount">Amount</label><input id="amount" type="number" placeholder="0.00"></div>
+      </div>
+      <div class="banner neutral" id="authority" style="margin-top:12px">Enter an amount to see who can approve it.</div>
+      <div class="banner warn hidden" id="noPolicyReserve" style="margin-top:12px">A reserve needs a linked policy. Link one in <a href="#" id="toStep1">step 1</a> or remove the reserve.</div>
+    </div>
+    <div class="sub">
+      <h2>Review</h2>
+      <table class="review"><tbody id="review"></tbody></table>
+    </div>
+  </section>
+
+  <div class="nav">
+    <button class="btn outline" id="back" type="button">Back</button>
+    <div><button class="btn" id="next" type="button">Next</button><button class="btn hidden" id="create" type="button">Create claim</button></div>
+  </div>
+  <div class="note">Design preview only: sample policies and codes. Each step validates before you can move on.</div>
+</main>
+
+<dialog class="dialog-wrap" id="dlg">
+  <h2>Create with warnings?</h2>
+  <p class="muted" id="warnText"></p>
+  <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+    <button class="btn ghost" id="dlgCancel" type="button">Go back</button>
+    <button class="btn" id="dlgOk" type="button">Create anyway</button>
+  </div>
+</dialog>
+
+<script src="shell.js"></script>
+<script>
+  const $ = (id) => document.getElementById(id);
+  const POLICIES = [
+    { no: "POL-48000", client: "Northwind Traders", from: "2026-01-01", to: "2026-12-31" },
+    { no: "POL-48111", client: "Harbor Logistics", from: "2025-03-01", to: "2026-02-28" },
+    { no: "POL-48222", client: "Maria Lopez", from: "2026-04-01", to: "2027-03-31" },
+    { no: "POL-48333", client: "Kestrel Foods", from: "2026-02-15", to: "2027-02-14" },
+    { no: "POL-48444", client: "Alder & Finch", from: "2024-06-01", to: "2025-05-31" }
+  ];
+  const CAUSES = ["COL-COLLISION Collision", "COL-FIRE Fire", "COL-THEFT Theft", "COL-WATER Water damage", "COL-WIND Windstorm", "COL-LIABILITY Liability"];
+  CAUSES.forEach((c) => { const o = document.createElement("option"); o.value = c; $("causes").appendChild(o); });
+
+  const S = { step: 1, policy: null, parties: [], risks: [], confirmed: false };
+  const money = (n) => "$" + Number(n).toLocaleString("en-US", { minimumFractionDigits: 2 });
+  const toast = (text) => { const t = document.createElement("div"); t.className = "toast"; t.textContent = text; document.body.appendChild(t); setTimeout(() => t.remove(), 2600); };
+
+  // policy typeahead
+  $("policySearch").oninput = () => {
+    const q = $("policySearch").value.trim().toLowerCase();
+    const hits = q ? POLICIES.filter((p) => p.no.toLowerCase().includes(q) || p.client.toLowerCase().includes(q)) : [];
+    $("suggest").classList.toggle("hidden", hits.length === 0);
+    $("suggest").innerHTML = hits.map((p, i) => "<button data-i='" + POLICIES.indexOf(p) + "'>" + p.no + " - " + p.client + "<span class='muted'> (" + p.from + " to " + p.to + ")</span></button>").join("");
+    $("suggest").querySelectorAll("button").forEach((b) => b.onclick = () => { S.policy = POLICIES[b.dataset.i]; $("policySearch").value = ""; $("suggest").classList.add("hidden"); $("unknown").checked = false; validate1(); });
+  };
+  $("unknown").onchange = () => { if ($("unknown").checked) S.policy = null; validate1(); };
+  ["lossDate", "cause", "desc", "loc", "est"].forEach((id) => $(id).addEventListener("input", validate1));
+
+  function inForce() {
+    if (!S.policy || !$("lossDate").value) return null;
+    const d = $("lossDate").value.slice(0, 10);
+    return d >= S.policy.from && d <= S.policy.to;
+  }
+  function validate1() {
+    const errors = [];
+    const p = $("picked");
+    p.classList.toggle("hidden", !S.policy);
+    if (S.policy) {
+      const f = inForce();
+      p.innerHTML = "<strong>" + S.policy.no + "</strong><span>" + S.policy.client + "</span><span class='muted'>" + S.policy.from + " to " + S.policy.to + "</span>" +
+        (f === null ? "" : "<span class='badge " + (f ? "ok" : "warn") + "'>" + (f ? "In force on the loss date" : "Outside the policy period") + "</span>") +
+        "<button class='btn small ghost' id='clearPolicy' type='button'>Change</button>";
+      $("clearPolicy").onclick = () => { S.policy = null; validate1(); };
+    }
+    if (!S.policy && !$("unknown").checked) errors.push("Choose a policy or tick Unknown policy.");
+    const loss = $("lossDate").value;
+    const future = loss && new Date(loss) > new Date();
+    $("lossHint").textContent = future ? "The loss date cannot be in the future." : "";
+    $("lossHint").className = "hint" + (future ? " bad" : "");
+    if (!loss) errors.push("Loss date is required."); else if (future) errors.push("Loss date is in the future.");
+    const cause = CAUSES.includes($("cause").value);
+    $("causeHint").textContent = $("cause").value && !cause ? "Pick a code from the list." : "";
+    $("causeHint").className = "hint" + ($("cause").value && !cause ? " bad" : "");
+    if (!cause) errors.push("Choose a cause of loss code.");
+    const len = $("desc").value.trim().length;
+    $("descHint").textContent = len + " / 20 characters minimum";
+    $("descHint").className = "hint" + (len > 0 && len < 20 ? " bad" : "");
+    if (len < 20) errors.push("The description needs at least 20 characters.");
+    S.errors1 = errors;
+    update();
+  }
+
+  // parties and risks
+  function renderParties() {
+    $("partyItems").innerHTML = S.parties.map((x, i) => "<div class='item'><span class='badge " + (x.role === "Claimant" ? "info" : "neutral") + "'>" + x.role + "</span><div class='grow'><strong>" + x.name + "</strong> <span class='muted'>" + x.type + (x.email ? ", " + x.email : "") + "</span></div><button class='btn small ghost' data-i='" + i + "'>Remove</button></div>").join("");
+    $("partyItems").querySelectorAll("button").forEach((b) => b.onclick = () => { S.parties.splice(b.dataset.i, 1); renderParties(); });
+    $("claimantWarn").classList.toggle("hidden", S.parties.some((x) => x.role === "Claimant"));
+    update();
+  }
+  function renderRisks() {
+    $("riskItems").innerHTML = S.risks.map((x, i) => "<div class='item'><span class='badge neutral'>" + x.type + "</span><div class='grow'><strong>" + x.desc + "</strong> <span class='muted'>" + (x.damage || "") + "</span></div><button class='btn small ghost' data-i='" + i + "'>Remove</button></div>").join("");
+    $("riskItems").querySelectorAll("button").forEach((b) => b.onclick = () => { S.risks.splice(b.dataset.i, 1); renderRisks(); });
+    $("riskAdvice").classList.toggle("hidden", S.risks.length > 0);
+    update();
+  }
+  $("pAdd").onclick = () => $("partyForm").classList.remove("hidden");
+  $("pCancel").onclick = () => $("partyForm").classList.add("hidden");
+  $("pSave").onclick = () => { if (!$("pName").value.trim()) return; S.parties.push({ role: $("pRole").value, type: $("pType").value, name: $("pName").value.trim(), email: $("pEmail").value }); $("pName").value = ""; $("pEmail").value = ""; $("pPhone").value = ""; $("partyForm").classList.add("hidden"); renderParties(); };
+  $("rAdd").onclick = () => $("riskForm").classList.remove("hidden");
+  $("rCancel").onclick = () => $("riskForm").classList.add("hidden");
+  $("rSave").onclick = () => { if (!$("rDesc").value.trim()) return; S.risks.push({ type: $("rType").value, desc: $("rDesc").value.trim(), damage: $("rDamage").value }); $("rDesc").value = ""; $("rDamage").value = ""; $("rRef").value = ""; $("riskForm").classList.add("hidden"); renderRisks(); };
+
+  // reserve
+  function authority() {
+    const v = Math.abs(Number($("amount").value));
+    const el = $("authority");
+    let cls = "neutral", text = "Enter an amount to see who can approve it.";
+    if (v) { if (v <= 10000) { cls = "ok"; text = "Auto-approved (up to $10,000)"; } else if (v <= 100000) { cls = "warn"; text = "Supervisor approval required"; } else { cls = "warn"; text = "Manager approval required"; } }
+    el.className = "banner " + cls; el.textContent = text;
+    $("noPolicyReserve").classList.toggle("hidden", !($("comp").value && !S.policy));
+    renderReview(); update();
+  }
+  $("amount").oninput = authority; $("comp").onchange = authority;
+
+  function renderReview() {
+    const rows = [
+      ["Policy", S.policy ? S.policy.no + " - " + S.policy.client : "Unknown policy"],
+      ["Loss", ($("lossDate").value || "-").replace("T", " ") + ", " + ($("cause").value || "-")],
+      ["Description", $("desc").value || "-"], ["Location", $("loc").value || "-"],
+      ["Estimated amount", $("est").value ? money($("est").value) : "-"],
+      ["Parties", S.parties.map((p) => p.role + ": " + p.name).join("; ") || "None"],
+      ["Risk objects", S.risks.map((r) => r.type + ": " + r.desc).join("; ") || "None"],
+      ["Initial reserve", $("comp").value && $("amount").value ? $("comp").value + " " + money($("amount").value) : "None"]
+    ];
+    $("review").innerHTML = rows.map((r) => "<tr><td>" + r[0] + "</td><td>" + r[1] + "</td></tr>").join("");
+  }
+
+  function warnings() {
+    const w = [];
+    if (inForce() === false) w.push("the loss date is outside the policy period");
+    if (!S.policy) w.push("no policy is linked");
+    if (S.risks.length === 0) w.push("no risk object was added");
+    return w;
+  }
+  const valid1 = () => (S.errors1 || ["pending"]).length === 0;
+  const valid2 = () => S.parties.some((p) => p.role === "Claimant");
+  const reserveBlocked = () => !!$("comp").value && !S.policy;
+
+  function update() {
+    document.querySelectorAll("#steps .step").forEach((el, i) => { el.classList.toggle("on", i + 1 === S.step); el.classList.toggle("done", i + 1 < S.step); });
+    ["s1", "s2", "s3"].forEach((id, i) => $(id).classList.toggle("hidden", i + 1 !== S.step));
+    $("back").disabled = S.step === 1;
+    $("next").classList.toggle("hidden", S.step === 3);
+    $("create").classList.toggle("hidden", S.step !== 3);
+    $("e1").classList.toggle("hidden", true);
+    $("next").disabled = S.step === 1 ? !valid1() : S.step === 2 ? !valid2() : false;
+    $("create").disabled = !(valid1() && valid2()) || reserveBlocked();
+    if (S.step === 3) renderReview();
+  }
+  function goTo(step) {
+    const reachable = step === 1 || (step === 2 && valid1()) || (step === 3 && valid1() && valid2());
+    if (step <= S.step || reachable) { S.step = step; update(); }
+  }
+  document.querySelectorAll("#steps .step").forEach((el, i) => el.onclick = () => goTo(i + 1));
+  $("toStep1").onclick = (e) => { e.preventDefault(); goTo(1); };
+  $("back").onclick = () => { S.step--; update(); };
+  $("next").onclick = () => { S.step++; update(); };
+  $("create").onclick = () => {
+    const w = warnings();
+    if (w.length) { $("warnText").textContent = "The claim can be created, but " + w.join(", ") + "."; $("dlg").showModal(); } else done();
+  };
+  $("dlgCancel").onclick = () => $("dlg").close();
+  $("dlgOk").onclick = () => { $("dlg").close(); done(); };
+  function done() { toast("Claim CLM-2026-1456 created"); setTimeout(() => { location.href = "claim-detail.html"; }, 1400); }
+
+  validate1(); renderParties(); renderRisks(); authority();
+</script>
+</body>
+</html>

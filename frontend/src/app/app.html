@@ -1,0 +1,9 @@
+<app-header />
+<div class="progress">
+  @if (loading.isLoading()) {
+    <mat-progress-bar mode="indeterminate" aria-label="Loading" />
+  }
+</div>
+<main>
+  <router-outlet />
+</main>

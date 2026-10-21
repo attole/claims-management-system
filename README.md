@@ -2,7 +2,7 @@
 
 Claims handling for a policy administration system, built end to end: a .NET 9 backend (Clean Architecture, CQRS) and an Angular frontend.
 
-Status: the backend (Domain, Application, Persistence, Infrastructure and API) is built and tested; the frontend is not started.
+Status: the backend (Domain, Application, Persistence, Infrastructure and API) is built and tested; the frontend has its workspace, theme, app shell and mock sign-in, and its screens are in progress.
 
 ## Documentation
 
@@ -15,6 +15,7 @@ Status: the backend (Domain, Application, Persistence, Infrastructure and API) i
 
 - .NET 9 SDK
 - SQL Server LocalDB (`MSSQLLocalDB`) or another SQL Server 2022 instance
+- Node.js 24 with npm 11 (frontend)
 
 ## Build and test
 
@@ -29,11 +30,21 @@ The tests in `ClaimsModule.Persistence.SqlServerTests` and `ClaimsModule.API.Tes
 ## Run locally
 
 1. Create and seed the database. The app does not migrate at startup. From the `backend` folder run `dotnet tool restore`, then `dotnet dotnet-ef database update --project src/ClaimsModule.Persistence` (Hangfire creates its own tables later). It targets LocalDB; set `CLAIMS_DB_CONNECTION` to use another server.
-2. Set the signing key (32 or more characters, any test value locally): `dotnet user-secrets set "Jwt:SigningKey" "<32+ character test value>" --project backend/src/ClaimsModule.API`
-3. Run: `dotnet run --project backend/src/ClaimsModule.API`
+2. Set the two signing keys (32 or more characters, any test values locally), one for the bearer token and one for the signed local download links:
+    - `dotnet user-secrets set "Jwt:SigningKey" "<32+ character test value>" --project backend/src/ClaimsModule.API`
+    - `dotnet user-secrets set "LocalSigningKey" "<32+ character test value>" --project backend/src/ClaimsModule.API`
+3. Run: `dotnet run --project backend/src/ClaimsModule.API` (the `https` profile serves `https://localhost:54694`, the address `LocalBaseUrl` in `appsettings.Development.json` points at)
 4. Get a token for a user: `POST /api/dev/token` with `{ "userId": "<id>" }`, using an id from `DevAuth:Users` in `appsettings.Development.json` (a handler, a supervisor and a manager), and send it as `Authorization: Bearer <token>`. This is a simulation of sign-in, only available while `DevAuth:Enabled` is true.
 
 With `ASPNETCORE_ENVIRONMENT=Development`, Swagger is at `/swagger` and the Hangfire dashboard at `/hangfire`.
+
+### Frontend
+
+1. Trust the .NET development certificate once, so the browser accepts the API at `https://localhost:54694`: `dotnet dev-certs https --trust`
+2. Install the packages: `npm --prefix frontend install`
+3. With the API running, start the dev server: `npm --prefix frontend start`, then open `http://localhost:4200`. The app signs in as the handler; the header's role switcher changes the test user.
+4. Checks: `npm --prefix frontend run build`, `npm --prefix frontend test`, `npm --prefix frontend run lint`
+5. After an API contract change, save the API's `/openapi/v1.json` over `frontend/openapi.json` and run `npm --prefix frontend run api:types`.
 
 ## API
 
@@ -44,7 +55,10 @@ All routes are under `/api` and need a bearer token, except `POST /api/dev/token
 | `GET /claims`, `POST /claims` | paged list with filters; create a draft with its children (201) |
 | `GET /claims/{id}`, `PUT /claims/{id}/status`, `GET /claims/{id}/status-check?targetStatus=` | detail; change the status; what blocks a status change, without saving |
 | `PUT /claims/{id}/notes`, `GET /claims/{id}/audit` | update the notes; paged audit log |
+| `PUT /claims/{id}/handler`, `PUT /claims/{id}/policy`, `PUT /claims/{id}/loss` | assign the handler (the creator by default); link a policy; update the loss details |
+| `POST /claims/{id}/issues/{issueId}/acknowledge`, `waive` | acknowledge a warning; waive a critical issue (supervisor or manager) |
 | `POST /claims/{id}/parties`, `DELETE /claims/{id}/parties/{partyId}` | add and remove a party |
+| `POST /claims/{id}/risk-objects`, `DELETE /claims/{id}/risk-objects/{riskObjectId}` | add and remove a risk object |
 | `GET /claims/{id}/reserves`, `POST /claims/{id}/reserves` | balances and history; open or adjust a reserve (201) |
 | `POST /claims/{id}/reserves/{historyId}/approve`, `reject`, `retract`, `retry-posting` | decide on a pending reserve; retry a failed posting |
 | `GET /claims/{id}/documents`, `POST /claims/{id}/documents` | list with download links; multipart upload up to 50 MB (201) |
@@ -53,7 +67,7 @@ All routes are under `/api` and need a bearer token, except `POST /api/dev/token
 - A successful write answers `{ "data": ..., "warnings": [...] }`; a read answers the bare object or page. Lists take `page` and `pageSize` (default 25, at most 100).
 - A refusal answers `{ "type", "title", "status", "errors" }` with 401, 403, 404, 409 or 422.
 - Enums are sent and read as their names. Every response carries `X-Correlation-Id`.
-- Send `Idempotency-Key: <value>` on any write to make a retry safe: the same key with the same body returns the first response, with a different body it answers 422.
+- Send `Idempotency-Key: <value>` on any write to make a retry safe: the same key with the same body returns the first successful response, with a different body it answers 422. A refused or failed write is not stored, so the same key can be retried once the cause is fixed.
 - `docs/layers/api.md` has the rules behind all of this.
 
 ## Configuration

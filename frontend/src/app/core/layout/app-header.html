@@ -1,0 +1,46 @@
+<header class="bar">
+  <div class="left">
+    <a class="brand" routerLink="/claims">Claims Management</a>
+    <nav aria-label="Main">
+      <a
+        routerLink="/claims"
+        routerLinkActive="current"
+        ariaCurrentWhenActive="page"
+        [routerLinkActiveOptions]="{ exact: true }"
+        >Claims</a
+      >
+    </nav>
+  </div>
+
+  <div class="right">
+    <button
+      mat-icon-button
+      class="theme-toggle"
+      type="button"
+      [attr.aria-label]="theme.theme() === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'"
+      [matTooltip]="theme.theme() === 'dark' ? 'Light theme' : 'Dark theme'"
+      (click)="theme.toggle()"
+    >
+      <mat-icon>{{ theme.theme() === 'dark' ? 'light_mode' : 'dark_mode' }}</mat-icon>
+    </button>
+
+    <span class="who">{{ auth.user().name }}</span>
+
+    <button mat-stroked-button class="role" type="button" aria-haspopup="menu" [matMenuTriggerFor]="roles">
+      <span class="visually-hidden">Switch test user, current role </span>{{ auth.role() }}
+      <mat-icon iconPositionEnd aria-hidden="true">expand_more</mat-icon>
+    </button>
+    <mat-menu #roles="matMenu">
+      @for (user of users; track user.id) {
+        <button
+          mat-menu-item
+          type="button"
+          [attr.aria-current]="user.id === auth.user().id ? 'true' : null"
+          (click)="switchTo(user)"
+        >
+          {{ user.role }} - {{ user.name }}
+        </button>
+      }
+    </mat-menu>
+  </div>
+</header>

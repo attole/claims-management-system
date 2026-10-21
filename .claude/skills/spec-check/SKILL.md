@@ -45,7 +45,7 @@ If the register is missing, a passive run does nothing. An explicit run may fall
 
 Per CLAUDE.md 'No explanatory comments', rule IDs ride on code, not comments:
 
-- tests: `[Trait("Rule", "S:BR-R-03")]`
+- tests: `[Trait("Rule", "S:BR-R-03")]`; frontend specs carry the IDs in parentheses at the end of their `describe` name
 - validators: `.WithErrorCode("S:BR-R-03")`
 - Domain rules: the ID as the rule's `Code` constant
 

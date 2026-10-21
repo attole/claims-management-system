@@ -1,0 +1,12 @@
+h1 {
+  margin: 0 0 var(--app-gap);
+  font: var(--mat-sys-headline-small);
+}
+
+.card {
+  padding: var(--app-gap);
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  background: var(--app-surface);
+  color: var(--app-muted);
+}

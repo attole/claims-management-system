@@ -1,0 +1,57 @@
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
+  background: color-mix(in srgb, var(--badge-tone) 30%, transparent);
+  border: 1px solid color-mix(in srgb, var(--badge-tone) 75%, transparent);
+  color: color-mix(in srgb, var(--badge-tone) 85%, var(--app-text));
+  --badge-tone: var(--tone-neutral);
+}
+
+.badge--draft {
+  --badge-tone: var(--status-draft);
+}
+
+.badge--open {
+  --badge-tone: var(--status-open);
+}
+
+.badge--under-investigation {
+  --badge-tone: var(--status-under-investigation);
+}
+
+.badge--pending-payment {
+  --badge-tone: var(--status-pending-payment);
+}
+
+.badge--closed {
+  --badge-tone: var(--status-closed);
+}
+
+.badge--reopened {
+  --badge-tone: var(--status-reopened);
+}
+
+.badge--withdrawn {
+  --badge-tone: var(--status-withdrawn);
+}
+
+.badge--ok {
+  --badge-tone: var(--tone-ok);
+}
+
+.badge--warn {
+  --badge-tone: var(--tone-warn);
+}
+
+.badge--bad {
+  --badge-tone: var(--tone-bad);
+}
+
+.badge--info {
+  --badge-tone: var(--tone-info);
+}

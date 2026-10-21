@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claims</title>
+<link rel="stylesheet" href="theme.css">
+<style>
+  .filters { padding: 16px; display: grid; grid-template-columns: 1fr 1fr 1fr 1.4fr auto; gap: 12px; align-items: end; margin-bottom: 16px; }
+  .filters .status { grid-column: 1 / -1; }
+  table { min-width: 1100px; }
+  tbody tr { cursor: pointer; }
+  .claim-no { font-weight: 500; color: var(--primary); }
+  .pager { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; color: var(--muted); font-size: 13px; }
+  .pager .right { display: flex; align-items: center; gap: 16px; }
+  .pager select { padding: 4px 6px; border: 1px solid var(--border); border-radius: 4px; background: var(--input-bg); color: var(--text); }
+  .pager button { border: 0; background: transparent; font-size: 18px; cursor: pointer; color: var(--text); padding: 2px 8px; }
+  .pager button:disabled { color: var(--disabled); cursor: default; }
+  .empty { text-align: center; padding: 56px 16px; color: var(--muted); }
+  .empty .big { font-size: 40px; margin-bottom: 8px; }
+  .empty p { margin: 4px 0 16px; }
+  @media (min-width: 1101px) { .filters .chips { flex-wrap: nowrap; } }
+  @media (max-width: 1100px) {
+    .filters { grid-template-columns: 1fr 1fr; }
+    .filters #clear { grid-column: 1 / -1; justify-self: end; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <div class="title-row">
+    <h1>Claims</h1>
+    <a class="btn" href="fnol-intake.html">Log New Claim</a>
+  </div>
+
+  <section class="card filters">
+    <div class="field status">
+      <label>Status</label>
+      <div class="chips" id="statusChips"></div>
+    </div>
+    <div class="field"><label for="from">Loss date from</label><input id="from" type="date"></div>
+    <div class="field"><label for="to">Loss date to</label><input id="to" type="date"></div>
+    <div class="field">
+      <label for="cause">Cause of loss</label>
+      <select id="cause"><option value="">All causes</option></select>
+    </div>
+    <div class="field"><label for="handler">Assigned handler</label><input id="handler" type="search" placeholder="Search name"></div>
+    <button class="btn ghost" id="clear" type="button">Clear</button>
+  </section>
+
+  <section class="card">
+    <div class="table-scroll" id="scroll">
+      <table id="grid">
+        <thead>
+          <tr>
+            <th>Claim number</th><th>Policy number</th><th>Client name</th><th>Loss date</th>
+            <th>Cause of loss</th><th>Status</th><th>Handler</th><th class="num">Total reserve</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <div class="empty hidden" id="empty">
+      <div class="big">&#128196;</div>
+      <strong>No claims match these filters</strong>
+      <p>Try removing a filter, or log a new claim.</p>
+      <button class="btn ghost" id="clear2" type="button">Clear filters</button>
+    </div>
+    <div class="pager">
+      <span id="count"></span>
+      <span class="right">
+        <label>Rows per page
+          <select id="size"><option>5</option><option selected>10</option><option>25</option><option>50</option></select>
+        </label>
+        <span id="range"></span>
+        <span><button id="prev" aria-label="Previous page">&lsaquo;</button><button id="next" aria-label="Next page">&rsaquo;</button></span>
+      </span>
+    </div>
+  </section>
+  <div class="note">Design preview only: sample data. A row opens the claim detail page.</div>
+</main>
+
+<script src="shell.js"></script>
+<script>
+  const STATUSES = ["Draft", "Open", "UnderInvestigation", "PendingPayment", "Closed", "Reopened", "Withdrawn"];
+  const CAUSES = ["Collision", "Fire", "Theft", "Water damage", "Windstorm", "Liability"];
+  const HANDLERS = ["Alex Morgan", "Priya Nair", "Tom Becker"];
+  const CLIENTS = ["Northwind Traders", "Alder & Finch", "Maria Lopez", "Harbor Logistics", "J. Whitfield", "Kestrel Foods"];
+  const DATA = Array.from({ length: 47 }, (_, i) => {
+    const day = 1 + ((i * 7) % 27);
+    const month = 1 + ((i * 5) % 9);
+    return {
+      number: "CLM-2026-" + String(1000 + i * 13),
+      policy: "POL-" + String(48000 + i * 37),
+      client: CLIENTS[i % CLIENTS.length],
+      loss: "2026-" + String(month).padStart(2, "0") + "-" + String(day).padStart(2, "0"),
+      cause: CAUSES[(i * 3) % CAUSES.length],
+      status: STATUSES[(i * 5) % STATUSES.length],
+      handler: HANDLERS[i % HANDLERS.length],
+      reserve: ((i * 7919) % 90000) + (i % 4 === 0 ? 0 : 1500)
+    };
+  });
+
+  const state = { statuses: new Set(), page: 0 };
+  const $ = (id) => document.getElementById(id);
+  const money = (n) => "$" + n.toLocaleString("en-US", { minimumFractionDigits: 2 });
+
+  STATUSES.forEach((s) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "chip-toggle"; b.textContent = s;
+    b.onclick = () => { state.statuses.has(s) ? state.statuses.delete(s) : state.statuses.add(s); b.classList.toggle("on"); state.page = 0; render(); };
+    $("statusChips").appendChild(b);
+  });
+  CAUSES.forEach((c) => { const o = document.createElement("option"); o.textContent = c; o.value = c; $("cause").appendChild(o); });
+
+  function filtered() {
+    const from = $("from").value, to = $("to").value, handler = $("handler").value.toLowerCase(), cause = $("cause").value;
+    return DATA.filter((r) =>
+      (!state.statuses.size || state.statuses.has(r.status)) &&
+      (!from || r.loss >= from) && (!to || r.loss <= to) &&
+      (!handler || r.handler.toLowerCase().includes(handler)) &&
+      (!cause || r.cause === cause));
+  }
+
+  function render() {
+    const all = filtered(), size = Number($("size").value);
+    const pages = Math.max(1, Math.ceil(all.length / size));
+    state.page = Math.min(state.page, pages - 1);
+    const slice = all.slice(state.page * size, state.page * size + size);
+    $("rows").innerHTML = slice.map((r) =>
+      "<tr onclick=\"location.href='claim-detail.html'\"><td class='claim-no'>" + r.number + "</td><td>" + r.policy + "</td><td>" + r.client + "</td><td>" + r.loss +
+      "</td><td>" + r.cause + "</td><td><span class='badge " + r.status + "'>" + r.status.replace(/([a-z])([A-Z])/g, "$1 $2") +
+      "</span></td><td>" + r.handler + "</td><td class='num'>" + money(r.reserve) + "</td></tr>").join("");
+    $("scroll").classList.toggle("hidden", all.length === 0);
+    $("empty").classList.toggle("hidden", all.length !== 0);
+    $("count").textContent = all.length + (all.length === 1 ? " claim" : " claims");
+    const start = all.length ? state.page * size + 1 : 0;
+    $("range").textContent = start + "-" + (state.page * size + slice.length) + " of " + all.length;
+    $("prev").disabled = state.page === 0;
+    $("next").disabled = state.page >= pages - 1;
+  }
+
+  function clear() {
+    state.statuses.clear(); state.page = 0;
+    document.querySelectorAll(".chip-toggle").forEach((c) => c.classList.remove("on"));
+    ["from", "to", "handler", "cause"].forEach((id) => { $(id).value = ""; });
+    render();
+  }
+
+  ["from", "to", "handler", "cause", "size"].forEach((id) => $(id).addEventListener("input", () => { state.page = 0; render(); }));
+  $("prev").onclick = () => { state.page--; render(); };
+  $("next").onclick = () => { state.page++; render(); };
+  $("clear").onclick = clear; $("clear2").onclick = clear;
+  render();
+</script>
+</body>
+</html>

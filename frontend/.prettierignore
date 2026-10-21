@@ -1,0 +1,7 @@
+dist
+.angular
+node_modules
+design
+openapi.json
+src/app/core/api/api-schema.ts
+src/styles/_theme-colors.scss

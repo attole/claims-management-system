@@ -1,0 +1,82 @@
+@use '@angular/material' as mat;
+
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 56px;
+  padding: 0 24px;
+  background: var(--app-bar);
+  color: var(--app-on-bar);
+  border-bottom: 1px solid var(--app-border);
+}
+
+.left,
+.right {
+  display: flex;
+  align-items: center;
+  gap: var(--app-gap);
+}
+
+.right {
+  gap: 12px;
+}
+
+.brand {
+  color: var(--app-on-bar);
+  font-size: 18px;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+nav a {
+  padding: 6px 10px;
+  border-radius: 4px;
+  color: color-mix(in srgb, var(--app-on-bar) 70%, transparent);
+  font-size: 13px;
+  text-decoration: none;
+
+  &:hover,
+  &.current {
+    background: color-mix(in srgb, var(--app-on-bar) 15%, transparent);
+    color: var(--app-on-bar);
+  }
+}
+
+.who {
+  font-size: 13px;
+}
+
+.theme-toggle {
+  @include mat.icon-button-overrides(
+    (
+      state-layer-size: 32px,
+      icon-size: 18px,
+      icon-color: var(--app-on-bar),
+    )
+  );
+
+  padding: 7px;
+}
+
+.role {
+  @include mat.button-overrides(
+    (
+      outlined-label-text-color: var(--app-on-bar),
+      outlined-outline-color: color-mix(in srgb, var(--app-on-bar) 40%, transparent),
+      outlined-container-height: 32px,
+    )
+  );
+}
+
+@media (max-width: 900px) {
+  .bar {
+    padding: 0 12px;
+  }
+
+  .brand,
+  .who {
+    display: none;
+  }
+}

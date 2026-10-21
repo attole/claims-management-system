@@ -1,0 +1,68 @@
+@use '@angular/material' as mat;
+@use 'styles/theme-colors' as palette;
+@use 'styles/tokens';
+@use 'styles/badges';
+
+html {
+  color-scheme: dark;
+
+  @include mat.theme(
+    (
+      color: (
+        primary: palette.$primary-palette,
+        tertiary: palette.$tertiary-palette,
+        theme-type: color-scheme,
+      ),
+      typography: Roboto,
+      density: 0,
+    )
+  );
+}
+
+html[data-theme='light'] {
+  color-scheme: light;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font: var(--mat-sys-body-medium);
+  background: var(--app-bg);
+  color: var(--app-text);
+}
+
+a {
+  color: var(--app-link);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.notify-error {
+  @include mat.snack-bar-overrides(
+    (
+      button-color: var(--app-danger),
+    )
+  );
+}
+
+.notify-success {
+  @include mat.snack-bar-overrides(
+    (
+      button-color: var(--tone-ok),
+    )
+  );
+}

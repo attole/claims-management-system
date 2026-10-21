@@ -1,0 +1,30 @@
+:root {
+  --app-bg: light-dark(#f4f6f9, #0f151c);
+  --app-surface: light-dark(#ffffff, #17202a);
+  --app-surface-raised: light-dark(#fafbfc, #1b2631);
+  --app-hover: light-dark(#f0f5fa, #1f2c39);
+  --app-border: light-dark(#dde3ea, #2a3846);
+  --app-text: light-dark(#1d2733, #e4e9ef);
+  --app-muted: light-dark(#637083, #8d9bab);
+  --app-link: light-dark(#1f4e79, #6aa6e6);
+  --app-bar: light-dark(#1f4e79, #16222e);
+  --app-on-bar: #ffffff;
+  --app-danger: light-dark(#c62828, #ef5350);
+  --app-gap: 16px;
+  --app-gap-small: 8px;
+  --app-radius: 6px;
+
+  --status-draft: light-dark(#90a4ae, #b0bec5);
+  --status-open: light-dark(#1565c0, #2196f3);
+  --status-under-investigation: light-dark(#e64a19, #ff7043);
+  --status-pending-payment: light-dark(#7b1fa2, #ab47bc);
+  --status-closed: light-dark(#2e7d32, #2ecc71);
+  --status-reopened: light-dark(#f9a825, #ffd600);
+  --status-withdrawn: light-dark(#37474f, #607d8b);
+
+  --tone-ok: var(--status-closed);
+  --tone-warn: var(--status-reopened);
+  --tone-bad: var(--app-danger);
+  --tone-info: var(--status-open);
+  --tone-neutral: var(--status-draft);
+}

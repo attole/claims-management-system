@@ -3,6 +3,7 @@ using ClaimsModule.API.DevAuth;
 using ClaimsModule.API.Errors;
 using ClaimsModule.API.Pipeline.Correlation;
 using ClaimsModule.API.Pipeline.Cors;
+using ClaimsModule.API.Pipeline.Health;
 using ClaimsModule.API.Pipeline.Idempotency;
 using ClaimsModule.API.Pipeline.Identity;
 using ClaimsModule.API.Pipeline.Jwt;
@@ -22,6 +23,7 @@ public static class ApiPipelineServiceExtensions
             .AddErrors()
             .AddIdempotency()
             .AddFrontendCors()
+            .AddHealth()
             .AddSwaggerDocs();
         services.AddControllers()
             .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(
@@ -44,6 +46,7 @@ public static class ApiPipelineServiceExtensions
         app.UseAuthentication();
         app.UseCurrentUser();
         app.UseAuthorization();
+        app.UseHealth();
         app.MapControllers();
 
         return app;
