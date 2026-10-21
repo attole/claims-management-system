@@ -67,7 +67,27 @@ jobs:
             echo "database_name=$(jq -r .databaseName.value <<< "$outputs")"
             echo "identity_name=$(jq -r .identityName.value <<< "$outputs")"
             echo "identity_client_id=$(jq -r .identityClientId.value <<< "$outputs")"
+            echo "key_vault_name=$(jq -r .keyVaultName.value <<< "$outputs")"
+            echo "devauth_secret_name=$(jq -r .devAuthSecretName.value <<< "$outputs")"
+            echo "static_web_app_name=$(jq -r .staticWebAppName.value <<< "$outputs")"
+            echo "static_web_app_host=$(jq -r .staticWebAppHostName.value <<< "$outputs")"
           } >> "$GITHUB_OUTPUT"
+
+      - name: Read the dev sign-in access code
+        id: access
+        env:
+          KEY_VAULT_NAME: ${{ steps.provision.outputs.key_vault_name }}
+          SECRET_NAME: ${{ steps.provision.outputs.devauth_secret_name }}
+        run: |
+          for attempt in $(seq 1 10); do
+            if code=$(az keyvault secret show --vault-name "$KEY_VAULT_NAME" --name "$SECRET_NAME" --query value -o tsv); then
+              echo "::add-mask::$code"
+              echo "code=$code" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            sleep 30
+          done
+          exit 1
 
       - name: Open the SQL firewall for this runner
         env:
@@ -132,6 +152,7 @@ jobs:
         env:
           WEB_APP_NAME: ${{ steps.provision.outputs.web_app_name }}
           WEB_APP_HOST: ${{ steps.provision.outputs.web_app_host }}
+          ACCESS_CODE: ${{ steps.access.outputs.code }}
         run: |
           status=000
           for attempt in $(seq 1 30); do
@@ -152,14 +173,56 @@ jobs:
             --output tsv)
           token=$(curl -fsS -X POST "https://${WEB_APP_HOST}/api/dev/token" \
             -H 'Content-Type: application/json' \
+            -H "X-DevAuth-Secret: ${ACCESS_CODE}" \
             -d "{\"userId\":\"${user_id}\"}" | jq -r .token)
           test -n "$token"
           test "$token" != "null"
 
           curl -fsS -o /dev/null -H "Authorization: Bearer ${token}" "https://${WEB_APP_HOST}/api/claims"
 
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build the frontend against the deployed API
+        working-directory: frontend
+        env:
+          WEB_APP_HOST: ${{ steps.provision.outputs.web_app_host }}
+        run: |
+          sed -i "s#apiBaseUrl: '/api'#apiBaseUrl: 'https://${WEB_APP_HOST}/api'#" src/environments/environment.ts
+          grep -q "https://${WEB_APP_HOST}/api" src/environments/environment.ts
+          npm ci
+          npm run build
+
+      - name: Read the static web app deployment token
+        id: swa
+        env:
+          STATIC_WEB_APP_NAME: ${{ steps.provision.outputs.static_web_app_name }}
+        run: |
+          token=$(az staticwebapp secrets list --name "$STATIC_WEB_APP_NAME" --resource-group "$RESOURCE_GROUP" \
+            --query properties.apiKey -o tsv)
+          echo "::add-mask::$token"
+          echo "token=$token" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy the frontend
+        uses: Azure/static-web-apps-deploy@1a947af9992250f3bc2e68ad0754c0b0c11566c9
+        with:
+          azure_static_web_apps_api_token: ${{ steps.swa.outputs.token }}
+          action: upload
+          app_location: frontend/dist/claims-frontend/browser
+          skip_app_build: true
+          skip_api_build: true
+
+      - name: Summary
+        env:
+          WEB_APP_HOST: ${{ steps.provision.outputs.web_app_host }}
+          STATIC_WEB_APP_HOST: ${{ steps.provision.outputs.static_web_app_host }}
+        run: |
           {
             echo "### Deployed"
+            echo "- App: https://${STATIC_WEB_APP_HOST}"
             echo "- API: https://${WEB_APP_HOST}"
             echo "- Swagger: https://${WEB_APP_HOST}/swagger"
           } >> "$GITHUB_STEP_SUMMARY"

@@ -11,15 +11,10 @@ Clean Architecture with five projects, dependencies pointing inward: `API` -> `A
 - **Persistence:** EF Core mapping, the readers that project straight into DTOs, the Unit of Work, and a save interceptor for the audit columns, soft delete, tenant and claim-row touch.
 - **Infrastructure:** the Hangfire jobs (posting, SLA, the posting sweep, the idempotency cleanup, the orphan blob sweep) and outside adapters such as Blob storage.
 - **API:** controllers, the error mapping, the Idempotency-Key filter and startup.
-- **Frontend:** an Angular client with one page and one store per screen, standalone OnPush components on signals, and every HTTP call in hand-written typed services over types generated from the API's OpenAPI document. It validates shape and shows hints (the in-force badge, the approval tier, the closure checklist from `status-check`); every business decision is the server's, and a refusal comes back as a 422 mapped onto the form or a banner.
+- **Deployment:** one Azure environment from Bicep (App Service for the API with Hangfire in process, Azure SQL with Entra-only access through a managed identity, Blob storage, Key Vault references for every secret, a static web app for the frontend) and two GitHub Actions workflows: build and test on every pull request and push to main, and a manual deployment that provisions, migrates, grants, deploys and smoke-tests.
+- **Frontend:** an Angular client with one page and one store per screen, standalone OnPush components on signals, and every HTTP call in hand-written typed services over types generated from the API's OpenAPI document. It validates shape and shows hints; every business decision is the server's, and a refusal comes back as a 422 mapped onto the form or a banner.
 
-| Layer | State |
-|---|---|
-| Domain, Application, Persistence, Infrastructure, API | complete, with tests; the rules and contracts of each are in `docs/layers/` |
-| Frontend | complete, with tests: the claims list, the intake form and the claim detail with its five tabs; rules in `docs/layers/frontend.md` |
-| Deployment | not built: no CI/CD pipeline or Azure resources yet; secrets are planned as Key Vault references (README 'Configuration') |
-
-Key choices:
+Each layer's rules and contracts are in `docs/layers/`. Key choices:
 
 - **Entities with behavior, steps behind them:** the engine gives every method the same order and error handling, and a refused change can never half-apply. The cost is one more hop and a generic base.
 - **Follow-ups chained on the outcome:** the order stays visible in the method, and a follow-up cannot refuse, so a condition that could is a rule on the step.
@@ -27,14 +22,14 @@ Key choices:
 - **The reserve component owns its history rows,** and there is no stored balance: the balance is the sum of the approved rows, as the specification describes.
 - **Cross-aggregate effects by event:** a frozen claim closes its components through its state-changed event, so each aggregate guards itself from its own state.
 - **No runtime rule engine:** rules are classes declared in code, visible to review and tests.
-- **Client mirrors, server decides:** the frontend repeats a few constants to give feedback before a request (field lengths, the approval tiers, the 50 MB upload limit and the file type allowlist, all in `core/api/api-limits.ts` and `shared/util/reserve-authority.ts`). A change to one of them on the server must be copied there; a missed copy only changes a hint, because the server still refuses.
+- **Client mirrors, server decides:** the frontend repeats a few constants for feedback before a request (field lengths, the approval tiers, the upload limit and file types); a stale copy only changes a hint, because the server still refuses.
 
 ## Configuration
 
 Settings, secrets and feature switches follow `.claude/CLAUDE.md` 'Configuration'; the settings table and setup steps are in the root `README.md`. Two points are specific to this design:
 
-- The Hangfire dashboard is open to every request when its switch is on, because a page load carries no Bearer token, so enabling it in a shared environment exposes job data to anyone with the URL.
-- `DevAuth:Enabled` serves `POST /api/dev/token`, a simulated sign-in for the configured users. Outside Development it needs `DevAuth:Secret` (16+ characters, a secret kept in Key Vault): the call must send it in the `X-DevAuth-Secret` header, compared as SHA-256 hashes in constant time (so neither the content nor the length leaks), or it answers 403 before any user lookup, so a caller without the code cannot tell which user ids exist; the app refuses to start without it. In Development a missing secret leaves the call open, as before. The frontend asks for the code ("access code") on the first 403 and keeps it in sessionStorage, so the code never ships in the bundle. It guards a live demo against casual use; it is not real authentication, and every holder of the code can sign in as any configured user, a manager included.
+- The Hangfire dashboard is open to every request when its switch is on, because a page load carries no bearer token; it stays off outside development.
+- `POST /api/dev/token` is the simulated sign-in the specification asks for (S:UI-General). Outside Development it needs the access code `DevAuth:Secret` (a Key Vault secret) in `X-DevAuth-Secret`, compared as SHA-256 hashes in constant time before any user lookup, so a caller without it learns nothing; the app does not start without the setting, and the deployment stops before releasing when the vault holds no secret for it. The frontend asks for the code once and keeps it in sessionStorage. It guards a live demo, not production: every holder of the code can sign in as any configured user.
 
 ## Task documents
 
@@ -88,13 +83,13 @@ How the documents are read and carried out where they are ambiguous, silent or i
 | Reversal during payment | allowed; a reserve is independent of the claim state | none | gap |
 | Document aggregate | its own root, frozen with the claim; the size limit, the content-type allowlist and the content signature are Domain rules (the Application reads the first bytes and hands them in on the input); the Application builds the path and talks to storage | S:DOC-MaxSize, S:DOC-MimeAllowlist | mechanism |
 | Blob name | the specification's path with a random upload id before the file name (`{uploadId}_{name}`): a path is unique by construction, so a failed commit or a removed document never blocks a name, and an orphan blob only costs storage | S:BR-D-01 | departure |
-| Lazy-loaded feature modules | each screen is a lazily loaded route file of standalone components; Angular no longer needs NgModules for lazy loading | S:UI-General | reading |
+| Lazy-loaded feature modules | each screen is a lazily loaded route file of standalone components, without NgModules | S:UI-General | reading |
 | Mock authentication | the header's role switcher signs in through the API's dev token route as one of three configured users, so the interceptor sends a real bearer token | S:UI-General | mechanism |
 | Audited events | the specification's fixed list, plus five more types (issue acknowledged, issue waived, limit override changed, reserve component state changed, document removed) kept apart in `AuditEventTypes.Additional`, because a waiver or an override is a significant action (S:BR-A-02); other edits leave their trace in the audit columns | S:AUD-Events | gap |
 | Guarded times and actors | a missing time or actor, or a business time earlier than the one it follows, throws | none | mechanism |
 | Error body | an error without a field goes under the key `General`, set in the API's one error mapper | S:API-ErrorShape | gap |
 | Claim list date range | filters the loss date of the claim | none | gap |
-| Unspecified cases | authentication failures (401 and 403 in the error body), concurrent edits (a 409 in the error body) and idempotency-key replays (the stored success replayed, 409 while running, 422 for another body; a refused request is not stored) are decided in `docs/layers/api.md` 'Errors' and 'Idempotency-Key'; an upload up to 51 MB reaches the Domain's 50 MB rule (a 422), a larger body is refused by the server | none | gap |
+| Unspecified cases | authentication failures, concurrent edits, idempotency-key replays and oversized uploads, decided in `docs/layers/api.md` 'Errors', 'Idempotency-Key' and 'Documents' | none | gap |
 | Reserve request | one request opens or adjusts a component: `componentType` opens a new one (always an Add), `componentId` adds a row to an existing one, exactly one of the two; the specification names a single component field | S:API-POST-reserves | departure |
 
 ### Schema departures from the spec
@@ -273,4 +268,8 @@ IdempotencyKeys: one row per user, key, method and route
 ### AutoMapper 14.0.0 advisory
 
 - AutoMapper is pinned to 14.0.0 in `backend/Directory.Packages.props`, the last release before the commercial licence change. Advisory GHSA-rvv3-g6hj-g44x (denial of service through uncontrolled recursion) affects versions below 15.1.1, and the patched versions are commercial.
-- Accepted risk: exploitation needs a deeply recursive or cyclic object graph reaching a map, and the mapping here is flat entity-to-DTO with input bounded by FluentValidation. Keep DTOs non-recursive and add no self-referencing maps; revisit if the licence position changes.
+- Accepted risk: exploitation needs a deeply recursive or cyclic object graph reaching a map, and the mapping here is flat entity-to-DTO with input bounded by FluentValidation. DTOs stay non-recursive, with no self-referencing maps.
+
+### Signature check depth
+
+- A docx or xlsx file is recognised by its ZIP header only, so any ZIP file declared as one passes the content check.

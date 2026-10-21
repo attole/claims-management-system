@@ -1,7 +1,7 @@
-@description('Name of the key vault the identity may read secrets from.')
+@description('Name of the key vault the principal may read secrets from.')
 param vaultName string
 
-@description('Principal id of the managed identity the web app runs as.')
+@description('Principal id that reads the secrets: the web app identity or the deploy identity.')
 param principalId string
 
 var keyVaultSecretsUserRoleId = '4633458b-17de-408a-b874-0445c86b69e6'

@@ -1,116 +1,125 @@
 # Frontend layer
 
-Rules and contracts of the Angular client in `frontend/`. It talks only to the API described in `docs/layers/api.md`, through one typed service layer. `.claude/CLAUDE.md` holds the short rules and points here; read this file before changing the frontend or reviewing its code. Status: bootstrapped (workspace, theme, app shell, sign-in, HTTP pipeline) with the typed API services, the claims list screen, the intake form and the claim detail screen with its five tabs. The static mockups in `frontend/design/` are the visual reference and are not part of the build.
+Rules and contracts of the Angular client in `frontend/`: three screens over the API in `docs/layers/api.md`, every call through one typed service layer. `.claude/CLAUDE.md` points here; read this file before changing or reviewing the frontend. The mockups in `frontend/design/` are the visual reference and are not part of the build.
 
 ## Stack
 
-- Angular 22 with standalone components, signals, zoneless change detection and the built-in control flow (`@if`, `@for` with `track`). Angular Material 22 (M3) for every control. Reactive Forms, typed and non-nullable, for every form (the specification asks for Reactive Forms; signal forms are not used).
-- TypeScript strict with strict templates. ESLint (`angular-eslint`, `typescript-eslint`) and Prettier at 120 columns. Unit tests on Vitest through the Angular test builder.
-- Commands: `npm --prefix frontend run build`, `npm --prefix frontend test`, `npm --prefix frontend run lint`, `npm --prefix frontend run format:check`, `npm --prefix frontend start` (dev server on 4200).
+- Angular 22: standalone components, signals, zoneless change detection, the built-in control flow (`@if`, `@for` with `track`), `@let`. Angular Material 22 (M3) for every control and the CDK for the clipboard.
+- Reactive Forms, typed and non-nullable, for every form (S:UI-General).
+- date-fns with `@date-fns/utc` for every date, and the date-fns adapter for the Material pickers.
+- TypeScript strict with strict templates; ESLint (`angular-eslint`, `typescript-eslint`); Prettier at 120 columns; Vitest through the Angular test builder.
+- Commands: `npm --prefix frontend run build`, `test`, `lint`, `format:check`, `start` (dev server on 4200), `api:types`.
 
 ## Layout
 
 ```text
 frontend/
-    design/           static mockups, reference only
-    openapi.json      snapshot of the API's OpenAPI document, input of the type generation
+    design/           static mockups
+    openapi.json      the API's OpenAPI document, input of api:types
+    public/           copied to the build root: favicon, staticwebapp.config.json
     src/
         environments/ apiBaseUrl per build
-        styles/       Material theme, design tokens, badges
+        styles/       theme colours, tokens, badges, banners
         app/
-            core/     singletons: api/, auth/, http/, notify/, theme/, layout/
-            shared/   stateless building blocks: ui/, pipes/, validators/, forms/, util/
+            core/     singletons: api/, auth/, dates/, http/, layout/, notify/, theme/
+            shared/   stateless building blocks: forms/, pipes/, ui/, util/, validators/
             features/ one folder per screen: claims-list/, claim-intake/, claim-detail/
 ```
 
-- `core/` holds what exists once (services provided in root, interceptors, the app header). `shared/` holds what is reused and keeps no state. A feature never imports another feature; what two features share moves to `shared/`.
-- Each feature has a route file (`<feature>.routes.ts`, a default export) loaded lazily from `app.routes.ts`. Lazy route files stand in for the specification's lazy-loaded feature modules: there are no NgModules.
+- `core/` holds what exists once (root services, interceptors, the app header); `shared/` holds what two features reuse and keeps no state. A feature never imports another feature.
+- Each feature has a route file (`<feature>.routes.ts`, a default export) loaded lazily from `app.routes.ts`; lazy route files are the feature modules (no NgModules). `claims/new` is declared before `claims/:claimId`.
 
 ## Naming
 
-- File names are kebab-case words; a single dot separates a role word: `claims-list.page.ts`, `claims-list.store.ts`, `claims.service.ts`, `enum-label.pipe.ts`, `auth.interceptor.ts`, `api.model.ts`, `claims-list.routes.ts`. A plain component has no role word (`app-header.ts`, class `AppHeader`), following the current Angular style guide.
-- Class names say the role the same way: `ClaimsListPage`, `ClaimsListStore`, `ClaimsService`, `EnumLabelPipe`. Functional interceptors and guards are camelCase constants (`authInterceptor`).
-- Selectors use the `app-` prefix. A boolean is `isX`, `hasX` or `canX`, as in the backend.
-- Frontend type names describe the payload from the client's side: `WriteResult<T>` (the `{ data, warnings }` envelope of a write), `Warning`, `ErrorBody`, `PagedResult<T>`. Backend type names that only make sense on the server (`CommandResponse`) are not used in the client.
+- File names are kebab-case; one dot separates a role word: `claims-list.page.ts`, `claims-list.store.ts`, `claims.service.ts`, `enum-label.pipe.ts`, `auth.interceptor.ts`, `api.model.ts`, `claim-detail.routes.ts`. A plain component has no role word (`claim-header.ts`, class `ClaimHeader`).
+- Class names carry the same role: `ClaimsListPage`, `ClaimDetailStore`, `ClaimsService`, `EnumLabelPipe`; functional interceptors are camelCase constants (`authInterceptor`).
+- Selectors use the `app-` prefix. A boolean is `isX`, `hasX` or `canX`.
+- Client types name the payload as the client sees it: `WriteResult<T>` (`{ data, warnings }`), `Warning`, `ErrorBody`, `PagedResult<T>`.
 
 ## Components
 
-- Standalone, `ChangeDetectionStrategy.OnPush`, `templateUrl` and `styleUrl` in sibling files. Inputs and outputs are `input()`, `input.required()`, `output()` and `model()`; queries are `viewChild()`. Dependencies come from `inject()`.
-- Zoneless means a template only updates from signals: component state is a signal or a `computed`, never a plain field changed in a callback. Templates do not subscribe and do not use the `async` pipe.
-- A page component (`*.page.ts`) is routed, provides its store and composes presentational components. A presentational component gets data through inputs and reports through outputs; it injects no service.
-- Route parameters bind to inputs (`withComponentInputBinding`), for example `claimId = input.required<string>()` on the detail page.
+- Standalone, `ChangeDetectionStrategy.OnPush`, `templateUrl` and `styleUrl` in sibling files. `input()`, `input.required()`, `output()`, `model()` and `viewChild()`; dependencies by `inject()`.
+- A template updates from signals only: state is a signal or a `computed`, never a field changed in a callback. Templates do not subscribe and do not use the `async` pipe.
+- A page (`*.page.ts`) is routed, provides its store and composes presentational components. A presentational component gets data through inputs, reports through outputs and injects no service.
+- A child that shows data owned elsewhere receives it as an input, because an OnPush child does not see changes made in a sibling: the intake steps get the form value as an input next to the form.
+- Route parameters bind to inputs (`withComponentInputBinding`): `claimId = input.required<string>()`.
+- Dialogs: `confirmWith` (confirm with details), `promptWith` (one required text answer) in `shared/ui/`, and the status-change dialog in the claim detail; each returns an Observable of the answer only.
 
 ## State
 
-- One store per page (`*.store.ts`), provided on the page component, not in root. It holds writable signals for its inputs (filters, page, claim id), `computed` values for derived state and one resource per read keyed by those signals; a mutation calls a service and reloads the affected resource.
-- Root state is limited to the signed-in user, the theme and the loading counter.
-
-- A resource read through `value()` throws while the resource is in error, and goes back to its default value whenever its params change. So a store never exposes `value()` directly: an effect copies each resolved value into a signal of the last resolved page, and the store exposes `computed` values over that signal plus `hasError`, `hasLoaded` and `isFirstLoad` for the template. A new filter or page keeps the shown rows (dimmed) until the answer arrives.
-
-## Screens
-
-- **Claims list** (`features/claims-list/`, S:UI-List, S:UI-Badges). `ClaimsListStore` holds the `ClaimsFilter` in a signal, reads the page with `rxResource` keyed by it and writes the filter to the query string (`replaceUrl`), so a reload or a shared link shows the same list; it reads the query string once, at start. `ClaimsFilterBar` is a presentational form (status chips, loss date range with an order check, cause of loss, handler, search) that emits one `changed` after a 300 ms debounce and only while valid. The page shows the count, a spinner on the first load, an error state with a retry, an empty state with a clear button, the table (cause names from the reference list, status badges, money) and the paginator; a row (click or Enter) opens the claim detail.
-- The handler filter is a select of the known users, not a text search: the API filters by handler id and has no handler name to search (a decision in `docs/ARCHITECTURE.md` 'Decisions on gaps'). The list has no handler column, because the summary rows carry no handler. Search matches the claim number and the client name, as the API does.
-- Values read from the URL are checked before they reach the API: statuses against the known set, dates against `yyyy-MM-dd`, handler and policy ids against the GUID pattern (`core/api/api-ids.ts`), paging against the allowed sizes; anything else is dropped. A page past the end (an old link) moves to the last page.
-- The filter bar emits a change only when it differs from the current filter, and writes the filter back into the form only for fields whose value differs, so text being typed (a trailing space, a half-typed date) is never overwritten.
-- **Intake** (`features/claim-intake/`, S:UI-Intake-Steps, S:UI-Intake-Policy, S:UI-Intake-Parties, S:UI-Intake-Reserve, S:UI-Intake-Submit). One typed form (`intake-form.ts`: `createIntakeForm`, the mapping `toCreateRequest`, the hints `inForce` and `intakeWarnings`) drives a linear three-step `mat-stepper`: policy and loss, parties and risk objects, reserve and review. Each step is a presentational component that gets the form as an input. Next marks the step's groups touched and moves on only when they are valid; a step header is marked complete from the form's state, so a valid step can be reopened from the top.
-- Policy: an autocomplete over `policies/search` (from two characters, after 300 ms), a picked card with the in-force badge, or the Unknown policy switch, which sends the empty id. Loss date and time are one control shown by a datepicker and a timepicker. The cause of loss is an autocomplete that accepts a typed name or code and must match the reference list.
-- Parties and risk objects are added through inline forms and listed as cards with a remove button; a missing claimant blocks creation, a missing risk object is only advised. The optional initial reserve is one Add with its component and amount, shows the authority indicator, and needs a linked policy (a banner links back to step 1). The review step takes the form value as an input, because an OnPush child does not see edits made in another step.
-- The party form (`shared/forms/party-form.ts`) and its inline editor (`shared/ui/party-editor`) are shared by the intake and the claim detail. The editor keeps only the name fields of the chosen type and trims the values before it emits; the parent decides when it opens and closes.
-- Create: warnings (no policy, outside the policy period, no risk object) open a confirm dialog first; the request carries one idempotency key per form, kept across retries after a failure without an answer and renewed after a refusal or a success. A success shows the claim number and opens the detail; a 422 sets the field errors, lists the rest in a banner and returns the stepper to the first invalid step.
-- **Claim detail** (`features/claim-detail/`, S:UI-Detail-Header, S:UI-Detail-Tabs, S:UI-Audit). `ClaimDetailStore` loads the claim by the route's `claimId`, then its audit page; it exposes the claim (an `EMPTY_DETAIL` until loaded), the next statuses from the reference status table and the cause name. The header shows the number (with a copy button on the CDK clipboard), the status badge, policy, client, loss day, cause and handler (names from the dev users; an empty id is "Unassigned" or "Unknown policy"), and a Change status menu with only the allowed next statuses.
-- Change status asks `status-check` first and opens a dialog with its result: a check on another field blocks the change; a check on a field the dialog can fill (`Reason`, `Note`, `IsLiabilityConfirmed`) shows that input as required; warnings are listed as notes. The client keeps no list of which transition needs what: the check decides, and the server decides again on submit.
-- Tabs: Overview (loss event, severity, notes saved with an explicit button and not overwritten by a reload while edited, open validation issues with Acknowledge and Waive, risk objects), Parties (cards with Active or Inactive, Remove after a confirm dialog, the shared party editor) and Audit Log (paged, newest first as the API sends it, user names, "System" for background jobs, read-only), plus Reserves and Documents below.
-- **Reserves** (S:UI-Reserves, A:UI-Reserves-Roles): a balance card per component (approved balance, the sum still pending approval), the approved total and the history newest first (date, type, component, signed amount, approval and GL posting badges, submitter, reviewer). Add reserve opens an inline editor: an open component (sent by its id, with Add, Adjust or Reverse) or a type not open yet (sent by its type, always Add), a signed non-zero amount, a reason and the authority indicator. Approve and Reject show only to a Supervisor or Manager on pending rows; Reject asks for a reason in the shared prompt dialog; Retract shows to the submitter on their pending rows, after a confirm; Retry posting shows on a failed posting. Self-approval and the authority tiers stay the server's decision and come back as a 422 in the banner.
-- **Documents** (S:UI-Documents): the list with type, upload time, uploader and size (`fileSize` pipe), and a Download link that opens the short-lived URL in a new tab. Upload takes a file, an optional type and notes and shows a progress bar; a file type outside the API's allowlist or a file over 50 MB (`ALLOWED_UPLOAD_TYPES`, `MAX_UPLOAD_BYTES` in `api-limits.ts`, mirrored from the Domain rules) is refused before anything is sent. The upload's idempotency key belongs to the file (name, size, last change), and the claim reloads only when the upload is done, not on each progress event. An upload counts apart from the other writes (`isUploading` next to `isSaving`, both counters), so a long upload does not lock the rest of the page; the bar runs without a percent until the size is known. History rows are ordered by submit time, newest first, because the change sequence counts per component.
-- The reserve lists (`RESERVE_COMPONENTS`, `RESERVE_TRANSACTIONS`) live in `shared/forms/reserve-form.ts`, shared with the intake.
-- Every write goes through the store: one idempotency key per action (per party or issue for row actions), kept when a request fails without an answer (so the retry cannot apply twice) and dropped after a refusal (a 422 stores nothing on the server) or a success, which also reloads the claim and the audit page. The store keeps the last loaded claim, so a failed reload leaves the page as it was; an id that is not a GUID shows the error state. A 422 lists its messages in a banner under the header; other failures use the snackbar.
+- One store per page (`*.store.ts`), provided on the page. It holds writable signals for its inputs, `computed` values for derived state and one `rxResource` per read keyed by those signals.
+- A resource throws on `value()` while in error and resets to its default when its params change. A store therefore copies each resolved value into a last-value signal with an effect and exposes `computed` values over it, with `hasError`, `hasLoaded` and `isFirstLoad`. A new filter, page or a failed reload keeps the shown data.
+- Writes go through the store: it calls a service, then reloads the affected resources. `isSaving` and `isUploading` are counters, so parallel writes and a long upload do not clear each other.
+- Root state is the signed-in user, the theme and the loading counter.
 
 ## Services and HTTP
 
-- Only services in `core/api/` call `HttpClient`, one service per resource: `ClaimsService` (list, detail, create, status change and check, notes, handler, policy, loss, audit), `PartiesService`, `RiskObjectsService`, `IssuesService`, `ReservesService`, `DocumentsService`, `PoliciesService` and `ReferenceService`. A service returns typed Observables and builds every URL with `apiUrl(path)`. A write returns the whole `WriteResult` (data and warnings), because the screens show the warnings; a read returns the data or the `PagedResult` as sent.
-- The list filter is a `ClaimsFilter`; empty values are left out of the query string and every selected status repeats as `status`. An upload returns `UploadProgress` events (a percent, then the result). `ReferenceService` caches the cause codes and the status table for the session, and drops a failed load so the next call tries again.
-- A 422 is mapped onto a form by `applyServerErrors(form, body)` in `shared/validators/server-errors.ts`: it sets a `server` error on each control its key names (dotted and indexed paths, any casing) and returns the messages that matched no control, `General` included, for the banner.
-- Interceptors, in this order: `loadingInterceptor` (the global progress bar), `errorInterceptor` (a snackbar for every failure except 422; a body that is not the API's error body is reported by its status code) and `authInterceptor` (adds the bearer token to API calls, never to the dev token call; on a 401 it waits for one shared re-sign-in, `AuthService.refresh()`, however many requests failed, and repeats the request).
-- Idempotency: every write method takes an optional key and sends it with `idempotencyHeaders(key)`; without one it creates a fresh key for that call. A write that the user may repeat (create a claim, submit a reserve, upload) creates its key with `newIdempotencyKey()` when the user starts the action and passes it on every retry of that action. The key is kept after a failure without an answer (the server may have applied it) and replaced after a refusal (`isRefusal` in `core/http/error-body.ts`: a 422 stores nothing on the server) or a success, so a corrected body is never sent under a key the server already holds for another body. Keys are never generated inside an interceptor.
+- Only the services in `core/api/` call `HttpClient`, one per resource: `ClaimsService`, `PartiesService`, `RiskObjectsService`, `IssuesService`, `ReservesService`, `DocumentsService`, `PoliciesService`, `ReferenceService`. They return typed Observables and build URLs with `apiUrl(path)`.
+- A write returns the whole `WriteResult`, because the screens show its warnings; a read returns the data or the `PagedResult` as sent. An upload returns `UploadProgress` events (a percent, then the result). `ReferenceService` caches the cause codes and the status table for the session and drops a failed load.
+- The list filter is a `ClaimsFilter`: empty values stay out of the query string and each status repeats as `status`.
+- Interceptors, in this order: `loadingInterceptor` (the progress bar), `errorInterceptor` (a snackbar for every failure except 422; a body that is not the API's error body is named by its status code), `authInterceptor` (the bearer token on API calls except the dev token call; on a 401 one shared `AuthService.refresh()` and a retry).
+- A 422 is a refusal (`isRefusal` in `core/http/error-body.ts`). `applyServerErrors(form, body)` sets a `server` error on each control its key names (dotted and indexed paths, any casing) and returns the other messages, `General` included, for a banner.
+- Idempotency (S:API-IdempotencyKey): every write method takes an optional key and sends it with `idempotencyHeaders(key)`. A user action creates its key when it starts and reuses it for every retry; the key is kept after a failure without an answer and replaced after a refusal or a success. The claim detail store keeps one key per action (per row for row actions); an upload's key belongs to the file (name, size, last change). Keys are never made in an interceptor.
 
 ## Sign-in
 
-- The mock sign-in uses the API's dev token route: `AuthService.signInAs(user)` posts `{ userId }` to `/api/dev/token` and keeps the token in memory and the user id in sessionStorage. The signed-in user (id, name, role) is taken from the token response, never from the local list, and a sign-in that finishes after a newer one is ignored, so a late 401 retry cannot switch the user back. At startup the app signs in as the stored user, or the handler. The header's role switcher changes the user.
-- A deployed API needs an access code on the dev token call (`X-DevAuth-Secret`, `DevAuth:Secret` in Key Vault). When the call answers 403, `AuthService.needsAccessCode` turns true and the app root asks for the code in the shared prompt dialog; `useAccessCode` keeps it in sessionStorage, signs in again and the page reloads. Locally the API has no secret and nothing is asked. The code is never part of the bundle.
-- The three users in `core/auth/dev-users.ts` must equal `DevAuth:Users` in the API's development settings, or sign-in answers 404.
+- `AuthService.signInAs(user)` posts `{ userId }` to `/api/dev/token` and keeps the token in memory and the user id in sessionStorage. The user (id, name, role) comes from the token response; a sign-in that finishes after a newer one is ignored. At startup the app signs in as the stored user, or the handler; the header's role switcher signs in as another user.
+- With `DevAuth:Secret` set, the token call needs `X-DevAuth-Secret`. A 403 sets `AuthService.needsAccessCode`; the app root asks for the access code with `promptWith`, `useAccessCode` keeps it in sessionStorage, signs in again and reloads the page. The code is never part of the bundle.
+- The users in `core/auth/dev-users.ts` equal `DevAuth:Users` of the development settings; `userName(id)` names them on screen, with "System" for the empty id.
 
 ## API types
 
-- `src/app/core/api/api-schema.ts` is generated from `frontend/openapi.json` with `npm --prefix frontend run api:types` (openapi-typescript, run through `npx` because it pins TypeScript 5 while the workspace uses 6). It is never edited by hand and is excluded from lint, format and the workflow check.
-- `core/api/api.model.ts` is the only file that imports the generated types. It gives them client names, narrows status strings to unions (`ClaimSummary.status` becomes `ClaimStatus`) and drops computed request members (`isNewComponent`). Nested types are taken from the property that holds them (`ClaimDetail['claim']`), because the .NET 9 generator emits duplicate schemas with a `2` suffix for nullable references.
-- Refreshing the snapshot: run the API with Swagger enabled, save `/openapi/v1.json` over `frontend/openapi.json`, run `api:types`, then build; a compile error is a contract change to handle.
+- `core/api/api-schema.ts` is generated from `frontend/openapi.json` by `npm --prefix frontend run api:types` (openapi-typescript through `npx`) and never edited; lint, format and the workflow check skip it.
+- `core/api/api.model.ts` is the only importer of the generated types. It names them for the client, narrows every status and kind string to a union (claim status and severity, issue state and severity, party role and type, reserve approval, posting, component state and type, transaction type, policy status) and drops computed request members. Nested types are taken from the property that holds them (`ClaimDetail['claim']`), because the generator emits suffixed duplicates for nullable references.
+- A contract change: save the API's `/openapi/v1.json` over `frontend/openapi.json`, run `api:types` and build; a compile error marks what to adapt.
 
 ## Forms and validation
 
-- The client validates shape: required fields, maximum lengths equal to the backend field lengths, email format, a loss date not in the future, a description of at least 20 characters, a non-zero amount and at least one claimant before a claim is created. Messages for these live in one map rendered by the `errorMessage` pipe (`shared/validators/error-message.pipe.ts`); the custom validators are in `shared/validators/claim-validators.ts`.
-- Business rules stay on the server. The UI shows hints only (the in-force badge, the authority indicator from the mirrored thresholds in `shared/util/reserve-authority.ts`, the closure checklist from `status-check`) and maps a 422 back onto the form: the error keys match the control paths case-insensitively (`Loss.Description`), and keys that match nothing or `General` go to a banner at the top of the step.
+- The client checks shape only: required fields, the backend field lengths (`FIELD_LENGTHS` in `core/api/api-limits.ts`), email, a loss date not in the future, a description of at least 20 characters, a non-zero amount, at least one claimant, a name for a party of its type. Validators are in `shared/validators/`; every message comes from the `errorMessage` pipe.
+- Business rules are the server's. The UI shows hints only: the in-force badge, the approval tier (`shared/util/reserve-authority.ts`), the closure checklist from `status-check`, and the upload type and size check (`ALLOWED_UPLOAD_TYPES`, `MAX_UPLOAD_BYTES`). These constants mirror the backend and change with it.
+- A form clears what it hides: the party editor keeps only the name fields of the chosen type and trims every value before it emits.
+- Shared form pieces: `shared/forms/party-form.ts` (the party group, roles, types, `partyName`, `trimmedParty`) and `shared/forms/reserve-form.ts` (component and transaction lists); `shared/ui/party-editor` is the inline party form of the intake and the claim detail.
 
 ## Formats
 
-- One date convention on the wire, kept in `core/api/api-dates.ts`, the only place that turns a `Date` into an API value:
-  - a timestamp is an `IsoDateTime`, always sent in UTC (`toIsoDateTime`, for example `2026-10-21T08:30:00.000Z`): loss date, report date;
-  - a calendar date is a `CalendarDate`, `yyyy-MM-dd` (`toCalendarDate`), for values the API binds as dates only: the claim list date filters and the policy period. An empty filter is `NO_DATE` (`''`) and is left out of the query.
-  - The in-force badge compares `calendarDateOf(lossDate)` (the UTC day of the loss) with the policy dates, as the backend does.
-- Date work uses date-fns (with `@date-fns/utc` for UTC days), never hand-built strings; the format patterns live as constants in `api-dates.ts` (`CALENDAR_DATE_FORMAT`, `TIME_FORMAT`, `DATE_TIME_DISPLAY_FORMAT`). Material date and time pickers use the date-fns adapter with the same formats (`provideAppDateAdapter()` in `core/dates/`), so a picker shows and reads `yyyy-MM-dd` and `HH:mm` like every other date on screen.
-- Dates and money are displayed through pipes only: `claimDate` (`'day'` shows the UTC day of a timestamp, the same day the filters and the backend use; `'dateTime'` shows the date and time in the browser's time zone), `money` (two decimals, USD, a minus sign only below half a cent), `enumLabel` (`PendingPayment` becomes "Pending Payment").
-- Every status that crosses the wire is a union in `api.model.ts` (claim, reserve approval and posting, reserve component, policy), never a plain string.
+- `core/api/api-dates.ts` is the only place that turns a `Date` into an API value: a timestamp is an `IsoDateTime` in UTC (`toIsoDateTime`), a calendar date is a `CalendarDate` `yyyy-MM-dd` (`toCalendarDate`); an empty filter is `NO_DATE`.
+- Patterns are constants there (`CALENDAR_DATE_FORMAT`, `TIME_FORMAT`, `DATE_TIME_DISPLAY_FORMAT`); `provideAppDateAdapter()` in `core/dates/` gives the Material date and time pickers the same formats.
+- The in-force badge compares `calendarDateOf(lossDate)`, the UTC day of the loss, with the policy dates, as the backend does.
+- Display goes through pipes only: `claimDate` (`'day'` the UTC day, `'dateTime'` local date and time), `money` (USD, two decimals), `enumLabel` (`PendingPayment` reads "Pending Payment"), `fileSize`.
 
 ## Styles
 
-- `styles.scss` applies the Material theme with `theme-type: color-scheme`, so one theme serves dark (the default) and light; `ThemeService` switches `data-theme` on `<html>` and remembers the choice. The custom palette in `styles/_theme-colors.scss` is generated by the Material `theme-color` schematic.
-- `styles/_tokens.scss` holds the design tokens as CSS variables with `light-dark()` values (surfaces, text, borders, the seven status hues of the specification, gaps). Component styles use these variables and Material system variables (`--mat-sys-*`); a hex colour in a component style is a review finding.
-- Badges are the tinted pills of the design: `.badge` with a modifier per status or tone (`badge--pending-payment`, `badge--warn`).
-- Material overrides use the official mixins (`mat.button-overrides`, `mat.icon-button-overrides`, `mat.snack-bar-overrides`), never `::ng-deep`.
+- `styles.scss` applies the Material theme with `theme-type: color-scheme`: one theme for dark (the default) and light; `ThemeService` sets `data-theme` on `<html>` and remembers the choice. `styles/_theme-colors.scss` is generated by the Material `theme-color` schematic.
+- `styles/_tokens.scss` holds the design tokens as CSS variables with `light-dark()` values: surfaces, text, borders, the seven status hues, gaps. Component styles use these and the Material `--mat-sys-*` variables; a hex colour in a component style is a review finding.
+- Global classes: `.badge` with a modifier per status or tone (`badge--pending-payment`, `badge--warn`), `.banner` with a tone (`banner--bad`).
+- Material overrides use the official override mixins, never `::ng-deep`.
+
+## Screens
+
+- **Claims list** (`features/claims-list/`, S:UI-List, S:UI-Badges): `ClaimsListStore` keeps the `ClaimsFilter` in a signal and in the query string (`replaceUrl`), so a reload or a link shows the same list; values read from the URL are checked (statuses, `yyyy-MM-dd` dates, GUIDs, page sizes) and a page past the end moves to the last page. `ClaimsFilterBar` emits a valid, changed filter after 300 ms. The handler filter is a select of the known users, because the API filters by handler id. A row opens the claim detail.
+- **Intake** (`features/claim-intake/`, S:UI-Intake-Steps, S:UI-Intake-Policy, S:UI-Intake-Parties, S:UI-Intake-Reserve, S:UI-Intake-Submit): one typed form (`intake-form.ts`) drives a linear three-step `mat-stepper`; Next advances only when the step is valid.
+    - Policy and loss: a policy search (two characters, 300 ms), the picked policy with its in-force badge or the Unknown policy switch; loss date and time on one control; the cause of loss matched against the reference list.
+    - Parties and risk objects: inline forms and cards; a missing claimant blocks creation, a missing risk object is advised.
+    - Reserve and review: an optional initial reserve with the approval tier, which needs a linked policy; the review of every value.
+    - Create: warnings are confirmed in a dialog first; a success opens the claim with its number in a snackbar; a 422 marks the fields, lists the rest and returns to the first invalid step.
+- **Claim detail** (`features/claim-detail/`, S:UI-Detail-Header, S:UI-Detail-Tabs, S:UI-Reserves, S:UI-Documents, S:UI-Audit, A:UI-Reserves-Roles): `ClaimDetailStore` loads the claim, then its audit page; an id that is not a GUID is the error state.
+    - Header: number with a copy button, status badge, policy, client, loss day, cause, handler, and a Change status menu with the allowed next statuses. Changing status asks `status-check` and shows its findings in a dialog: a finding on another field blocks, a finding on `Reason`, `Note` or `IsLiabilityConfirmed` makes that input required, warnings are notes; the server decides again on submit.
+    - Overview: loss event, severity, notes (saved with a button and kept through reloads while edited), open validation issues with Acknowledge and Waive, risk objects.
+    - Parties: cards with their state, Remove after a confirmation, the shared party editor.
+    - Reserves: a balance card per component with its pending sum, the approved total, the history newest first by submit time, and an inline editor that adjusts an open component or opens a new type with an Add. Approve and Reject show to a supervisor or manager on pending rows (Reject asks for a reason), Retract to the submitter, Retry posting on a failed posting.
+    - Documents: the list with a Download link opening in a new tab, and an upload with progress (indeterminate until the size is known).
+    - Audit Log: paged, read-only, with user names.
+    - A refusal lists its messages in a banner under the header; other failures use the snackbar.
+
+## Provides and expects
+
+- **Provides:** the three screens of the specification (S:UI-List, S:UI-Intake-Steps, S:UI-Detail-Tabs) and the mock sign-in with the role switcher (S:UI-General).
+- **Provides to the deployment** (`docs/layers/deployment.md`): a production build in `dist/claims-frontend/browser`; `src/environments/environment.ts` holding the literal line `apiBaseUrl: '/api'`, which the pipeline replaces with the API's URL; `public/staticwebapp.config.json`, which rewrites every route to `index.html`.
+- **Expects from the API:** the routes, bodies and error body of `docs/layers/api.md`; enums as names; the `{ data, warnings }` envelope on writes; the Idempotency-Key filter; `status-check` findings with their field; the dev token route with its access code; CORS for `http://localhost:4200` and the deployed origin.
 
 ## Tests
 
-- One spec per source file, next to it (`auth.service.spec.ts` beside `auth.service.ts`); the workflow check enforces the mirror.
-- A test name reads as condition and result (`'on a 401 signs in again once and repeats the request with the new token'`), arranged, acted and asserted in that order.
-- The rules a spec covers ride on its `describe` name in parentheses, as the backend's `Rule` traits do; the auth interceptor spec, for example, is described as `authInterceptor (S:UI-General, A:UI-General)`. spec-check reads them there.
-- Services and interceptors are tested with `HttpTestingController` (URL, method, body, headers, the unwrapped result); validators, pipes and stores as plain classes; components through `TestBed` with their inputs and the rendered DOM. HTTP is never called for real.
+- One spec beside each source file (`auth.service.spec.ts` beside `auth.service.ts`); the workflow check fails a spec without its source.
+- A test name reads as condition and result, arranged, acted and asserted in that order; each test fails when the behaviour it names breaks.
+- The rules a spec covers are in its `describe` name in parentheses (`authInterceptor (S:UI-General, A:UI-General)`); spec-check reads them there.
+- Services and interceptors are tested with `HttpTestingController` (URL, method, body, headers, result); validators, pipes and stores as classes; components through `TestBed` with their inputs and the rendered DOM; dialogs through `MatDialog` with the dialog closed before the test ends. HTTP is never called for real; a resource read is settled with a microtask and `TestBed.tick()` before the next expected request.

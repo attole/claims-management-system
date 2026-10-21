@@ -2,13 +2,13 @@
 
 Claims handling for a policy administration system, built end to end: a .NET 9 backend (Clean Architecture, CQRS) and an Angular frontend.
 
-Status: the backend (Domain, Application, Persistence, Infrastructure and API) and the frontend (claims list, intake form, claim detail with its five tabs) are built and tested. Not yet done: the CI/CD pipeline and the Azure deployment.
+It covers claim intake, the claim lifecycle, parties, reserves with tiered approval and a simulated GL posting, documents in Blob storage, the audit log and background jobs, behind three screens: the claims list, the intake form and the claim detail.
 
 ## Documentation
 
 - `docs/ARCHITECTURE.md`: the design overview, the decisions and the reasons.
 - `docs/CODING-STANDARDS.md`: code style, naming and tests.
-- `docs/layers/`: the rules and contracts of each backend layer, and `frontend.md` for the Angular client.
+- `docs/layers/`: the rules and contracts of each backend layer, `frontend.md` for the Angular client and `deployment.md` for Azure and the pipelines.
 - `docs/AI-WORKFLOW.md`: how AI is used in this project.
 - `frontend/design/`: static HTML mockups of the three screens, the visual reference (not part of the build).
 
@@ -30,7 +30,7 @@ The tests in `ClaimsModule.Persistence.SqlServerTests` and `ClaimsModule.API.Tes
 
 ## Run locally
 
-1. Create and seed the database. The app does not migrate at startup. From the `backend` folder run `dotnet tool restore`, then `dotnet dotnet-ef database update --project src/ClaimsModule.Persistence` (Hangfire creates its own tables later). It targets LocalDB; set `CLAIMS_DB_CONNECTION` to use another server.
+1. Create and seed the database. The app does not migrate at startup. From the `backend` folder run `dotnet tool restore`, then `dotnet dotnet-ef database update --project src/ClaimsModule.Persistence` (Hangfire creates its own tables on first start). It targets LocalDB; set `CLAIMS_DB_CONNECTION` to use another server.
 2. Set the two signing keys (32 or more characters, any test values locally), one for the bearer token and one for the signed local download links:
     - `dotnet user-secrets set "Jwt:SigningKey" "<32+ character test value>" --project backend/src/ClaimsModule.API`
     - `dotnet user-secrets set "LocalSigningKey" "<32+ character test value>" --project backend/src/ClaimsModule.API`
@@ -99,7 +99,7 @@ Required settings are validated at startup; a missing one stops the app and name
 | `Hangfire:BlobSweep:MinimumAge` (optional, default `1.00:00:00`, must be positive) | `appsettings.json` | app settings |
 | `Hangfire:BlobSweep:IntervalHours` (optional, default 12; 1, 2, 3, 4, 6, 8 or 12) | `appsettings.json` | app settings |
 
-Feature switches are booleans that default to false and do not depend on the environment; `appsettings.Development.json` turns on the first three; the blob sweep deletes blobs, so it stays off until set.
+Feature switches are booleans that default to false and do not depend on the environment; `appsettings.Development.json` turns on the first three; the blob sweep deletes blobs and is turned on only by an explicit setting.
 
 | Switch | Effect when true |
 |---|---|
@@ -107,3 +107,7 @@ Feature switches are booleans that default to false and do not depend on the env
 | `Hangfire:Dashboard:Enabled` | mounts the Hangfire dashboard, open to every request |
 | `DevAuth:Enabled` | serves `POST /api/dev/token`, a simulated sign-in that issues a token for a configured user; with `DevAuth:Secret` set, the call must send it as `X-DevAuth-Secret` |
 | `Hangfire:BlobSweep:Enabled` | schedules the job that deletes stored blobs no document refers to |
+
+## Deployment
+
+The demo runs on Azure: the API on App Service, the frontend on a static web app, Azure SQL, Blob storage and Key Vault, all from `infra/main.bicep`. `infra/bootstrap.md` holds the one-time setup (deploy identity, GitHub environment, the JWT key and the access code in the vault); after it, the `Deployment` workflow (manual) builds, tests, provisions, migrates, deploys the API and the frontend, and smoke-tests the API. Reviewers sign in with the access code from the vault. `docs/layers/deployment.md` has the details.

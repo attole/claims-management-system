@@ -42,6 +42,9 @@ param isDevAuthEnabled bool = true
 @description('Name of the Key Vault secret that holds the JWT signing key; set by the bootstrap runbook.')
 param jwtSecretName string = 'jwt-signing-key'
 
+@description('Name of the Key Vault secret that holds the access code of the dev sign-in; set by the bootstrap runbook.')
+param devAuthSecretName string = 'devauth-secret'
+
 var baseName = '${namePrefix}-${environmentName}'
 var suffix = take(uniqueString(resourceGroup().id), 6)
 var tags = {
@@ -143,6 +146,7 @@ var devAuthSettingsPerUser = [
 
 var devAuthSettings = concat([
   { name: 'DevAuth__OrganisationId', value: devAuthOrganisationId }
+  { name: 'DevAuth__Secret', value: '@Microsoft.KeyVault(SecretUri=${keyVault.outputs.uri}secrets/${devAuthSecretName}/)' }
 ], flatten(devAuthSettingsPerUser))
 
 var appSettings = concat(platformSettings, wiringSettings, featureSettings, devAuthSettings)
@@ -169,6 +173,14 @@ module roles 'modules/roles.bicep' = {
   }
 }
 
+module deployRoles 'modules/roles.bicep' = {
+  name: 'roles-deploy'
+  params: {
+    vaultName: keyVault.outputs.name
+    principalId: sqlAdminObjectId
+  }
+}
+
 output resourceGroupName string = resourceGroup().name
 output webAppName string = appService.outputs.name
 output webAppHostName string = appService.outputs.defaultHostName
@@ -180,3 +192,4 @@ output databaseName string = sql.outputs.databaseName
 output keyVaultName string = keyVault.outputs.name
 output staticWebAppName string = staticWebApp.outputs.name
 output staticWebAppHostName string = staticWebApp.outputs.defaultHostname
+output devAuthSecretName string = devAuthSecretName

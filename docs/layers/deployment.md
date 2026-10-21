@@ -1,0 +1,91 @@
+# Deployment layer
+
+Rules and contracts of the Azure environment and the GitHub Actions pipelines: `infra/` (Bicep, SQL scripts, the bootstrap runbook) and `.github/workflows/`. `.claude/CLAUDE.md` points here; read this file before changing either. Every Azure command and every deployment run asks first (CLAUDE.md 'Permissions model').
+
+## Layout
+
+```text
+infra/
+    main.bicep            resource group scope; composes the modules, builds the app settings, outputs names only
+    demo.bicepparam       the demo environment: region, SKUs, switches, dev users; no secrets
+    modules/              one resource family each: identity, monitoring, storage, keyvault, sql, staticwebapp, appservice, roles
+    sql/                  grant-app-user.sql, verify-app-user.sql
+    bootstrap.md          the one-time manual runbook and the teardown
+.github/workflows/
+    build-and-test.yml    every pull request and push to main; also called by the deployment
+    deployment.yml        manual only (workflow_dispatch), environment demo
+```
+
+- One environment, `demo`, in one resource group (`rg-claims-demo`, Poland Central; the static web app in West Europe). Names are `<kind>-claims-demo-<suffix>` (the storage account, which allows no hyphens, is `stclaimsdemo<suffix>`), the suffix taken from the resource group id; every resource carries the `application` and `environment` tags.
+- Outputs are names and hostnames only; no secret is ever a parameter or an output.
+
+## Azure resources
+
+- **API:** App Service plan Linux B1 and one web app (`DOTNETCORE|9.0`): Always On (Hangfire runs in the process), HTTPS only, TLS 1.2, FTP off, no ARR affinity, health check on `/health/ready`, diagnostics to Log Analytics.
+- **Identity:** a user-assigned managed identity for the web app. It is the database user and reads Key Vault; its client id is an ARM property, so the pipeline creates the database user without Microsoft Graph.
+- **Database:** Azure SQL logical server with Entra-only authentication (no SQL password exists) and one Basic database; the deploy identity is the Entra administrator. The firewall allows Azure services; the pipeline opens a rule for its runner and closes it at the end.
+- **Storage:** StorageV2 Standard LRS, TLS 1.2, no public blob access, the private container `claim-documents`. Downloads are SAS links straight from the blob (S:BR-D-02).
+- **Key Vault:** RBAC mode, soft-delete retention 7 days. Secrets: `jwt-signing-key` and `devauth-secret` (set by the bootstrap runbook), `storage-connection-string` (written by the template from the account key). The web app identity and the deploy identity hold Key Vault Secrets User.
+- **Frontend:** a Free static web app serving the Angular build; `staticwebapp.config.json` rewrites every route to `index.html`.
+- **Monitoring:** a Log Analytics workspace (30 days) receiving the web app's logs.
+
+## Settings and secrets
+
+The template writes every app setting; the README 'Configuration' table lists what each one means.
+
+| Setting | Value |
+|---|---|
+| `ASPNETCORE_ENVIRONMENT`, `ASPNETCORE_FORWARDEDHEADERS_ENABLED` | `Production`, `true` |
+| `Jwt__SigningKey`, `AzureConnectionString`, `DevAuth__Secret` | Key Vault references, resolved by the web app identity at start |
+| `ConnectionStrings__ClaimsDb` | the server with `Authentication=Active Directory Managed Identity` and the identity's client id; EF Core and Hangfire share it |
+| `Cors__AllowedOrigins__0` | the static web app's `https://` origin |
+| `StorageProvider` | `AzureBlob` |
+| `Swagger__Enabled`, `DevAuth__Enabled` | `true` |
+| `Hangfire__Dashboard__Enabled`, `Hangfire__BlobSweep__Enabled` | `false` |
+| `DevAuth__OrganisationId`, `DevAuth__Users__N__Id`, `Name`, `Role` | the seeded organisation and the three users of `demo.bicepparam` |
+
+- A Key Vault reference is resolved when the app starts, so a changed secret takes effect after a restart.
+- A missing app setting stops the app at startup and names the key, but a reference to a missing secret reaches the app as the reference text itself, which passes the length checks. The pipeline therefore reads the access code from the vault before it migrates or deploys anything, and stops when the secret is missing.
+- The frontend is built with the API's absolute URL written into `environment.ts` by the pipeline; the bundle holds no secret.
+
+## Database access
+
+- Migrations run in the pipeline from an EF migration bundle, never at app start, signed in as the deploy identity. A migration must stay compatible with the running release for the minutes between the migration and the code deployment.
+- `grant-app-user.sql` (idempotent) creates the web app's database user by its identity's SID and adds it to `db_datareader`, `db_datawriter`, `db_ddladmin` (Hangfire creates its own tables) and `claims_app`, whose deny on update and delete of `ClaimAuditLog` keeps the audit log append-only (S:AUD-NoUpdateDelete).
+- `verify-app-user.sql` fails the run unless that user can read and insert audit rows and can neither update nor delete them.
+
+## Pipelines
+
+- **Build and Test:** two jobs. Frontend: `npm ci`, lint, format check, tests, build (Node 24). Backend: restore, Release build, tests against a SQL Server 2022 service container (`CLAIMS_TEST_SQLSERVER` set, so the SQL Server, API and Hangfire tests run instead of skipping), then the published API and the self-contained linux-x64 migration bundle as the artifacts `api` and `database`. The deployed API and migration bundle are the tested bytes; the frontend is rebuilt in the deployment with the API's URL.
+- **Deployment:** runs Build and Test, then one job in the GitHub environment `demo` (main only, a required reviewer), signed in to Azure by OIDC with a federated credential bound to that environment. Steps: what-if and create from `demo.bicepparam`; the access code read from Key Vault and masked; runner firewall rule; migrations (retried for firewall propagation); grant and verify scripts; zip deploy of the API and a restart; the smoke test; the frontend build against the API's URL and its upload to the static web app; the firewall rule removed in an always step.
+- **Smoke test:** `/health/ready` answers 200 within five minutes, the OpenAPI document answers 200, the dev token call with `X-DevAuth-Secret` returns a token and `GET /api/claims` answers 200 with it. A failure stops the run; there is no automatic rollback (one instance, no slot).
+- Actions are pinned to commit SHAs, workflow permissions are `contents: read` (plus `id-token: write` on the deploy job), a deployment never cancels another, and a superseded build is cancelled.
+
+## Bootstrap and teardown
+
+`infra/bootstrap.md` holds the one-time steps the pipeline cannot do for itself, run by hand after `az login`:
+
+1. Check the providers and the region's services and quota.
+2. Create the resource group.
+3. Create the deploy identity: an app registration with the federated credential for `repo:attole/claims-management-system:environment:demo`, Contributor and Role Based Access Control Administrator on the resource group.
+4. Create the GitHub environment `demo` and its variables (`AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_RESOURCE_GROUP`, `SQL_ADMIN_OBJECT_ID`, `SQL_ADMIN_LOGIN`); ids only, no secrets.
+5. Provision once from the same template.
+6. Set `jwt-signing-key` and `devauth-secret` in the vault; give the reviewers the access code.
+7. Run the deployment workflow.
+
+Teardown deletes the Log Analytics workspace with force, the resource group, purges the soft-deleted vault and deletes the app registration, so a rebuild can reuse the names.
+
+## Accepted trade-offs
+
+- The deploy identity administers the database and reads the vault's secrets.
+- The web app's database user can change the schema (`db_ddladmin`), still without update or delete on the audit log.
+- SQL, storage and Key Vault accept public connections, protected by identity, keys and the firewall rather than network isolation.
+- The dev sign-in is on behind the access code; every holder of the code can sign in as any configured user, on fake data.
+- The API reads the storage account key, which reaches the whole account.
+
+## Provides and expects
+
+- **Provides:** the public demo (the static web app and the API with Swagger), the managed identity as the database user and secret reader, the Key Vault references, the database role membership, and a tested artifact per run.
+- **Expects from the API:** `/health/ready` reachable without a token, forwarded headers honoured, settings validated at startup (a missing setting stops the app and names the key), the dev token route with `X-DevAuth-Secret` (`docs/layers/api.md`).
+- **Expects from Persistence:** migrations runnable as a bundle, the `claims_app` role from the migrations and the seeded organisation of `DevAuth__OrganisationId` (`docs/layers/persistence.md`).
+- **Expects from the frontend:** the deployment contract in `docs/layers/frontend.md` 'Provides and expects': the build output folder, the `apiBaseUrl` line the pipeline replaces and `public/staticwebapp.config.json`.

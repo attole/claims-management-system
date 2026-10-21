@@ -4,7 +4,7 @@ Rules for Claude Code in this repository. Self-contained. Skills cite its sectio
 
 ## Project
 
-End-to-end vertical slice of a claims management system for a PAS (policy administration system). Monorepo: `backend/` (.NET), `frontend/` (Angular), root `README.md`, docs in `docs/` (`ARCHITECTURE.md`, `CODING-STANDARDS.md`, `AI-WORKFLOW.md`, and `layers/` with one file per backend layer and one for the frontend).
+End-to-end vertical slice of a claims management system for a PAS (policy administration system). Monorepo: `backend/` (.NET), `frontend/` (Angular), root `README.md`, docs in `docs/` (`ARCHITECTURE.md`, `CODING-STANDARDS.md`, `AI-WORKFLOW.md`, and `layers/` with one file per backend layer, one for the frontend and one for the deployment); `infra/` (Bicep, SQL scripts, the bootstrap runbook) and `.github/workflows/` (build and test, deployment).
 
 ### Stack
 
@@ -24,7 +24,7 @@ Clean Architecture, exactly these backend projects:
 
 CQRS through MediatR: state changes are Commands, reads are Queries. Significant transitions raise domain events; the Unit of Work (Persistence) saves and dispatches them. `docs/ARCHITECTURE.md` holds the reasons and is updated as decisions change; this file holds the rules.
 
-Each layer has a file in `docs/layers/` (`domain.md`, `application.md`, `persistence.md`, `infrastructure.md`, `api.md`, and `frontend.md` for the Angular client) with its rules and its contracts with the neighbouring layers (what it provides and what it expects). Read the file of the layer you change or review before you start; a rule or an obligation that changes there is updated in the same pack.
+Each layer has a file in `docs/layers/` (`domain.md`, `application.md`, `persistence.md`, `infrastructure.md`, `api.md`, `frontend.md` for the Angular client and `deployment.md` for Azure and the pipelines) with its rules and its contracts with the neighbouring layers (what it provides and what it expects). Read the file of the layer you change or review before you start; a rule or an obligation that changes there is updated in the same pack.
 
 ### Domain sources
 

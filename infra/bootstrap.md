@@ -2,7 +2,7 @@
 
 The one-time steps that create the resource group, the deploy identity and the secrets before the deployment workflow can take over. Run them yourself from the repository root in a Bash shell after `az login`. Nothing here is run by the build or the deployment workflow.
 
-What the deployment workflow does on every run (not part of this runbook): provisions the resources from `infra/main.bicep`, applies the migrations, creates the web app's database user with `infra/sql/grant-app-user.sql`, deploys the API and smoke-tests it.
+What the deployment workflow does on every run (not part of this runbook): provisions the resources from `infra/main.bicep`, checks the access code is in the vault, applies the migrations, creates the web app's database user with `infra/sql/grant-app-user.sql`, deploys the API and smoke-tests it, then builds the frontend against the API and uploads it to the static web app.
 
 -
 
@@ -16,7 +16,7 @@ GITHUB_REPO=attole/claims-management-system
 DEPLOY_APP_NAME=claims-github-deploy
 ```
 
-The ids this runbook produces are not secrets. The two real secrets (the JWT signing key and the storage account key) never appear in a command line, a GitHub variable or a log.
+The ids this runbook produces are not secrets. There are three secrets. The JWT signing key and the storage account key never appear in a command line, a GitHub variable or a log. The dev sign-in access code is read by the workflow (masked in its logs) and given to the reviewers on purpose.
 
 -
 
@@ -77,7 +77,7 @@ az role assignment create --assignee-object-id "$SP_OBJECT_ID" --assignee-princi
 ```
 
 - The federated credential accepts a GitHub token only for this repository and only when the job runs in the GitHub environment named `demo`. A pull request from a fork cannot obtain it.
-- Contributor creates and changes the resources. Contributor cannot create role assignments, so the second role is needed for the template's one assignment (the web app reading Key Vault secrets). Both roles are scoped to the resource group, not the subscription.
+- Contributor creates and changes the resources. Contributor cannot create role assignments, so the second role is needed for the template's two assignments (the web app identity and the deploy identity reading Key Vault secrets). Both roles are scoped to the resource group, not the subscription.
 - The same identity becomes the SQL server's Entra administrator through the template, so the workflow can run the migrations without a SQL password. This gives the pipeline full control of the database; it is accepted for a demo.
 
 -
@@ -120,9 +120,9 @@ Read the what-if output before the create. The outputs give the web app, the SQL
 
 -
 
-## 6. JWT signing key
+## 6. JWT signing key and dev sign-in access code
 
-The API refuses to start without `Jwt:SigningKey` (32 or more characters). It lives only in Key Vault; the web app reads it through a Key Vault reference.
+The API needs `Jwt:SigningKey` (32 or more characters) and, with the dev sign-in on, `DevAuth:Secret` (16 or more characters). Both live only in Key Vault; the web app reads them through Key Vault references. A reference to a secret that does not exist reaches the app as the reference text, so the app would start with a wrong value; the deployment workflow reads the access code first and stops before releasing when it is missing.
 
 ```bash
 VAULT=$(az deployment group show --resource-group "$RESOURCE_GROUP" --name first-provisioning \
@@ -137,9 +137,16 @@ KEY_FILE=$(mktemp)
 openssl rand -base64 48 | tr -d '\n' > "$KEY_FILE"
 az keyvault secret set --vault-name "$VAULT" --name jwt-signing-key --file "$KEY_FILE" --encoding utf-8
 rm "$KEY_FILE"
+
+CODE_FILE=$(mktemp)
+openssl rand -base64 24 | tr -d '\n/+=' > "$CODE_FILE"
+az keyvault secret set --vault-name "$VAULT" --name devauth-secret --file "$CODE_FILE" --encoding utf-8
+rm "$CODE_FILE"
 ```
 
-The role assignment can take a few minutes to take effect; repeat the `secret set` if it answers forbidden. To rotate the key later, repeat the last three commands and restart the web app (`az webapp restart`); every issued token stops validating.
+The role assignment can take a few minutes to take effect; repeat the `secret set` if it answers forbidden. To rotate either value, repeat its commands and restart the web app (`az webapp restart`); a new JWT key invalidates every issued token, a new access code is asked again by the frontend.
+
+Give the reviewers the access code (`az keyvault secret show --vault-name "$VAULT" --name devauth-secret --query value -o tsv`); the frontend asks for it once per browser session.
 
 The storage connection string is already in the vault: the template wrote it with `listKeys()`, so no one handles the account key.
 
@@ -147,7 +154,7 @@ The storage connection string is already in the vault: the template wrote it wit
 
 ## 7. First deployment
 
-Run the deployment workflow (Pack 5) from the Actions tab or with `gh workflow run`. Its order is provisioning (a no-op after step 5), migrations, the grant of the web app's database user, the API deployment with a restart, and the smoke test. The restart is what makes the app pick up the JWT secret and the role assignment, because Key Vault references are resolved when the app starts.
+Run the deployment workflow from the Actions tab or with `gh workflow run deployment.yml`. Its order is provisioning (a no-op after step 5), migrations, the grant of the web app's database user, the API deployment with a restart, the smoke test, and the frontend build and upload to the static web app. The restart is what makes the app pick up the secrets and the role assignment, because Key Vault references are resolved when the app starts.
 
 The web app runs as a user-assigned managed identity created by the template, not as a system-assigned one. Its client id is readable from Azure Resource Manager, which the workflow needs to create the database user without any Microsoft Graph permission, and it survives a recreated web app, so the database user stays valid.
 
@@ -159,7 +166,8 @@ The database steps need the SQL administrator (the deploy identity), so they can
 
 - `GET https://<webAppHostName>/health/ready` answers 200.
 - `GET https://<webAppHostName>/openapi/v1.json` and `/swagger` answer 200.
-- `POST /api/dev/token` with a user id from `infra/demo.bicepparam` returns a token, and `GET /api/claims` with it answers 200.
+- `POST /api/dev/token` with a user id from `infra/demo.bicepparam` and the header `X-DevAuth-Secret: <access code>` returns a token, and `GET /api/claims` with it answers 200.
+- `https://<staticWebAppHostName>` opens the claims list after the access code is entered.
 - `infra/sql/verify-app-user.sql` (run by the workflow with the managed identity's name) proves the web app's database user can read and append audit rows but cannot update or delete them.
 
 -
@@ -186,5 +194,6 @@ az ad app delete --id "$APP_ID"
 - The deploy identity is the SQL administrator, so the pipeline can administer the database.
 - The web app's database user is in `db_ddladmin` because Hangfire creates its own tables on first start; the audit table's update and delete deny still holds, and the verify script proves it, but a compromised app could change the schema.
 - The SQL firewall allows Azure services and the vault and storage accept public connections, protected by identity and keys, not by network isolation.
-- The dev sign-in is on, so anyone with the API URL can obtain a token for any of the three roles. The data is fake, the Hangfire dashboard stays off and the repository documents the exception.
+- The dev sign-in is on behind the access code, so anyone who holds the code can obtain a token for any of the three roles. The data is fake, the Hangfire dashboard stays off and the repository documents the exception.
+- The deploy identity can read the vault's secrets, which the smoke test needs for the access code.
 - The API reads the storage account key, which reaches the whole account. Identity-based access would need user-delegation links, a code change.

@@ -32,7 +32,7 @@ Spawn prompt:
 Perform a code review. Scope: <uncommitted (default) | branch <name> vs origin/<base> | PR>.
 Areas changed: <backend | frontend | both>. Follow the Procedure subsections Collect, Contract review,
 Per-file review and Confidence filter, and the Output section, of .claude/skills/code-review/SKILL.md.
-Read .claude/CLAUDE.md in full, docs/CODING-STANDARDS.md, and the file in docs/layers/ of each changed layer (docs/layers/domain.md, docs/layers/application.md, docs/layers/persistence.md, docs/layers/infrastructure.md, docs/layers/api.md or docs/layers/frontend.md). Read-only: no checkout, no git
+Read .claude/CLAUDE.md in full, docs/CODING-STANDARDS.md, and the file in docs/layers/ of each changed layer (docs/layers/domain.md, docs/layers/application.md, docs/layers/persistence.md, docs/layers/infrastructure.md, docs/layers/api.md, docs/layers/frontend.md or docs/layers/deployment.md). Read-only: no checkout, no git
 writes, no file edits. Return only findings.
 ```
 
@@ -52,7 +52,7 @@ git ls-files --others --exclude-standard   # new untracked files
 git diff --name-only origin/<base>...<tip> # branch scope
 ```
 
-Filter to `.cs`, `.csproj`, `.ts`, `.html`, `.scss`, `.json` (not lock files, `bin/`, `obj/`, `node_modules/`, `dist/`, `.claude/`, or `docs/`). Files under `Migrations/` are listed but skimmed for hand edits only. If nothing matches after the fallback, say so and stop.
+Filter to `.cs`, `.csproj`, `.ts`, `.html`, `.scss`, `.json`, `.bicep`, `.bicepparam`, `.sql`, `.yml` (not lock files, `bin/`, `obj/`, `node_modules/`, `dist/`, `.claude/`, or `docs/`). Files under `Migrations/` are listed but skimmed for hand edits only. If nothing matches after the fallback, say so and stop.
 
 ### Contract review
 
