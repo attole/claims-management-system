@@ -4,7 +4,7 @@ public sealed class SqlServerFactAttribute : FactAttribute
 {
     public SqlServerFactAttribute()
     {
-        if (!SqlServerFixture.IsAvailable)
+        if (!SqlServerFixture.IsAvailable && !SqlServerFixture.IsRequired)
         {
             Skip = "SQL Server is not reachable (set CLAIMS_TEST_SQLSERVER or start LocalDB).";
         }

@@ -1,6 +1,8 @@
 using ClaimsModule.Infrastructure.BackgroundJobs.Recurring;
+using ClaimsModule.Infrastructure.Tests.Support.BackgroundJobs;
 using Hangfire;
 using Hangfire.Common;
+using Hangfire.Storage;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -8,8 +10,24 @@ using Microsoft.Extensions.Options;
 
 namespace ClaimsModule.Infrastructure.Tests.BackgroundJobs.Recurring;
 
-public sealed class RecurringJobsServiceExtensionsTests
+[Collection(HangfireCollection.Name)]
+public sealed class RecurringJobsServiceExtensionsTests : IAsyncLifetime
 {
+    private readonly List<HangfireTestHost> _databases = [];
+
+    public Task InitializeAsync()
+    {
+        return Task.CompletedTask;
+    }
+
+    public async Task DisposeAsync()
+    {
+        foreach (var database in _databases)
+        {
+            await database.DisposeAsync();
+        }
+    }
+
     [Theory]
     [Trait("Rule", "S:JOB-Registration")]
     [InlineData(RecurringJobsServiceExtensions.SlaJobId, typeof(SlaBreachJob), "*/20 * * * *")]
@@ -205,5 +223,69 @@ public sealed class RecurringJobsServiceExtensionsTests
             .AddSingleton<IConfiguration>(configuration)
             .AddRecurringJobs()
             .BuildServiceProvider();
+    }
+
+    [HangfireFact]
+    [Trait("Rule", "S:JOB-Registration")]
+    public async Task UseRecurringJobs_OnARealDatabase_StoresTheThreeJobsOnTheirDefaultCadence()
+    {
+        var database = await CreateDatabaseAsync();
+        var host = database.Build(new Dictionary<string, string?>(), Mock.Of<MediatR.IMediator>());
+        var app = new ApplicationBuilder(host.Services);
+
+        app.UseRecurringJobs();
+
+        var stored = StoredJobs(host);
+        stored.Should().BeEquivalentTo(new Dictionary<string, string>
+        {
+            [RecurringJobsServiceExtensions.SlaJobId] = Cron.MinuteInterval(15),
+            [RecurringJobsServiceExtensions.PostingSweepJobId] = Cron.MinuteInterval(5),
+            [RecurringJobsServiceExtensions.IdempotencyCleanupJobId] = Cron.HourInterval(1),
+        });
+    }
+
+    [HangfireFact]
+    [Trait("Rule", "S:JOB-Registration")]
+    public async Task UseRecurringJobs_OnARealDatabaseWithTheBlobSweepEnabled_StoresItsJobToo()
+    {
+        var database = await CreateDatabaseAsync();
+        var settings = new Dictionary<string, string?> { [$"{BlobSweepOptions.SectionName}:Enabled"] = "true" };
+        var host = database.Build(settings, Mock.Of<MediatR.IMediator>());
+        var app = new ApplicationBuilder(host.Services);
+
+        app.UseRecurringJobs();
+
+        StoredJobs(host).Keys.Should().Contain(RecurringJobsServiceExtensions.BlobSweepJobId);
+    }
+
+    [HangfireFact]
+    [Trait("Rule", "S:JOB-Registration")]
+    public async Task UseRecurringJobs_OnARealDatabaseAfterTheBlobSweepIsTurnedOff_RemovesItsStoredJob()
+    {
+        var database = await CreateDatabaseAsync();
+        var enabled = new Dictionary<string, string?> { [$"{BlobSweepOptions.SectionName}:Enabled"] = "true" };
+        new ApplicationBuilder(database.Build(enabled, Mock.Of<MediatR.IMediator>()).Services).UseRecurringJobs();
+        var host = database.Build(new Dictionary<string, string?>(), Mock.Of<MediatR.IMediator>());
+        var app = new ApplicationBuilder(host.Services);
+
+        app.UseRecurringJobs();
+
+        StoredJobs(host).Keys.Should().NotContain(RecurringJobsServiceExtensions.BlobSweepJobId);
+    }
+
+    private static Dictionary<string, string> StoredJobs(Microsoft.Extensions.Hosting.IHost host)
+    {
+        var storage = host.Services.GetRequiredService<JobStorage>();
+        using var connection = storage.GetConnection();
+
+        return connection.GetRecurringJobs().ToDictionary(job => job.Id, job => job.Cron);
+    }
+
+    private async Task<HangfireTestHost> CreateDatabaseAsync()
+    {
+        var database = await HangfireTestHost.CreateAsync();
+        _databases.Add(database);
+
+        return database;
     }
 }

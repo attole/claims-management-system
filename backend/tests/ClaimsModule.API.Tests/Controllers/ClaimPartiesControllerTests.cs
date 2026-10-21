@@ -19,17 +19,6 @@ public sealed class ClaimPartiesControllerTests(ApiFixture database) : IDisposab
     }
 
     [ApiFact]
-    [Trait("Rule", "S:API-Auth")]
-    public async Task Add_WithoutAToken_Answers401()
-    {
-        using var client = _factory.CreateClient();
-
-        var response = await client.PostAsJsonAsync($"/api/claims/{Guid.NewGuid()}/parties", _person);
-
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-    }
-
-    [ApiFact]
     [Trait("Rule", "S:API-POST-claims-parties")]
     public async Task Add_APersonToADraft_Answers201WithTheParty()
     {

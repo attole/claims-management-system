@@ -17,17 +17,6 @@ public sealed class ReferenceControllerTests(ApiFixture database) : IDisposable
     }
 
     [ApiFact]
-    [Trait("Rule", "S:API-Auth")]
-    public async Task ListCauseCodes_WithoutAToken_Answers401()
-    {
-        using var client = _factory.CreateClient();
-
-        var response = await client.GetAsync("/api/reference/cause-of-loss-codes");
-
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-    }
-
-    [ApiFact]
     [Trait("Rule", "S:API-GET-causes")]
     public async Task ListCauseCodes_SeededOrganisation_ReturnsTheActiveCodes()
     {

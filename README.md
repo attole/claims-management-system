@@ -24,7 +24,7 @@ dotnet test backend
 python -I .claude/tools/check_workflow.py
 ```
 
-The tests in `ClaimsModule.Persistence.SqlServerTests` and `ClaimsModule.API.Tests` create a temporary database on LocalDB (or on the server in `CLAIMS_TEST_SQLSERVER`) and are skipped when no server answers.
+The tests in `ClaimsModule.Persistence.SqlServerTests` and `ClaimsModule.API.Tests` create a temporary database on LocalDB (or on the server in `CLAIMS_TEST_SQLSERVER`) and are skipped when no server answers. When `CLAIMS_TEST_SQLSERVER` is set and the server does not answer, they fail instead, so CI never skips them silently. The Hangfire tests in `ClaimsModule.Infrastructure.Tests` use the same database and rule.
 
 ## Run locally
 

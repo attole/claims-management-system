@@ -17,17 +17,6 @@ public sealed class PoliciesControllerTests(ApiFixture database) : IDisposable
     }
 
     [ApiFact]
-    [Trait("Rule", "S:API-Auth")]
-    public async Task Search_WithoutAToken_Answers401()
-    {
-        using var client = _factory.CreateClient();
-
-        var response = await client.GetAsync("/api/policies/search");
-
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-    }
-
-    [ApiFact]
     [Trait("Rule", "S:API-GET-policies-search")]
     public async Task Search_WithoutAText_ReturnsTheSeededPoliciesOnTheFirstPage()
     {

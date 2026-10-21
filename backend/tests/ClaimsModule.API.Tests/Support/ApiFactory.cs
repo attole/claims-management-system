@@ -31,7 +31,7 @@ using Microsoft.Extensions.Hosting;
 
 namespace ClaimsModule.API.Tests.Support;
 
-public sealed class ApiFactory(ApiFixture database, bool isDevAuthEnabled = true) : WebApplicationFactory<Program>
+public class ApiFactory(ApiFixture database, bool isDevAuthEnabled = true) : WebApplicationFactory<Program>
 {
     public static readonly Guid SeedOrganisationId = Guid.Parse("3a44da3d-69e0-b835-4a7c-2859c519e664");
     public const string SeedCauseOfLossCode = "WATER";

@@ -15,21 +15,16 @@ public sealed class ClaimDocumentsControllerTests(ApiFixture database) : IDispos
     private const int Megabyte = 1024 * 1024;
 
     private readonly ApiFactory _factory = new(database);
+    private readonly Lazy<KestrelApiFactory> _kestrel = new(() => new KestrelApiFactory(database));
 
     public void Dispose()
     {
         _factory.Dispose();
-    }
 
-    [ApiFact]
-    [Trait("Rule", "S:API-Auth")]
-    public async Task Upload_WithoutAToken_Answers401()
-    {
-        using var client = _factory.CreateClient();
-
-        var response = await client.PostAsync($"/api/claims/{Guid.NewGuid()}/documents", Form(10, "a.pdf"));
-
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        if (_kestrel.IsValueCreated)
+        {
+            _kestrel.Value.Dispose();
+        }
     }
 
     [ApiFact]
@@ -112,6 +107,34 @@ public sealed class ClaimDocumentsControllerTests(ApiFixture database) : IDispos
     }
 
     [ApiFact]
+    [Trait("Rule", "S:DOC-MaxSize")]
+    public async Task Upload_OverTheServerLimitOnKestrel_IsRefusedAsATooLargeBody()
+    {
+        var organisationId = Guid.NewGuid();
+        var (claimId, _) = await _factory.SeedClaimAsync(organisationId);
+        using var client = _kestrel.Value.CreateKestrelClientFor(Guid.NewGuid(), organisationId, "Handler");
+
+        var response = await client.PostAsync($"/api/claims/{claimId}/documents", Form(52 * Megabyte, "huge.pdf"));
+
+        var body = await response.Content.ReadAsStringAsync();
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        body.Should().Contain("Request body too large");
+    }
+
+    [ApiFact]
+    [Trait("Rule", "S:API-IdempotencyKey")]
+    public async Task Upload_JustUnderTheLimitOnKestrelWithAKey_ReachesTheAction()
+    {
+        var organisationId = Guid.NewGuid();
+        var (claimId, _) = await _factory.SeedClaimAsync(organisationId);
+        using var client = _kestrel.Value.CreateKestrelClientFor(Guid.NewGuid(), organisationId, "Handler");
+
+        var response = await PostWithKeyAsync(client, claimId, Form((50 * Megabyte) - 1024, "large.pdf"));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+    }
+
+    [ApiFact]
     [Trait("Rule", "S:API-IdempotencyKey")]
     public async Task Upload_JustUnderTheLimitWithAKey_ReachesTheAction()
     {
@@ -167,17 +190,6 @@ public sealed class ClaimDocumentsControllerTests(ApiFixture database) : IDispos
         var links = await response.Content.ReadFromJsonAsync<List<ClaimDocumentLinkDto>>();
         links!.Select(link => link.Document.DocumentName).Should().Equal("list.pdf");
         links![0].DownloadUrl.Should().Contain("/api/documents/download?token=");
-    }
-
-    [ApiFact]
-    [Trait("Rule", "S:API-GET-claims-documents")]
-    public async Task List_UnknownClaim_Answers404()
-    {
-        using var client = CreateClient(Guid.NewGuid());
-
-        var response = await client.GetAsync($"/api/claims/{Guid.NewGuid()}/documents");
-
-        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     private static async Task<ApiControllerBase.CommandResponse<ClaimDocumentDto>?> ReadDocumentAsync(

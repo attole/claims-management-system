@@ -21,6 +21,7 @@
     <PackageReference Include="xunit.runner.visualstudio" />
     <PackageReference Include="FluentAssertions" />
     <PackageReference Include="Moq" />
+    <PackageReference Include="Microsoft.Data.SqlClient" />
     <PackageReference Include="coverlet.collector" />
   </ItemGroup>
 

@@ -21,6 +21,11 @@ public sealed class SqlServerFixture : IDisposable
 
     public SqlServerFixture()
     {
+        if (IsRequired && !IsAvailable)
+        {
+            throw new InvalidOperationException($"{ServerVariable} is set but the server does not answer.");
+        }
+
         if (IsAvailable)
         {
             using var context = CreateContext(Guid.NewGuid());
@@ -31,6 +36,8 @@ public sealed class SqlServerFixture : IDisposable
     public static DateTimeOffset Now { get; } = new(2026, 3, 1, 9, 0, 0, TimeSpan.Zero);
 
     public static bool IsAvailable => _isAvailable.Value;
+
+    public static bool IsRequired => !string.IsNullOrEmpty(Environment.GetEnvironmentVariable(ServerVariable));
 
     public string ConnectionString => $"{_server};Database={_databaseName}";
 

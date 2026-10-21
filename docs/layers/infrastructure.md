@@ -41,3 +41,9 @@ Rules and contracts of Infrastructure: the background jobs and the adapters for 
 - **Local.** `LocalFileSystemStorageService` writes under `LocalRoot` (default `uploads`, the container segment dropped, so `uploads/{organisationId}/{claimId}/...`). A path that leaves the root is refused. The URL is `Storage:LocalBaseUrl` + `LocalDownloadToken.DownloadRoute` + a token. The token is the expiry and the path signed with HMAC-SHA256 under `Storage:LocalSigningKey` (a secret, user-secrets); `LocalDownloadToken.ReadPath` returns the path, or an empty string when the token is malformed, tampered with or expired.
 - `LocalDocumentDownloads` implements the Application port `ILocalDocumentDownloads`: it checks the provider and the token, finds the file and names it, and the API streams the result. This is the one place bytes pass through the API, a local-only exception to S:BR-D-02 (the Azure URL goes straight to the blob).
 - A failed commit after the blob is stored leaves an unreferenced blob; the blob sweep (the Jobs section above) removes those.
+
+## Tests
+
+- The jobs and the storage adapters have unit tests on fakes (the job harness, a temporary folder for the local provider, an offline SAS link for Azure).
+- Four tests run Hangfire for real on SQL Server (LocalDB, or `CLAIMS_TEST_SQLSERVER`, failing instead of skipping when that variable is set and the server does not answer): a job enqueued through `IPostingScheduler` is run by a real server and sends its command, and `UseRecurringJobs` stores the recurring jobs with their cadence, adds the blob sweep when its switch is on and removes it when it is off. They share one xUnit collection because Hangfire keeps its storage in a static.
+- `AzureBlobStorageService` has no test against a real or emulated Azure Storage: the SAS link, the list by age and the delete are checked offline only, so run them once against a real account before turning the blob sweep on (see the parking lot).

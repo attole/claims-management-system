@@ -18,17 +18,6 @@ public sealed class ClaimReservesControllerTests(ApiFixture database) : IDisposa
     }
 
     [ApiFact]
-    [Trait("Rule", "S:API-Auth")]
-    public async Task Submit_WithoutAToken_Answers401()
-    {
-        using var client = _factory.CreateClient();
-
-        var response = await client.PostAsJsonAsync($"/api/claims/{Guid.NewGuid()}/reserves", new { });
-
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-    }
-
-    [ApiFact]
     [Trait("Rule", "S:API-GET-reserves")]
     public async Task Get_ClaimWithoutReserves_ReturnsAnEmptySummary()
     {
@@ -41,17 +30,6 @@ public sealed class ClaimReservesControllerTests(ApiFixture database) : IDisposa
         var reserves = await response.Content.ReadFromJsonAsync<ClaimReservesDto>();
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         reserves!.Components.Should().BeEmpty();
-    }
-
-    [ApiFact]
-    [Trait("Rule", "S:API-GET-reserves")]
-    public async Task Get_UnknownClaim_Answers404()
-    {
-        using var client = CreateClient(Guid.NewGuid());
-
-        var response = await client.GetAsync($"/api/claims/{Guid.NewGuid()}/reserves");
-
-        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     [ApiFact]

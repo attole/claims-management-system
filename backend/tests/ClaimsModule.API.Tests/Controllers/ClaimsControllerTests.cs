@@ -8,6 +8,7 @@ using ClaimsModule.API.Tests.Support;
 using ClaimsModule.Application.Audit.Dtos;
 using ClaimsModule.Application.Claims.Dtos;
 using ClaimsModule.Application.Paging;
+using ClaimsModule.Application.ReserveComponents.History.Dtos;
 
 namespace ClaimsModule.API.Tests.Controllers;
 
@@ -24,17 +25,6 @@ public sealed class ClaimsControllerTests(ApiFixture database) : IDisposable
     public void Dispose()
     {
         _factory.Dispose();
-    }
-
-    [ApiFact]
-    [Trait("Rule", "S:API-Auth")]
-    public async Task List_WithoutAToken_Answers401()
-    {
-        using var client = _factory.CreateClient();
-
-        var response = await client.GetAsync("/api/claims");
-
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
     [ApiFact]
@@ -183,6 +173,35 @@ public sealed class ClaimsControllerTests(ApiFixture database) : IDisposable
     }
 
     [ApiFact]
+    [Trait("Rule", "S:ST-Open-PendingPayment")]
+    public async Task Journey_ApprovedReserveThenPendingPayment_ShowsInTheDetailAndTheAudit()
+    {
+        var claimId = await _factory.SeedOpenClaimAsync();
+        var organisationId = ApiFactory.SeedOrganisationId;
+        using var handler = _factory.CreateClientFor(ApiFactory.HandlerId, organisationId, "Handler");
+        using var supervisor = _factory.CreateClientFor(ApiFactory.SupervisorId, organisationId, "Supervisor");
+        var reserve = new
+        {
+            TransactionType = "Add",
+            Amount = 50_000,
+            ChangeReason = "Why",
+            ComponentType = "Indemnity",
+        };
+        var submitted = await handler.PostAsJsonAsync($"/api/claims/{claimId}/reserves", reserve);
+        var history = await submitted.Content.ReadFromJsonAsync<ApiControllerBase.CommandResponse<ReserveHistoryDto>>();
+        await supervisor.PostAsync($"/api/claims/{claimId}/reserves/{history!.Data.Id}/approve", null);
+        await handler.PutAsJsonAsync(
+            $"/api/claims/{claimId}/status",
+            new { TargetStatus = "PendingPayment", IsLiabilityConfirmed = true });
+
+        var detail = await handler.GetFromJsonAsync<ClaimDetailDto>($"/api/claims/{claimId}");
+
+        detail!.Claim.State.Should().Be("PendingPayment");
+        detail.Reserves.ApprovedTotal.Should().Be(50_000);
+        detail.RecentAudit.Should().NotBeEmpty();
+    }
+
+    [ApiFact]
     [Trait("Rule", "S:API-POST-claims")]
     public async Task Create_AnEmptyDraft_Answers201WithTheClaimInTheEnvelope()
     {
@@ -236,18 +255,6 @@ public sealed class ClaimsControllerTests(ApiFixture database) : IDisposable
 
         var detail = await response.Content.ReadFromJsonAsync<ClaimDetailDto>();
         detail!.Claim.ClaimNumber.Should().Be(number);
-    }
-
-    [ApiFact]
-    [Trait("Rule", "S:DATA-Tenant")]
-    public async Task Get_ClaimOfAnotherOrganisation_Answers404()
-    {
-        var (claimId, _) = await _factory.SeedClaimAsync(Guid.NewGuid());
-        using var client = CreateClient(Guid.NewGuid());
-
-        var response = await client.GetAsync($"/api/claims/{claimId}");
-
-        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     [ApiFact]
@@ -318,17 +325,6 @@ public sealed class ClaimsControllerTests(ApiFixture database) : IDisposable
     }
 
     [ApiFact]
-    [Trait("Rule", "S:BR-ST-03")]
-    public async Task CheckStatus_UnknownClaim_Answers404()
-    {
-        using var client = CreateClient(Guid.NewGuid());
-
-        var response = await client.GetAsync($"/api/claims/{Guid.NewGuid()}/status-check?targetStatus=Open");
-
-        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
-    }
-
-    [ApiFact]
     public async Task UpdateNotes_ADraftClaim_ReturnsTheClaimWithTheNotes()
     {
         var organisationId = await _factory.CreateOrganisationAsync();
@@ -354,17 +350,6 @@ public sealed class ClaimsControllerTests(ApiFixture database) : IDisposable
 
         var page = await response.Content.ReadFromJsonAsync<PagedResult<AuditEntryDto>>();
         page.Should().BeEquivalentTo(new { Page = 1, PageSize = 25 });
-    }
-
-    [ApiFact]
-    [Trait("Rule", "S:API-GET-claims-audit")]
-    public async Task ListAudit_UnknownClaim_Answers404()
-    {
-        using var client = CreateClient(Guid.NewGuid());
-
-        var response = await client.GetAsync($"/api/claims/{Guid.NewGuid()}/audit");
-
-        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     private static async Task<ClaimDetailDto> CheckThenGetAsync(HttpClient client, Guid claimId, string target)

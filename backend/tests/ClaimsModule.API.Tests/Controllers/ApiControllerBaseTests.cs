@@ -134,6 +134,40 @@ public sealed partial class ApiControllerBaseTests(ApiFixture database) : IDispo
 
     [ApiFact]
     [Trait("Rule", "S:API-Auth")]
+    public async Task Routes_WithoutAToken_AllAnswer401()
+    {
+        using var client = _factory.CreateClient();
+
+        var result = await RoutesNotAnswering(client, HttpStatusCode.Unauthorized, Guid.NewGuid());
+
+        result.Should().BeEmpty();
+    }
+
+    [ApiFact]
+    [Trait("Rule", "S:API-GET-claim")]
+    public async Task ClaimReadRoutes_ForAnUnknownClaim_AllAnswer404()
+    {
+        using var client = CreateClient();
+
+        var result = await RoutesNotAnswering(client, HttpStatusCode.NotFound, Guid.NewGuid(), isReadOfClaim: true);
+
+        result.Should().BeEmpty();
+    }
+
+    [ApiFact]
+    [Trait("Rule", "S:DATA-Tenant")]
+    public async Task ClaimReadRoutes_ForAClaimOfAnotherOrganisation_AllAnswer404()
+    {
+        var (claimId, _) = await _factory.SeedClaimAsync(Guid.NewGuid());
+        using var client = CreateClient();
+
+        var result = await RoutesNotAnswering(client, HttpStatusCode.NotFound, claimId, isReadOfClaim: true);
+
+        result.Should().BeEmpty();
+    }
+
+    [ApiFact]
+    [Trait("Rule", "S:API-Auth")]
     public void Actions_DoNotUseRoleBasedAuthorizeAttributes()
     {
         var result = ApiActions()
@@ -212,6 +246,63 @@ public sealed partial class ApiControllerBaseTests(ApiFixture database) : IDispo
             .ToList();
 
         result.Should().BeEmpty();
+    }
+
+    private static string UrlFor(ControllerActionDescriptor action, Guid claimId)
+    {
+        string template = action.AttributeRouteInfo?.Template ?? string.Empty;
+        string url = "/" + PlaceholderPattern().Replace(template, match => IdFor(match.Value, claimId));
+
+        return action.ActionName == nameof(ClaimsController.CheckStatus) ? url + "?targetStatus=Open" : url;
+    }
+
+    private static string IdFor(string placeholder, Guid claimId)
+    {
+        bool isClaimId = placeholder.StartsWith("{claimId", StringComparison.Ordinal);
+
+        return (isClaimId ? claimId : Guid.NewGuid()).ToString();
+    }
+
+    private static bool IsReadOfClaim(ControllerActionDescriptor action)
+    {
+        string template = action.AttributeRouteInfo?.Template ?? string.Empty;
+
+        return HttpMethodOf(action) == "GET" && template.Contains("{claimId", StringComparison.Ordinal);
+    }
+
+    private static string HttpMethodOf(ControllerActionDescriptor action)
+    {
+        var constraints = action.ActionConstraints?.OfType<HttpMethodActionConstraint>() ?? [];
+
+        return constraints.SelectMany(item => item.HttpMethods).First();
+    }
+
+    [GeneratedRegex(@"\{[^}]+\}")]
+    private static partial Regex PlaceholderPattern();
+
+    private async Task<List<string>> RoutesNotAnswering(
+        HttpClient client,
+        HttpStatusCode expected,
+        Guid claimId,
+        bool isReadOfClaim = false)
+    {
+        var actions = ApiActions()
+            .Where(action => !action.EndpointMetadata.OfType<IAllowAnonymous>().Any())
+            .Where(action => !isReadOfClaim || IsReadOfClaim(action));
+        var offenders = new List<string>();
+
+        foreach (var action in actions)
+        {
+            var request = new HttpRequestMessage(new HttpMethod(HttpMethodOf(action)), UrlFor(action, claimId));
+            var response = await client.SendAsync(request);
+
+            if (response.StatusCode != expected)
+            {
+                offenders.Add($"{request.Method} {request.RequestUri} {(int)response.StatusCode}");
+            }
+        }
+
+        return offenders;
     }
 
     private static List<ProducesResponseTypeAttribute> SuccessResponses(ControllerActionDescriptor action)
