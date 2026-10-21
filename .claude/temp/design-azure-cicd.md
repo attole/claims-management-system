@@ -266,6 +266,7 @@ Dependency order, as a suggestion. Each pack is a stop point. Packs 1, 3, 4 and 
 - Deployed sign-in: DevAuth stays on in the demo so reviewers can test every role; fake data only.
 - Subscription: Azure free account with the 200 USD credit (30-day window); repo is public.
 - Hosting: App Service Linux B1. Region: Poland Central (check service availability first). Database: Entra-only with managed identity. Migrations: EF bundle in the pipeline. JWT key: set straight in Key Vault by the bootstrap runbook; Bicep writes the storage connection string itself.
+- Pack 3 review follow-ups for Pack 4: the teardown runbook purges the soft-deleted Key Vault (`az keyvault purge`) and force-deletes the Log Analytics workspace; the JWT secret is set before the first deploy; the deploy identity also gets Role Based Access Control Administrator on the resource group; check the B1 quota in Poland Central before provisioning.
 - Pack 1 done: health endpoints (`/health/live`, `/health/ready`). Forwarded headers are not code: Pack 3 sets the app setting `ASPNETCORE_FORWARDEDHEADERS_ENABLED=true`. Application Insights is deferred to a later pack (package version to be verified first).
 
 -
