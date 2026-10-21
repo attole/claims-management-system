@@ -11,7 +11,7 @@ Questions that block or shape the build. Nothing here is decided by the user yet
 - Repo visibility: `origin` is `github.com/attole/claims-management-system`. A private repo works with OIDC; GitHub Environments with required reviewers need GitHub Pro/Team on a private repo. Which is it?
 - Deployed sign-in: see the `[?] [Deployed sign-in]` block. The assessment wants test users on the deployed app; the repo's README says `DevAuth` is "not used" when deployed.
 - Frontend: this pack set covers the backend and the shared Azure resources only. Which Static Web Apps hostname the frontend gets is an output of Pack 3, and the frontend session must adopt it for `Cors__AllowedOrigins__0` and its API base URL.
-- The workflow check (`.claude/tools/check_workflow.py`) reads local-only documents that a CI checkout does not have. Unknown whether it skips cleanly or fails; to be verified in Pack 1.
+- The workflow check (`.claude/tools/check_workflow.py`) stays a local-only tool, committed in the repo but not run in CI (decided).
 - Storage key names in `docs/layers/infrastructure.md` fixed to the top-level names the code binds; deployed app settings use the top-level names.
 - Region: Bulgaria has no Azure region; Poland Central is the nearest EU candidate. Availability of each service there to be checked with a read-only `az` query (asks first).
 - Cost: figures below are approximate and unverified; check the Azure pricing calculator for the chosen region before provisioning.
@@ -69,22 +69,22 @@ Request and data flow:
     - idempotent: create the managed-identity user by SID, add it to `claims_app`, `db_datareader`, `db_datawriter`, `db_ddladmin`
 [+] infra/bootstrap.md
     - the one-time manual runbook: resource group, app registration, federated credentials, role assignments, GitHub environment and variables
-[+] .github/workflows/ci.yml
-[+] .github/workflows/deploy.yml
+[+] .github/workflows/build-and-test.yml
+[+] .github/workflows/deployment.yml
 [~] backend/src/ClaimsModule.API (Pack 1: health endpoints, forwarded headers, Application Insights)
 [~] README.md, docs/ARCHITECTURE.md, docs/layers/api.md, docs/layers/infrastructure.md (Pack 7)
 
-### CI workflow (`ci.yml`)
+### Build and test workflow (`build-and-test.yml`)
 
 Triggers: pull request and push to `main`.
 
 - Checkout, `actions/setup-dotnet` 9.x, NuGet cache keyed on `Directory.Packages.props`.
 - A `mcr.microsoft.com/mssql/server:2022-latest` service container with `CLAIMS_TEST_SQLSERVER` set, so the SQL Server, API and Hangfire tests run and fail loudly instead of skipping (the repo's own rule for CI).
-- `dotnet build backend -warnaserror`-equivalent (the repo builds with 0 warnings; follow `Directory.Build.props`), `dotnet test backend`, `python -I .claude/tools/check_workflow.py` (subject to the open item above).
+- `dotnet build backend -warnaserror`-equivalent (the repo builds with 0 warnings; follow `Directory.Build.props`), `dotnet test backend`. The workflow check is not part of CI.
 - Pin third-party actions to a commit SHA, `permissions: contents: read`, and a `concurrency` group that cancels superseded runs.
 - Frontend build and test jobs are added by the frontend session as a separate job in the same file.
 
-### Deploy workflow (`deploy.yml`)
+### Deployment workflow (`deployment.yml`)
 
 Trigger: `workflow_dispatch` (the assessment accepts manual), with an optional later `workflow_run` after a green CI on `main`. Runs in the GitHub Environment `demo`. `concurrency: deploy-demo`, never cancel in progress.
 
@@ -220,9 +220,9 @@ Dependency order, as a suggestion. Each pack is a stop point. Packs 1, 3, 4 and 
 
 ### Pack 2 - CI workflow
 
-[+] .github/workflows/ci.yml
-    - build, test with the SQL service container, workflow check, pinned actions, least permissions, concurrency
-[?] verify locally what runs on a Linux runner: path separators, LocalDB-only assumptions and the workflow check without the local documents; any fix is a separate decision
+[+] .github/workflows/build-and-test.yml
+    - build, test with the SQL service container, pinned actions, least permissions, concurrency
+[?] verify on the first real run what differs on a Linux runner: path separators and LocalDB-only assumptions; any fix is a separate decision
 
 ### Pack 3 - Bicep infrastructure
 
@@ -241,7 +241,7 @@ Dependency order, as a suggestion. Each pack is a stop point. Packs 1, 3, 4 and 
 
 ### Pack 5 - Deploy workflow
 
-[+] .github/workflows/deploy.yml
+[+] .github/workflows/deployment.yml
     - the five jobs above, OIDC login, firewall open and close in `always()`, artifact reuse, smoke test with polling and a hard timeout
 
 ### Pack 6 - First provisioning and live verification (Azure commands, asks first)
