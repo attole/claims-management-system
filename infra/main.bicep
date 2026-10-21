@@ -4,7 +4,7 @@ targetScope = 'resourceGroup'
 param location string = resourceGroup().location
 
 @description('Region of the static web app; only a few regions are offered.')
-param staticWebAppLocation string = 'westeurope'
+param staticWebAppLocation string = 'centralus'
 
 @description('Short name that starts every resource name.')
 param namePrefix string = 'claims'

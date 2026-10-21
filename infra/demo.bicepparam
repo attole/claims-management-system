@@ -1,7 +1,7 @@
 using 'main.bicep'
 
 param location = 'polandcentral'
-param staticWebAppLocation = 'westeurope'
+param staticWebAppLocation = 'centralus'
 param environmentName = 'demo'
 param appServiceSkuName = 'B1'
 

@@ -67,7 +67,7 @@ Request and data flow:
     - the environment's parameters (region, SKUs, name prefix, CORS origin, DevAuth users); no secrets
 [+] infra/sql/grant-app-user.sql
     - idempotent: create the managed-identity user by SID, add it to `claims_app`, `db_datareader`, `db_datawriter`, `db_ddladmin`
-[+] infra/bootstrap.md
+[+] infra/bootstrap.ps1
     - the one-time manual runbook: resource group, app registration, federated credentials, role assignments, GitHub environment and variables
 [+] .github/workflows/build-and-test.yml
 [+] .github/workflows/deployment.yml
@@ -233,7 +233,7 @@ Dependency order, as a suggestion. Each pack is a stop point. Packs 1, 3, 4 and 
 
 ### Pack 4 - Bootstrap and database access
 
-[+] infra/bootstrap.md
+[+] infra/bootstrap.ps1
     - resource group, app registration with federated credentials for the GitHub environment `demo` (subject `repo:attole/claims-management-system:environment:demo`), Contributor plus a constrained role-assignment role on the resource group, the SQL Entra admin, the GitHub environment variables
 [+] infra/sql/grant-app-user.sql
     - user by SID, role memberships, idempotent; a second statement set that proves the audit DENY for the smoke step
