@@ -1,6 +1,6 @@
 SET NOCOUNT ON;
 
-IF DATABASE_PRINCIPAL_ID('$(AppName)') IS NULL
+IF DATABASE_PRINCIPAL_ID('$(UserName)') IS NULL
 BEGIN
     THROW 50010, 'The database user of the web app does not exist.', 1;
 END
@@ -10,7 +10,7 @@ DECLARE @canInsert int = 0;
 DECLARE @canUpdate int = 1;
 DECLARE @canDelete int = 1;
 
-EXECUTE AS USER = '$(AppName)';
+EXECUTE AS USER = '$(UserName)';
 
 SELECT
     @canRead = HAS_PERMS_BY_NAME('dbo.ClaimAuditLog', 'OBJECT', 'SELECT'),

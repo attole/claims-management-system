@@ -19,6 +19,9 @@ param linuxFxVersion string = 'DOTNETCORE|9.0'
 @description('Path the platform probes to judge the app healthy.')
 param healthCheckPath string = '/health/ready'
 
+@description('Resource id of the user-assigned managed identity the web app runs as.')
+param identityId string
+
 @description('Log Analytics workspace that receives the web app logs.')
 param workspaceId string
 
@@ -44,10 +47,14 @@ resource site 'Microsoft.Web/sites@2025-03-01' = {
   tags: tags
   kind: 'app,linux'
   identity: {
-    type: 'SystemAssigned'
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      '${identityId}': {}
+    }
   }
   properties: {
     serverFarmId: plan.id
+    keyVaultReferenceIdentity: identityId
     httpsOnly: true
     clientAffinityEnabled: false
     siteConfig: {
@@ -86,4 +93,3 @@ resource diagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' 
 
 output name string = site.name
 output defaultHostName string = site.properties.defaultHostName
-output principalId string = site.identity.principalId

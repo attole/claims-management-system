@@ -44,7 +44,7 @@ One environment (`demo`) in one resource group, sized for the assessment: public
 
 - Resource group `rg-claims-demo`.
 - App Service plan (Linux, B1) and one Web App (runtime .NET 9) for the API. Always On, HTTPS only, TLS 1.2 minimum, FTP disabled, ARR affinity off, health check path set.
-- Azure SQL logical server and one database. Entra-only authentication (no SQL password exists). The web app's system-assigned managed identity is the database user.
+- Azure SQL logical server and one database. Entra-only authentication (no SQL password exists). The web app runs as a user-assigned managed identity created by the template, and that identity is the database user.
 - Storage account (StorageV2, LRS, TLS 1.2, public blob access off) with the private container `claim-documents`. Documents are served by SAS URL straight from the blob (S:BR-D-02), never through the API.
 - Key Vault (RBAC mode) holding the JWT signing key and the storage connection string. The web app reads them through Key Vault references in app settings, resolved by its managed identity (role Key Vault Secrets User). No code change, no extra package.
 - Static Web App (Free) for the frontend, created now so its hostname exists for CORS. Its deployment belongs to the frontend session.
@@ -86,17 +86,16 @@ Triggers: pull request and push to `main`.
 
 ### Deployment workflow (`deployment.yml`)
 
-Trigger: `workflow_dispatch` (the assessment accepts manual), with an optional later `workflow_run` after a green CI on `main`. Runs in the GitHub Environment `demo`. `concurrency: deploy-demo`, never cancel in progress.
+Trigger: `workflow_dispatch` only (the repo is public). Runs in the GitHub Environment `demo`. `concurrency: deployment-demo`, never cancel in progress. Built as written in Pack 5 (as built: three jobs, not five, because every job in the environment would wait for its own approval and the OIDC subject is bound to the environment).
 
 Jobs, in order:
 
-1. `build`: restore, `dotnet publish` the API (Release, framework-dependent, linux-x64 not required), `dotnet ef migrations bundle` as a self-contained executable, upload both as one artifact. The build runs once; later jobs deploy exactly that artifact.
-2. `infra`: `azure/login` with OIDC, `az deployment group what-if`, then `az deployment group create` with `infra/demo.bicepparam`; the JWT signing key comes in as a secure parameter from an environment secret and is written to Key Vault by the template. Outputs (web app name, SQL server FQDN, SWA hostname) feed the next jobs.
-3. `database`: open a temporary firewall rule for the runner IP (removed in an `always()` step), run the migration bundle with an Entra-token connection string, then run `infra/sql/grant-app-user.sql`. The deploy identity is the SQL server's Entra admin in this design (see the SQL access block).
-4. `deploy`: `azure/webapps-deploy` with the published artifact (zip deploy), then restart.
-5. `smoke`: poll `/health/ready` until 200 (timeout 5 min), fetch `/swagger/v1/swagger.json`, call `POST /api/dev/token` for the handler user and `GET /api/claims` with it, assert 200 and the `X-Correlation-Id` header. A failed smoke fails the run; no automatic rollback (one instance, no slot).
+1. `build-and-test`: calls `build-and-test.yml` as a reusable workflow. That workflow builds once, tests, then publishes the API (`--no-build`) and builds the self-contained linux-x64 migration bundle, and uploads both as the artifacts `api` and `database`. It runs on every pull request and push as well, so the deployable output exists for any green commit and the deployed bytes are the tested bytes.
+2. `deploy` (environment `demo`, one Azure login): what-if and create with `infra/demo.bicepparam`; a temporary SQL firewall rule for the runner (removed in an always step); the migration bundle with an Entra-token connection string, retried for firewall propagation; `grant-app-user.sql` and `verify-app-user.sql` through `azure/sql-action`; zip deploy with `azure/webapps-deploy`; restart; smoke test (poll `/health/ready`, Swagger document, dev token, authenticated `GET /api/claims`). A failed smoke fails the run; no automatic rollback (one instance, no slot).
 
-Migrations run before the new code is live, so every migration must be backward compatible with the previous release for the minutes between jobs 3 and 4 (expand, then contract). State this as a rule in `docs/layers/persistence.md` in Pack 7.
+The web app runs as a user-assigned managed identity (Pack 5 change): its client id is an ARM property, so the workflow can create the database user without Microsoft Graph permissions, and the identity survives a recreated web app.
+
+Migrations run before the new code is live, so every migration must be backward compatible with the previous release for the minutes between the migration step and the deploy step (expand, then contract). State this as a rule in `docs/layers/persistence.md` in Pack 7.
 
 ### Application settings (deployed)
 
@@ -107,7 +106,7 @@ Set by Bicep on the Web App. `__` stands for `:`. A name ending in `(KV)` is a K
 | `ASPNETCORE_ENVIRONMENT` | `Production` |
 | `Jwt__SigningKey` (KV) | the vault secret |
 | `Jwt__Issuer`, `Jwt__Audience` | the appsettings defaults; override only if the frontend needs it |
-| `ConnectionStrings__ClaimsDb` | `Server=tcp:<fqdn>,1433;Database=<db>;Authentication=Active Directory Managed Identity;Encrypt=True;` |
+| `ConnectionStrings__ClaimsDb` | `Server=tcp:<fqdn>,1433;Database=<db>;Authentication=Active Directory Managed Identity;User Id=<identity client id>;Encrypt=True;` |
 | `Cors__AllowedOrigins__0` | `https://<swa hostname>` |
 | `StorageProvider` | `AzureBlob` |
 | `AzureConnectionString` (KV) | the vault secret, built from the account key by the template |

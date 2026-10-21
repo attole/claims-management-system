@@ -149,6 +149,8 @@ The storage connection string is already in the vault: the template wrote it wit
 
 Run the deployment workflow (Pack 5) from the Actions tab or with `gh workflow run`. Its order is provisioning (a no-op after step 5), migrations, the grant of the web app's database user, the API deployment with a restart, and the smoke test. The restart is what makes the app pick up the JWT secret and the role assignment, because Key Vault references are resolved when the app starts.
 
+The web app runs as a user-assigned managed identity created by the template, not as a system-assigned one. Its client id is readable from Azure Resource Manager, which the workflow needs to create the database user without any Microsoft Graph permission, and it survives a recreated web app, so the database user stays valid.
+
 The database steps need the SQL administrator (the deploy identity), so they cannot be run by your own account unless you add yourself as an administrator.
 
 -
@@ -158,7 +160,7 @@ The database steps need the SQL administrator (the deploy identity), so they can
 - `GET https://<webAppHostName>/health/ready` answers 200.
 - `GET https://<webAppHostName>/openapi/v1.json` and `/swagger` answer 200.
 - `POST /api/dev/token` with a user id from `infra/demo.bicepparam` returns a token, and `GET /api/claims` with it answers 200.
-- `infra/sql/verify-app-user.sql` (run by the workflow with the web app's name) proves the web app's database user can read and append audit rows but cannot update or delete them.
+- `infra/sql/verify-app-user.sql` (run by the workflow with the managed identity's name) proves the web app's database user can read and append audit rows but cannot update or delete them.
 
 -
 
