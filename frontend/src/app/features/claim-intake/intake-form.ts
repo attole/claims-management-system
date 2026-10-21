@@ -18,12 +18,6 @@ export const RESERVE_NEEDS_POLICY_ERROR = 'reserveNeedsPolicy';
 export const INITIAL_RESERVE_REASON = 'Initial reserve at intake';
 
 export const ASSET_TYPES: readonly AssetType[] = ['Property', 'Vehicle', 'Equipment', 'Person', 'Other'];
-export const RESERVE_COMPONENTS: readonly ReserveComponentType[] = [
-  'Indemnity',
-  'Expense',
-  'Alae',
-  'SubrogationRecoverable',
-];
 
 export type InForce = 'unknown' | 'inForce' | 'outside';
 

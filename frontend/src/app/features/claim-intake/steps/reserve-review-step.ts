@@ -4,19 +4,14 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { partyName } from '../../../shared/forms/party-form';
+import { RESERVE_COMPONENTS } from '../../../shared/forms/reserve-form';
 import { formatMoney } from '../../../shared/pipes/money.pipe';
 import { formatClaimDate } from '../../../shared/pipes/claim-date.pipe';
 import { enumLabel, EnumLabelPipe } from '../../../shared/pipes/enum-label.pipe';
 import { AuthorityIndicator } from '../../../shared/ui/authority-indicator';
 import { ErrorMessagePipe } from '../../../shared/validators/error-message.pipe';
 import { toIsoDateTime } from '../../../core/api/api-dates';
-import {
-  AMOUNT_REQUIRED_ERROR,
-  IntakeForm,
-  IntakeValue,
-  RESERVE_COMPONENTS,
-  RESERVE_NEEDS_POLICY_ERROR,
-} from '../intake-form';
+import { AMOUNT_REQUIRED_ERROR, IntakeForm, IntakeValue, RESERVE_NEEDS_POLICY_ERROR } from '../intake-form';
 
 export interface ReviewLine {
   label: string;

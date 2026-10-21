@@ -1,4 +1,4 @@
-import { ClaimDetail, Issue, Party } from '../../core/api/api.model';
+import { ClaimDetail, Issue, Party, ReserveComponent, ReserveHistory } from '../../core/api/api.model';
 import { DEV_USERS } from '../../core/auth/dev-users';
 import { EMPTY_DETAIL } from './claim-detail.store';
 
@@ -29,6 +29,42 @@ export const RAISED_ISSUE: Issue = {
   resolvedAt: '0001-01-01T00:00:00+00:00',
   resolvedBy: '00000000-0000-0000-0000-000000000000',
 };
+
+export const INDEMNITY: ReserveComponent = {
+  id: 'r1000000-0000-4000-8000-000000000001',
+  claimId: CLAIM_ID,
+  componentType: 'Indemnity',
+  state: 'Active',
+  approvedBalance: 45000,
+  notes: '',
+};
+
+export function reserveHistory(change: Partial<ReserveHistory>): ReserveHistory {
+  return {
+    id: 'h1000000-0000-4000-8000-000000000001',
+    reserveComponentId: INDEMNITY.id,
+    claimId: CLAIM_ID,
+    componentType: 'Indemnity',
+    transactionType: 'Adjust',
+    amount: 60000,
+    changeReason: 'Contractor quote received.',
+    changeSequence: 2,
+    hasBalances: true,
+    previousBalance: 45000,
+    newBalance: 105000,
+    approvalStatus: 'PendingApproval',
+    postingStatus: 'Pending',
+    submittedByUserId: DEV_USERS[0].id,
+    submittedAt: '2026-08-09T10:00:00+00:00',
+    reviewedBy: '00000000-0000-0000-0000-000000000000',
+    reviewedAt: '0001-01-01T00:00:00+00:00',
+    reviewReason: '',
+    jobId: '',
+    failureReason: '',
+    idempotencyKey: '',
+    ...change,
+  };
+}
 
 export function claimDetail(): ClaimDetail {
   return {

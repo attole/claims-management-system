@@ -1,4 +1,4 @@
-import { provideHttpClient } from '@angular/common/http';
+import { HttpEventType, provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { apiUrl } from '../../core/api/api-url';
@@ -78,6 +78,31 @@ describe('ClaimDetailStore (S:UI-Detail-Header, S:UI-Audit, S:API-IdempotencyKey
     const next = http.expectOne(apiUrl(`claims/${CLAIM_ID}/notes`));
     expect(next.request.headers.get('Idempotency-Key')).not.toBe(refused.request.headers.get('Idempotency-Key'));
     next.flush(null, { status: 500, statusText: 'Server Error' });
+  });
+
+  it('an upload keeps other writes free and reloads the claim only when it is done', async () => {
+    await load();
+    const file = new File(['x'], 'photo.png', { type: 'image/png' });
+    const percents: number[] = [];
+    store
+      .uploadDocument({ file, documentType: '', notes: '' })
+      .subscribe((progress) => percents.push(progress.kind === 'progress' ? progress.percent : 100));
+    const upload = http.expectOne(apiUrl(`claims/${CLAIM_ID}/documents`));
+
+    upload.event({ type: HttpEventType.UploadProgress, loaded: 50, total: 100 });
+    TestBed.tick();
+    http.expectNone(apiUrl(`claims/${CLAIM_ID}`));
+    const busyWhileUploading = [store.isUploading(), store.isSaving()];
+    upload.flush({ data: { documentName: 'photo.png' }, warnings: [] });
+    await settle();
+
+    http.expectOne(apiUrl(`claims/${CLAIM_ID}`)).flush(claimDetail());
+    http
+      .expectOne((call) => call.url === apiUrl(`claims/${CLAIM_ID}/audit`))
+      .flush({ items: [], page: 1, pageSize: 10, totalCount: 0, totalPages: 0 });
+    expect(percents).toEqual([50, 100]);
+    expect(busyWhileUploading).toEqual([true, false]);
+    expect(store.isUploading()).toBe(false);
   });
 
   it('keeps showing the claim when a reload fails', async () => {

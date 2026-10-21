@@ -47,16 +47,29 @@ export type Issue = Omit<ClaimDetailDto['issues'][number], 'state' | 'severity'>
   state: IssueState;
   severity: IssueSeverity;
 };
-export type ClaimDetail = Omit<ClaimDetailDto, 'claim' | 'parties' | 'issues'> & {
+export type ClaimDetail = Omit<ClaimDetailDto, 'claim' | 'parties' | 'issues' | 'reserves'> & {
   claim: Claim;
   parties: Party[];
   issues: Issue[];
+  reserves: ClaimReserves;
 };
-export type ClaimReserves = Schemas['ClaimReservesDto'];
-export type ReserveComponent = Omit<ClaimReserves['components'][number], 'state'> & { state: ReserveComponentState };
-export type ReserveHistory = Omit<ClaimReserves['history'][number], 'approvalStatus' | 'postingStatus'> & {
+type ClaimReservesDto = Schemas['ClaimReservesDto'];
+export type ReserveComponent = Omit<ClaimReservesDto['components'][number], 'state' | 'componentType'> & {
+  state: ReserveComponentState;
+  componentType: ReserveComponentType;
+};
+export type ReserveHistory = Omit<
+  ClaimReservesDto['history'][number],
+  'approvalStatus' | 'postingStatus' | 'componentType' | 'transactionType'
+> & {
   approvalStatus: ReserveApprovalStatus;
   postingStatus: ReservePostingStatus;
+  componentType: ReserveComponentType;
+  transactionType: ReserveTransactionType;
+};
+export type ClaimReserves = Omit<ClaimReservesDto, 'components' | 'history'> & {
+  components: ReserveComponent[];
+  history: ReserveHistory[];
 };
 export type ReserveHistoryStatus = Omit<
   NonNullable<Schemas['ReserveHistoryStatusDto']>,

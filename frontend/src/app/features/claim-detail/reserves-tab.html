@@ -1,0 +1,110 @@
+<div class="cards">
+  @for (card of cards(); track card.component.id) {
+    <section class="card stat" [class.closed]="card.component.state === 'Closed'">
+      <div class="label">{{ card.component.componentType | enumLabel }}</div>
+      <div class="big">{{ card.component.approvedBalance | money }}</div>
+      @if (card.pending !== 0) {
+        <div class="pending">Pending approval: {{ card.pending | money }}</div>
+      } @else {
+        <div class="muted small">Nothing pending</div>
+      }
+    </section>
+  } @empty {
+    <p class="muted">No reserve components yet.</p>
+  }
+</div>
+
+<div class="title-row">
+  <h2>Transaction history</h2>
+  <span class="muted">Approved total {{ reserves().approvedTotal | money }}</span>
+  <span class="spacer"></span>
+  @if (!isAdding()) {
+    <button mat-flat-button type="button" (click)="isAdding.set(true)">Add reserve</button>
+  }
+</div>
+
+@if (isAdding()) {
+  <app-reserve-editor
+    class="editor"
+    [components]="reserves().components"
+    [isSaving]="isSaving()"
+    (submitted)="submitted.emit($event)"
+    (cancelled)="isAdding.set(false)"
+  />
+}
+
+<section class="card">
+  @if (rows().length === 0) {
+    <p class="muted empty">No reserve transactions yet.</p>
+  } @else {
+    <div class="table-scroll">
+      <table mat-table [dataSource]="rows()">
+        <ng-container matColumnDef="submittedAt">
+          <th mat-header-cell *matHeaderCellDef>Date</th>
+          <td mat-cell *matCellDef="let row" class="nowrap">{{ row.entry.submittedAt | claimDate: 'dateTime' }}</td>
+        </ng-container>
+        <ng-container matColumnDef="transactionType">
+          <th mat-header-cell *matHeaderCellDef>Type</th>
+          <td mat-cell *matCellDef="let row">{{ row.entry.transactionType }}</td>
+        </ng-container>
+        <ng-container matColumnDef="componentType">
+          <th mat-header-cell *matHeaderCellDef>Component</th>
+          <td mat-cell *matCellDef="let row">{{ row.entry.componentType | enumLabel }}</td>
+        </ng-container>
+        <ng-container matColumnDef="amount">
+          <th mat-header-cell *matHeaderCellDef class="num">Amount</th>
+          <td mat-cell *matCellDef="let row" class="num">{{ row.entry.amount | money }}</td>
+        </ng-container>
+        <ng-container matColumnDef="approvalStatus">
+          <th mat-header-cell *matHeaderCellDef>Status</th>
+          <td mat-cell *matCellDef="let row">
+            <span class="badge" [class]="row.approvalTone">
+              {{ row.entry.approvalStatus | enumLabel }}
+            </span>
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="postingStatus">
+          <th mat-header-cell *matHeaderCellDef>GL posting</th>
+          <td mat-cell *matCellDef="let row">
+            <span class="badge" [class]="row.postingTone" [title]="row.entry.failureReason">
+              {{ row.entry.postingStatus }}
+            </span>
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="submittedBy">
+          <th mat-header-cell *matHeaderCellDef>Submitted by</th>
+          <td mat-cell *matCellDef="let row" class="nowrap">{{ row.submittedBy }}</td>
+        </ng-container>
+        <ng-container matColumnDef="reviewedBy">
+          <th mat-header-cell *matHeaderCellDef>Reviewed by</th>
+          <td mat-cell *matCellDef="let row" class="nowrap">{{ row.reviewedBy }}</td>
+        </ng-container>
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef><span class="visually-hidden">Actions</span></th>
+          <td mat-cell *matCellDef="let row" class="actions">
+            @if (row.canDecide) {
+              <button mat-flat-button type="button" [disabled]="isSaving()" (click)="approved.emit(row.entry)">
+                Approve
+              </button>
+              <button mat-stroked-button type="button" [disabled]="isSaving()" (click)="rejected.emit(row.entry)">
+                Reject
+              </button>
+            }
+            @if (row.canRetract) {
+              <button mat-stroked-button type="button" [disabled]="isSaving()" (click)="retracted.emit(row.entry)">
+                Retract
+              </button>
+            }
+            @if (row.canRetry) {
+              <button mat-stroked-button type="button" [disabled]="isSaving()" (click)="retried.emit(row.entry)">
+                Retry posting
+              </button>
+            }
+          </td>
+        </ng-container>
+        <tr mat-header-row *matHeaderRowDef="columns"></tr>
+        <tr mat-row *matRowDef="let row; columns: columns"></tr>
+      </table>
+    </div>
+  }
+</section>
