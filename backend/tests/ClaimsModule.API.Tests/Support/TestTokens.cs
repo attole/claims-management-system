@@ -1,5 +1,5 @@
 using System.Text;
-using ClaimsModule.API.Identity;
+using ClaimsModule.API.Pipeline.Identity;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 

@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using ClaimsModule.API.DevAuth.Dtos;
+using ClaimsModule.API.Errors;
 using ClaimsModule.API.Tests.Support;
 using ClaimsModule.API.Tests.Support.TestEndpoints;
 
@@ -58,7 +59,9 @@ public sealed class DevAuthControllerTests(ApiFixture database) : IDisposable
 
         var response = await client.PostAsJsonAsync("/api/dev/token", new DevTokenRequest(Guid.NewGuid()));
 
+        var body = await response.Content.ReadFromJsonAsync<ErrorBody>();
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        body!.Type.Should().Be("NotFoundError");
     }
 
     [ApiFact]

@@ -2,7 +2,7 @@
 
 Claims handling for a policy administration system, built end to end: a .NET 9 backend (Clean Architecture, CQRS) and an Angular frontend.
 
-Status: the Domain, the Application, the Persistence (with its migrations and seed) and the Infrastructure (jobs, storage adapters, clock) are built and tested. The API holds only its skeleton, and the frontend is not started.
+Status: the Domain, the Application, the Persistence (with its migrations and seed) and the Infrastructure (jobs, storage adapters, clock) are built and tested. The API has its host, identity, error handling and Idempotency-Key filter (the endpoints are not built yet), and the frontend is not started.
 
 ## Documentation
 

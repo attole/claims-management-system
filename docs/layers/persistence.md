@@ -58,7 +58,7 @@ One `UnitOfWork` class implements `IUnitOfWork` over the `DbContext`:
 
 Tests against EF cover the order (before, save, after), the repeat until empty (capped at 10 passes, past which it throws so a cycle between handlers fails instead of hanging), the context fields, and no save when a before-commit handler throws. Idempotency completion is its own save, not part of the command transaction.
 
-**Save errors:** the Unit of Work catches `DbUpdateConcurrencyException` and a unique-index `DbUpdateException` and throws the Application's `ConcurrencyConflictException`, so the Application never sees an EF type. The API middleware maps it to 409 (`docs/layers/api.md` 'Errors'). Nothing else is caught. The unique-index test reads the SQL Server error numbers 2601 and 2627, so the duplicate-key translation runs only in the SQL Server test set; the concurrency translation is tested on SQLite through a row removed by another writer, because `RowVer` does not change there, and on SQL Server through a real `RowVer` change.
+**Save errors:** the Unit of Work catches `DbUpdateConcurrencyException` and a unique-index `DbUpdateException` and throws the Application's `ConcurrencyConflictException`, so the Application never sees an EF type. The API's exception handler maps it to 409 (`docs/layers/api.md` 'Errors'). Nothing else is caught. The unique-index test reads the SQL Server error numbers 2601 and 2627, so the duplicate-key translation runs only in the SQL Server test set; the concurrency translation is tested on SQLite through a row removed by another writer, because `RowVer` does not change there, and on SQL Server through a real `RowVer` change.
 
 ## Readers and repositories
 

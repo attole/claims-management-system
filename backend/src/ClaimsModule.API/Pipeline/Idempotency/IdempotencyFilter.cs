@@ -1,0 +1,101 @@
+using System.Text.Json;
+using ClaimsModule.API.Errors;
+using ClaimsModule.Application.Idempotency;
+using ClaimsModule.Application.Results;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.Extensions.Options;
+
+namespace ClaimsModule.API.Pipeline.Idempotency;
+
+public sealed class IdempotencyFilter(IIdempotencyStore store, IOptions<JsonOptions> json) : IAsyncResourceFilter
+{
+    public const string HeaderName = "Idempotency-Key";
+    public const int MaxKeyLength = 200;
+
+    private static readonly string _keyTooLongMessage =
+        $"The {HeaderName} header must be at most {MaxKeyLength} characters.";
+
+    private static readonly string _inProgressMessage =
+        $"A request with this {HeaderName} is still running or was interrupted.";
+
+    private static readonly string _mismatchMessage =
+        $"This {HeaderName} was already used with a different request body.";
+
+    private static readonly HashSet<string> _writeMethods = new(StringComparer.OrdinalIgnoreCase)
+    {
+        HttpMethods.Post,
+        HttpMethods.Put,
+        HttpMethods.Patch,
+        HttpMethods.Delete,
+    };
+
+    public async Task OnResourceExecutionAsync(ResourceExecutingContext context, ResourceExecutionDelegate next)
+    {
+        var http = context.HttpContext;
+        var method = http.Request.Method;
+        string key = http.Request.Headers[HeaderName].ToString();
+
+        if (key.Length == 0 || !_writeMethods.Contains(method))
+        {
+            await next();
+
+            return;
+        }
+
+        if (key.Length > MaxKeyLength)
+        {
+            context.Result = ErrorBody.Create(ErrorKind.Validation, _keyTooLongMessage).ToResult();
+
+            return;
+        }
+
+        var hash = await RequestFingerprint.ComputeAsync(http.Request, http.RequestAborted);
+        var request = new IdempotencyRequest(key, method, http.Request.Path.Value ?? string.Empty, hash);
+        var decision = await store.BeginAsync(request, http.RequestAborted);
+
+        if (decision.Status != IdempotencyStatus.Started)
+        {
+            context.Result = Reply(decision);
+
+            return;
+        }
+
+        await CompleteAsync(request, await next(), http);
+    }
+
+    private static IActionResult Reply(IdempotencyDecision decision)
+    {
+        return decision.Status switch
+        {
+            IdempotencyStatus.Completed => new ContentResult
+            {
+                StatusCode = decision.Stored.StatusCode,
+                Content = decision.Stored.Body,
+                ContentType = "application/json",
+            },
+            IdempotencyStatus.InProgress => ErrorBody.Create(ErrorKind.Conflict, _inProgressMessage).ToResult(),
+            _ => ErrorBody.Create(ErrorKind.Validation, _mismatchMessage).ToResult(),
+        };
+    }
+
+    private async Task CompleteAsync(IdempotencyRequest request, ResourceExecutedContext executed, HttpContext http)
+    {
+        if (executed.Exception is not null && !executed.ExceptionHandled)
+        {
+            return;
+        }
+
+        var body = executed.Result switch
+        {
+            ObjectResult { Value: not null } result => JsonSerializer.Serialize(
+                result.Value,
+                json.Value.JsonSerializerOptions),
+            ContentResult result => result.Content ?? string.Empty,
+            _ => string.Empty,
+        };
+        var response = new IdempotencyResponse(http.Response.StatusCode, body);
+
+        await store.CompleteAsync(request, response, CancellationToken.None);
+    }
+}

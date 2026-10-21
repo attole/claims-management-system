@@ -1,7 +1,10 @@
 using System.Net.Http.Headers;
 using ClaimsModule.API.Tests.Support.TestEndpoints;
 using ClaimsModule.Application.Abstractions;
+using ClaimsModule.Application.Paging;
+using ClaimsModule.Application.Results;
 using Hangfire;
+using MediatR;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -47,6 +50,10 @@ public sealed class ApiFactory(ApiFixture database, bool isDevAuthEnabled = true
             services.RemoveAll<IRecurringJobManager>();
             services.AddSingleton(Mock.Of<IRecurringJobManager>());
             services.RemoveAll<IHostedService>();
+            services.AddTransient<IRequestHandler<CannedRequest<int>, Result<int>>, CannedRequestHandler<int>>();
+            services.AddTransient<
+                IRequestHandler<CannedRequest<PagedResult<string>>, Result<PagedResult<string>>>,
+                CannedRequestHandler<PagedResult<string>>>();
             services.AddControllers().AddApplicationPart(typeof(TestController).Assembly);
         });
     }

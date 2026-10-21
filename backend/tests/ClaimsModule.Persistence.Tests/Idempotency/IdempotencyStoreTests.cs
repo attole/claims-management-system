@@ -231,7 +231,7 @@ public sealed class IdempotencyStoreTests
         await context.SaveChangesAsync();
     }
 
-    private static async Task<IdempotencyBegin> Begin(
+    private static async Task<IdempotencyDecision> Begin(
         TestDatabase database,
         IdempotencyRequest request,
         Guid? organisationId = null,

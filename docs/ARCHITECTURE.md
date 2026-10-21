@@ -89,7 +89,7 @@ How the documents are read and carried out where they are ambiguous, silent or i
 | Guarded times and actors | a missing time or actor, or a business time earlier than the one it follows, throws | none | mechanism |
 | Error body | an error without a field goes under the key `General`, set in the API's one error mapper | S:API-ErrorShape | gap |
 | Claim list date range | filters the claim's reported date | none | gap |
-| Unspecified cases | authentication failures, concurrent edits, oversized uploads and idempotency-key replays are decided when the API is designed and recorded here | none | gap |
+| Unspecified cases | authentication failures (401 and 403 in the error body), concurrent edits (a 409 in the error body) and idempotency-key replays (stored response replayed, 409 while running, 422 for another body) are decided in `docs/layers/api.md` 'Errors' and 'Idempotency-Key'; oversized uploads are decided with the upload pack | none | gap |
 
 ### Schema departures from the spec
 

@@ -1,4 +1,4 @@
-using ClaimsModule.API.Identity;
+using ClaimsModule.API.Pipeline.Identity;
 using Microsoft.Extensions.Options;
 
 namespace ClaimsModule.API.DevAuth.Configuration;

@@ -12,7 +12,7 @@ internal sealed class IdempotencyStore(ClaimsDbContext context, IClock clock, IC
 
     private static readonly TimeSpan _expiresAfter = TimeSpan.FromHours(24);
 
-    public async Task<IdempotencyBegin> BeginAsync(IdempotencyRequest request, CancellationToken cancellationToken)
+    public async Task<IdempotencyDecision> BeginAsync(IdempotencyRequest request, CancellationToken cancellationToken)
     {
         var existing = await FindAsync(request, cancellationToken);
 
@@ -26,7 +26,7 @@ internal sealed class IdempotencyStore(ClaimsDbContext context, IClock clock, IC
                 clock.UtcNow);
             context.IdempotencyRecords.Add(created);
 
-            return new IdempotencyBegin(IdempotencyStatus.Started);
+            return new IdempotencyDecision(IdempotencyStatus.Started);
         }
 
         return Resolve(existing, request);
@@ -88,7 +88,7 @@ internal sealed class IdempotencyStore(ClaimsDbContext context, IClock clock, IC
             .SingleOrDefaultAsync(cancellationToken);
     }
 
-    private IdempotencyBegin Resolve(IdempotencyRecord record, IdempotencyRequest request)
+    private IdempotencyDecision Resolve(IdempotencyRecord record, IdempotencyRequest request)
     {
         var now = clock.UtcNow;
 
@@ -96,19 +96,19 @@ internal sealed class IdempotencyStore(ClaimsDbContext context, IClock clock, IC
         {
             record.Restart(request.BodyHash, now);
 
-            return new IdempotencyBegin(IdempotencyStatus.Started);
+            return new IdempotencyDecision(IdempotencyStatus.Started);
         }
 
         if (record.BodyHash != request.BodyHash)
         {
-            return new IdempotencyBegin(IdempotencyStatus.BodyMismatch);
+            return new IdempotencyDecision(IdempotencyStatus.BodyMismatch);
         }
 
         if (record.IsInProgress)
         {
-            return new IdempotencyBegin(IdempotencyStatus.InProgress);
+            return new IdempotencyDecision(IdempotencyStatus.InProgress);
         }
 
-        return new IdempotencyBegin(IdempotencyStatus.Completed) { Stored = record.Response };
+        return new IdempotencyDecision(IdempotencyStatus.Completed) { Stored = record.Response };
     }
 }

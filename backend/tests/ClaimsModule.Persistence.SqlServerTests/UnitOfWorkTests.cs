@@ -27,6 +27,7 @@ public sealed class UnitOfWorkTests(SqlServerFixture database)
     }
 
     [SqlServerFact]
+    [Trait("Rule", "S:DATA-RowVer")]
     public async Task CommitAsync_ClaimChangedByAnotherRequest_ReportsAConflict()
     {
         var organisationId = Guid.NewGuid();
