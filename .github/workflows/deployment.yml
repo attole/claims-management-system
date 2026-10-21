@@ -2,28 +2,92 @@ name: Deployment
 
 on:
   workflow_dispatch:
+    inputs:
+      run_id:
+        description: Build and Test run to deploy (a push to main). Empty means the latest successful one.
+        required: false
+        default: ""
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: deployment-demo
   cancel-in-progress: false
 
 jobs:
-  build-and-test:
-    name: Build, test and package
-    uses: ./.github/workflows/build-and-test.yml
+  select:
+    name: Select the build to deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      run_id: ${{ steps.select.outputs.run_id }}
+      head_sha: ${{ steps.select.outputs.head_sha }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RUN_ID_INPUT: ${{ inputs.run_id }}
+    steps:
+      - name: Select a successful build of main
+        id: select
+        run: |
+          set -euo pipefail
+          run_id="$RUN_ID_INPUT"
+          if [ -z "$run_id" ]; then
+            run_id=$(gh run list --workflow build-and-test.yml --branch main --event push --status success --limit 1 --json databaseId --jq '.[0].databaseId // empty')
+          fi
+          if [ -z "$run_id" ]; then
+            echo "::error::No successful Build and Test run of a push to main exists. Push a commit to main and wait for it to pass."
+            exit 1
+          fi
+          if ! [[ "$run_id" =~ ^[0-9]+$ ]]; then
+            echo "::error::The run id must be a number."
+            exit 1
+          fi
+
+          details=$(gh run view "$run_id" --json workflowName,event,headBranch,conclusion,headSha)
+          if [ "$(jq -r .workflowName <<< "$details")" != "Build and Test" ]; then
+            echo "::error::Run $run_id is not a Build and Test run."
+            exit 1
+          fi
+          if [ "$(jq -r .event <<< "$details")" != "push" ] || [ "$(jq -r .headBranch <<< "$details")" != "main" ]; then
+            echo "::error::Run $run_id is not a push to main. Only builds of reviewed code on main can be deployed."
+            exit 1
+          fi
+          if [ "$(jq -r .conclusion <<< "$details")" != "success" ]; then
+            echo "::error::Run $run_id did not succeed."
+            exit 1
+          fi
+
+          names=$(gh api "repos/${GH_REPO}/actions/runs/${run_id}/artifacts" --jq '[.artifacts[] | select(.expired | not) | .name] | sort | join(",")')
+          if [ "$names" != "api,database" ]; then
+            echo "::error::The artifacts of run $run_id are missing or expired (found: $names). Push a commit to main to build again."
+            exit 1
+          fi
+
+          head_sha=$(jq -r .headSha <<< "$details")
+          main_sha=$(gh api "repos/${GH_REPO}/commits/main" --jq .sha)
+          if [ "$head_sha" != "$main_sha" ]; then
+            echo "::warning::Deploying ${head_sha}, which is not the latest commit on main (${main_sha})."
+          fi
+
+          {
+            echo "run_id=$run_id"
+            echo "head_sha=$head_sha"
+          } >> "$GITHUB_OUTPUT"
+          echo "Deploying commit ${head_sha} from Build and Test run ${run_id}." >> "$GITHUB_STEP_SUMMARY"
 
   deploy:
     name: Provision, migrate, deploy and smoke test
-    needs: build-and-test
+    needs: select
     runs-on: ubuntu-latest
     timeout-minutes: 45
     environment: demo
     permissions:
       id-token: write
       contents: read
+      actions: read
     env:
       RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
       SQL_ADMIN_OBJECT_ID: ${{ vars.SQL_ADMIN_OBJECT_ID }}
@@ -31,17 +95,22 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
+          ref: ${{ needs.select.outputs.head_sha }}
           persist-credentials: false
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           name: api
           path: artifacts/api
+          run-id: ${{ needs.select.outputs.run_id }}
+          github-token: ${{ github.token }}
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           name: database
           path: artifacts/database
+          run-id: ${{ needs.select.outputs.run_id }}
+          github-token: ${{ github.token }}
 
       - uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906
         with:
