@@ -30,59 +30,7 @@
   </ul>
 
   @if (isAddingParty()) {
-    <form class="inline-form" [formGroup]="party" (ngSubmit)="addParty()" aria-label="New party">
-      <mat-form-field>
-        <mat-label>Role</mat-label>
-        <mat-select formControlName="role">
-          @for (role of roles; track role) {
-            <mat-option [value]="role">{{ role | enumLabel }}</mat-option>
-          }
-        </mat-select>
-      </mat-form-field>
-      <mat-form-field>
-        <mat-label>Type</mat-label>
-        <mat-select formControlName="type">
-          @for (type of types; track type) {
-            <mat-option [value]="type">{{ type }}</mat-option>
-          }
-        </mat-select>
-      </mat-form-field>
-      @if (party.controls.type.value === 'Company') {
-        <mat-form-field>
-          <mat-label>Company name</mat-label>
-          <input matInput formControlName="companyName" />
-          <mat-error>{{ party.controls.companyName.errors | errorMessage }}</mat-error>
-        </mat-form-field>
-      } @else {
-        <mat-form-field>
-          <mat-label>First name</mat-label>
-          <input matInput formControlName="firstName" />
-          <mat-error>{{ party.controls.firstName.errors | errorMessage }}</mat-error>
-        </mat-form-field>
-        <mat-form-field>
-          <mat-label>Last name</mat-label>
-          <input matInput formControlName="lastName" />
-          <mat-error>{{ party.controls.lastName.errors | errorMessage }}</mat-error>
-        </mat-form-field>
-      }
-      <mat-form-field>
-        <mat-label>Email</mat-label>
-        <input matInput type="email" formControlName="email" />
-        <mat-error>{{ party.controls.email.errors | errorMessage }}</mat-error>
-      </mat-form-field>
-      <mat-form-field>
-        <mat-label>Phone</mat-label>
-        <input matInput formControlName="phone" />
-        <mat-error>{{ party.controls.phone.errors | errorMessage }}</mat-error>
-      </mat-form-field>
-      @if (party.hasError(nameRequired) && party.touched) {
-        <p class="error full" role="alert">Enter a name for the party.</p>
-      }
-      <div class="actions full">
-        <button mat-flat-button type="submit">Add</button>
-        <button mat-button type="button" (click)="isAddingParty.set(false)">Cancel</button>
-      </div>
-    </form>
+    <app-party-editor (submitted)="addParty($event)" (cancelled)="isAddingParty.set(false)" />
   } @else {
     <div class="add-row">
       <button mat-stroked-button type="button" (click)="isAddingParty.set(true)">Add party</button>

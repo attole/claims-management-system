@@ -5,6 +5,7 @@ import { Claim, CreateClaimRequest, PagedResult, Policy, WriteResult } from '../
 import { ClaimsService } from '../../core/api/claims.service';
 import { PoliciesService } from '../../core/api/policies.service';
 import { ReferenceService } from '../../core/api/reference.service';
+import { isRefusal } from '../../core/http/error-body';
 import { newIdempotencyKey } from '../../core/http/idempotency';
 
 export const POLICY_SEARCH_DELAY_MS = 300;
@@ -42,7 +43,14 @@ export class IntakeStore {
     this.isSubmitting.set(true);
 
     return this.claims.create(request, this.idempotencyKey).pipe(
-      tap(() => (this.idempotencyKey = newIdempotencyKey())),
+      tap({
+        next: () => (this.idempotencyKey = newIdempotencyKey()),
+        error: (error: unknown) => {
+          if (isRefusal(error)) {
+            this.idempotencyKey = newIdempotencyKey();
+          }
+        },
+      }),
       finalize(() => this.isSubmitting.set(false)),
     );
   }

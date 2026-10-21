@@ -1,0 +1,97 @@
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { TestBed } from '@angular/core/testing';
+import { apiUrl } from '../../core/api/api-url';
+import { CLAIM_ID, CLAIMANT, claimDetail } from './claim-detail.fixtures';
+import { ClaimDetailStore } from './claim-detail.store';
+
+describe('ClaimDetailStore (S:UI-Detail-Header, S:UI-Audit, S:API-IdempotencyKey)', () => {
+  let store: ClaimDetailStore;
+  let http: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({ providers: [ClaimDetailStore, provideHttpClient(), provideHttpClientTesting()] });
+    store = TestBed.inject(ClaimDetailStore);
+    http = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => http.verify());
+
+  async function load(): Promise<void> {
+    store.claimId.set(CLAIM_ID);
+    TestBed.tick();
+    http.expectOne(apiUrl('reference/claim-statuses')).flush([{ status: 'Open', nextStatuses: ['Closed'] }]);
+    http
+      .expectOne(apiUrl('reference/cause-of-loss-codes'))
+      .flush([{ code: 'COL-WATER', name: 'Water damage', perilCategory: 'Property' }]);
+    http.expectOne(apiUrl(`claims/${CLAIM_ID}`)).flush(claimDetail());
+    await settle();
+    http
+      .expectOne((call) => call.url === apiUrl(`claims/${CLAIM_ID}/audit`))
+      .flush({ items: [], page: 1, pageSize: 10, totalCount: 0, totalPages: 0 });
+    await settle();
+  }
+
+  async function settle(): Promise<void> {
+    await Promise.resolve();
+    TestBed.tick();
+  }
+
+  it('loads the claim, then its audit page, and derives the next statuses and the cause name', async () => {
+    const loadedBefore = store.hasLoaded();
+
+    await load();
+
+    expect(loadedBefore).toBe(false);
+    expect(store.hasLoaded()).toBe(true);
+    expect(store.nextStatuses()).toEqual(['Closed']);
+    expect(store.causeName()).toBe('Water damage');
+  });
+
+  it('a write that failed without an answer keeps its key for the retry, and a success reloads the claim', async () => {
+    await load();
+    store.removeParty(CLAIMANT).subscribe({ error: () => undefined });
+    const refused = http.expectOne(apiUrl(`claims/${CLAIM_ID}/parties/${CLAIMANT.id}`));
+    refused.flush(null, { status: 503, statusText: 'Service Unavailable' });
+
+    store.removeParty(CLAIMANT).subscribe();
+    const retried = http.expectOne(apiUrl(`claims/${CLAIM_ID}/parties/${CLAIMANT.id}`));
+    retried.flush({ data: CLAIMANT, warnings: [] });
+    await settle();
+
+    expect(retried.request.headers.get('Idempotency-Key')).toBe(refused.request.headers.get('Idempotency-Key'));
+    http.expectOne(apiUrl(`claims/${CLAIM_ID}`)).flush(claimDetail());
+    http
+      .expectOne((call) => call.url === apiUrl(`claims/${CLAIM_ID}/audit`))
+      .flush({ items: [], page: 1, pageSize: 10, totalCount: 0, totalPages: 0 });
+    expect(store.isSaving()).toBe(false);
+  });
+
+  it('a refused write drops its key, so a changed body after it is a new request', async () => {
+    await load();
+    store.saveNotes('First').subscribe({ error: () => undefined });
+    const refused = http.expectOne(apiUrl(`claims/${CLAIM_ID}/notes`));
+    refused.flush(null, { status: 422, statusText: 'Unprocessable Entity' });
+
+    store.saveNotes('Second').subscribe({ error: () => undefined });
+
+    const next = http.expectOne(apiUrl(`claims/${CLAIM_ID}/notes`));
+    expect(next.request.headers.get('Idempotency-Key')).not.toBe(refused.request.headers.get('Idempotency-Key'));
+    next.flush(null, { status: 500, statusText: 'Server Error' });
+  });
+
+  it('keeps showing the claim when a reload fails', async () => {
+    await load();
+    store.reload();
+    TestBed.tick();
+
+    http.expectOne(apiUrl(`claims/${CLAIM_ID}`)).flush(null, { status: 500, statusText: 'Server Error' });
+    http
+      .expectOne((call) => call.url === apiUrl(`claims/${CLAIM_ID}/audit`))
+      .flush({ items: [], page: 1, pageSize: 10, totalCount: 0, totalPages: 0 });
+    await settle();
+
+    expect(store.hasError()).toBe(true);
+    expect(store.hasLoaded()).toBe(true);
+  });
+});

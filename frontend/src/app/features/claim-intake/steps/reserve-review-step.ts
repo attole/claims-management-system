@@ -3,6 +3,7 @@ import { ReactiveFormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
+import { partyName } from '../../../shared/forms/party-form';
 import { formatMoney } from '../../../shared/pipes/money.pipe';
 import { formatClaimDate } from '../../../shared/pipes/claim-date.pipe';
 import { enumLabel, EnumLabelPipe } from '../../../shared/pipes/enum-label.pipe';
@@ -56,11 +57,7 @@ function reviewLines(value: IntakeValue, causeNames: ReadonlyMap<string, string>
   const policy = value.policy.selected;
   const lossDate = value.loss.lossDate ? formatClaimDate(toIsoDateTime(value.loss.lossDate), 'dateTime') : '';
   const cause = causeNames.get(value.loss.causeOfLossCode) ?? value.loss.causeOfLossCode;
-  const parties = value.parties.map((party) => {
-    const name = party.type === 'Company' ? party.companyName : `${party.firstName} ${party.lastName}`.trim();
-
-    return `${enumLabel(party.role)}: ${name}`;
-  });
+  const parties = value.parties.map((party) => `${enumLabel(party.role)}: ${partyName(party)}`);
   const reserve = value.reserve.componentType
     ? `${enumLabel(value.reserve.componentType)} ${formatMoney(value.reserve.amount ?? 0)}`
     : 'None';

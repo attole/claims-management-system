@@ -1,0 +1,73 @@
+<div class="back">
+  <a mat-button routerLink="/claims">Back to claims</a>
+</div>
+
+@if (store.hasError() && !store.hasLoaded()) {
+  <section class="card state" role="alert">
+    <strong>The claim could not be loaded.</strong>
+    <button mat-button type="button" (click)="store.reload()">Try again</button>
+  </section>
+} @else if (!store.hasLoaded()) {
+  <section class="card state">
+    <mat-spinner diameter="32" aria-label="Loading the claim" />
+  </section>
+} @else {
+  @let detail = store.detail();
+
+  <app-claim-header
+    [detail]="detail"
+    [causeName]="store.causeName()"
+    [nextStatuses]="store.nextStatuses()"
+    [isSaving]="store.isSaving()"
+    (statusChosen)="changeStatus($event)"
+    (copied)="copied($event)"
+  />
+
+  @if (bannerMessages().length > 0) {
+    <div class="banner banner--bad" role="alert">
+      <strong>The change was refused.</strong>
+      <ul>
+        @for (message of bannerMessages(); track $index) {
+          <li>{{ message }}</li>
+        }
+      </ul>
+    </div>
+  }
+
+  <mat-tab-group class="tabs" animationDuration="0ms" mat-stretch-tabs="false">
+    <mat-tab label="Overview">
+      <div class="tab-body">
+        <app-overview-tab
+          [detail]="detail"
+          [causeName]="store.causeName()"
+          [isSaving]="store.isSaving()"
+          (notesSaved)="saveNotes($event)"
+          (acknowledged)="acknowledgeIssue($event)"
+          (waived)="waiveIssue($event)"
+        />
+      </div>
+    </mat-tab>
+    <mat-tab label="Parties">
+      <div class="tab-body">
+        <app-parties-tab
+          [parties]="detail.parties"
+          [isSaving]="store.isSaving()"
+          [(isAdding)]="isAddingParty"
+          (added)="addParty($event)"
+          (removed)="removeParty($event)"
+        />
+      </div>
+    </mat-tab>
+    <mat-tab label="Audit Log">
+      <div class="tab-body">
+        <app-audit-tab
+          [page]="store.audit()"
+          [isLoading]="store.isAuditLoading()"
+          [hasError]="store.hasAuditError()"
+          (pageChanged)="store.auditPaging.set($event)"
+          (retried)="store.reloadAudit()"
+        />
+      </div>
+    </mat-tab>
+  </mat-tab-group>
+}

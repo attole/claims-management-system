@@ -14,6 +14,9 @@ export type ReserveApprovalStatus = 'AutoApproved' | 'PendingApproval' | 'Approv
 export type ReservePostingStatus = 'Pending' | 'Posted' | 'Failed' | 'Cancelled';
 export type ReserveComponentState = 'Active' | 'Closed';
 export type PolicyStatus = 'Active' | 'Expired' | 'Cancelled';
+export type ClaimSeverity = 'Unspecified' | 'Minor' | 'Standard' | 'Critical' | 'Catastrophic';
+export type IssueState = 'Raised' | 'Cleared' | 'Acknowledged' | 'Waived';
+export type IssueSeverity = 'Critical' | 'Warning';
 
 export type Warning = Schemas['Warning'];
 export type ErrorBody = Schemas['ErrorBody'];
@@ -32,12 +35,23 @@ export interface PagedResult<TItem> {
 }
 
 export type ClaimSummary = Omit<Schemas['ClaimSummaryDto'], 'status'> & { status: ClaimStatus };
-export type ClaimDetail = Schemas['ClaimDetailDto'];
-export type Claim = Omit<ClaimDetail['claim'], 'state'> & { state: ClaimStatus };
-export type LossDetails = ClaimDetail['loss'];
-export type Party = ClaimDetail['parties'][number];
-export type RiskObject = ClaimDetail['riskObjects'][number];
-export type Issue = ClaimDetail['issues'][number];
+type ClaimDetailDto = Schemas['ClaimDetailDto'];
+export type Claim = Omit<ClaimDetailDto['claim'], 'state' | 'severity'> & {
+  state: ClaimStatus;
+  severity: ClaimSeverity;
+};
+export type LossDetails = ClaimDetailDto['loss'];
+export type Party = Omit<ClaimDetailDto['parties'][number], 'role' | 'type'> & { role: PartyRole; type: PartyType };
+export type RiskObject = ClaimDetailDto['riskObjects'][number];
+export type Issue = Omit<ClaimDetailDto['issues'][number], 'state' | 'severity'> & {
+  state: IssueState;
+  severity: IssueSeverity;
+};
+export type ClaimDetail = Omit<ClaimDetailDto, 'claim' | 'parties' | 'issues'> & {
+  claim: Claim;
+  parties: Party[];
+  issues: Issue[];
+};
 export type ClaimReserves = Schemas['ClaimReservesDto'];
 export type ReserveComponent = Omit<ClaimReserves['components'][number], 'state'> & { state: ReserveComponentState };
 export type ReserveHistory = Omit<ClaimReserves['history'][number], 'approvalStatus' | 'postingStatus'> & {

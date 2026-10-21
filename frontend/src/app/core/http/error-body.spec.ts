@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { describeError, readErrorBody } from './error-body';
+import { describeError, isRefusal, readErrorBody } from './error-body';
 
 describe('error-body (S:API-ErrorShape)', () => {
   it('readErrorBody returns the API error body as sent', () => {
@@ -24,6 +24,16 @@ describe('error-body (S:API-ErrorShape)', () => {
     const result = describeError(new HttpErrorResponse({ status: 415, error: problem }));
 
     expect(result).toBe('The request failed with status 415.');
+  });
+
+  it('isRefusal is true only for a 422 from the API', () => {
+    const results = [
+      isRefusal(new HttpErrorResponse({ status: 422 })),
+      isRefusal(new HttpErrorResponse({ status: 503 })),
+      isRefusal(new Error('422')),
+    ];
+
+    expect(results).toEqual([true, false, false]);
   });
 
   it('describeError for an unreachable server says so', () => {
