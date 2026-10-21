@@ -14,7 +14,7 @@
       Identity      create the deploy identity for GitHub (OIDC, no secret)
       GitHub        create the GitHub environment, its rules and its variables
       Provision     what-if, then deploy infra/main.bicep (asks before deploying)
-      JwtKey        put a new JWT signing key in Key Vault
+      Secrets       put the JWT signing key and the dev sign-in access code in Key Vault
       Verify        call the deployed API
       Teardown      delete everything (asks you to type the resource group name)
 
@@ -40,8 +40,13 @@
     The step to run, see the order above.
 
 .PARAMETER Rotate
-    JwtKey only: replace the key even when one already exists. Every issued token
-    stops validating, and the web app must be restarted.
+    Secrets only: replace the secrets even when they already exist. Every issued
+    token stops validating, the old access code stops working, and the web app is
+    restarted.
+
+.PARAMETER AccessCode
+    Secrets only: the access code for reviewers (16 or more characters). A random
+    one is generated and shown once when this is left out.
 
 .EXAMPLE
     .\infra\bootstrap.ps1 -Step Check
@@ -49,10 +54,12 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet('Check', 'ResourceGroup', 'Identity', 'GitHub', 'Provision', 'JwtKey', 'Verify', 'Teardown')]
+    [ValidateSet('Check', 'ResourceGroup', 'Identity', 'GitHub', 'Provision', 'Secrets', 'Verify', 'Teardown')]
     [string]$Step,
 
-    [switch]$Rotate
+    [switch]$Rotate,
+
+    [string]$AccessCode
 )
 
 # Native commands report failure through the exit code, which is checked after each call.
@@ -66,6 +73,7 @@ $DeployAppName = 'claims-github-deploy'
 $EnvironmentName = 'demo'
 $DeploymentName = 'provisioning'
 $JwtSecretName = 'jwt-signing-key'
+$DevAuthSecretName = 'devauth-secret'
 $ParamFile = Join-Path $PSScriptRoot 'demo.bicepparam'
 
 $Providers = @(
@@ -283,9 +291,33 @@ function Invoke-Provision {
     Get-DeploymentOutputs | Format-List
 }
 
-function Invoke-JwtKey {
-    # The API refuses to start without Jwt:SigningKey (32 or more characters). It lives only in Key Vault; the
-    # web app reads it through a Key Vault reference, resolved when the app starts.
+function New-RandomText([int]$Length) {
+    # Letters and digits without look-alike characters, so the access code can be read out and typed.
+    $alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789'
+    $bytes = New-Object byte[] $Length
+    $generator = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+    $generator.GetBytes($bytes)
+    $text = New-Object System.Text.StringBuilder
+    foreach ($byte in $bytes) {
+        [void]$text.Append($alphabet[$byte % $alphabet.Length])
+    }
+
+    return $text.ToString()
+}
+
+function New-JwtSigningKey {
+    $bytes = New-Object byte[] 48
+    $generator = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+    $generator.GetBytes($bytes)
+
+    return [Convert]::ToBase64String($bytes)
+}
+
+function Invoke-Secrets {
+    # Two secrets live only in Key Vault; the web app reads them through Key Vault references, resolved when the
+    # app starts:
+    #   jwt-signing-key  the key that signs the bearer tokens (the API needs 32 or more characters)
+    #   devauth-secret   the access code reviewers type to sign in with the dev token (16 or more characters)
     $vault = (Get-DeploymentOutputs).keyVaultName.value
     $vaultId = az keyvault show --name $vault --query id -o tsv
     Assert-Success 'Reading the key vault'
@@ -297,10 +329,10 @@ function Invoke-JwtKey {
     az role assignment create --assignee-object-id $myObjectId --assignee-principal-type User --role 'Key Vault Secrets Officer' --scope $vaultId | Out-Null
     Assert-Success 'Assigning yourself Key Vault Secrets Officer'
 
-    $listed = $false
     $existing = $null
+    $listed = $false
     for ($attempt = 1; $attempt -le 10 -and -not $listed; $attempt++) {
-        $existing = az keyvault secret list --vault-name $vault --query "[?name=='$JwtSecretName'].name" -o tsv
+        $existing = az keyvault secret list --vault-name $vault --query '[].name' -o tsv
         if ($LASTEXITCODE -eq 0) {
             $listed = $true
         }
@@ -313,41 +345,52 @@ function Invoke-JwtKey {
         throw 'Listing the key vault secrets failed: the role did not apply in time. Run the step again.'
     }
 
-    if ($existing -and -not $Rotate) {
-        'The JWT signing key already exists. Use -Rotate to replace it.'
-        return
+    if (-not $AccessCode) {
+        $AccessCode = New-RandomText 24
     }
+    $secrets = @(
+        @{ Name = $JwtSecretName; Value = (New-JwtSigningKey) },
+        @{ Name = $DevAuthSecretName; Value = $AccessCode }
+    )
 
-    $bytes = New-Object byte[] 48
-    $generator = [System.Security.Cryptography.RandomNumberGenerator]::Create()
-    $generator.GetBytes($bytes)
-    $keyFile = Join-Path $env:TEMP 'jwt-signing-key.txt'
-    [System.IO.File]::WriteAllText($keyFile, [Convert]::ToBase64String($bytes))
-
-    # The new role can take a few minutes to take effect, so a forbidden answer is retried.
-    $saved = $false
-    for ($attempt = 1; $attempt -le 10 -and -not $saved; $attempt++) {
-        az keyvault secret set --vault-name $vault --name $JwtSecretName --file $keyFile --encoding utf-8 | Out-Null
-        if ($LASTEXITCODE -eq 0) {
-            $saved = $true
+    $written = @()
+    foreach ($secret in $secrets) {
+        if (($existing -contains $secret.Name) -and -not $Rotate) {
+            "$($secret.Name) already exists. Use -Rotate to replace it."
+            continue
         }
-        else {
-            "Attempt $attempt failed, waiting 30 seconds."
-            Start-Sleep -Seconds 30
+
+        $file = Join-Path $env:TEMP "$($secret.Name).txt"
+        [System.IO.File]::WriteAllText($file, $secret.Value)
+        $saved = $false
+        for ($attempt = 1; $attempt -le 10 -and -not $saved; $attempt++) {
+            az keyvault secret set --vault-name $vault --name $secret.Name --file $file --encoding utf-8 | Out-Null
+            if ($LASTEXITCODE -eq 0) {
+                $saved = $true
+            }
+            else {
+                "Attempt $attempt failed, waiting 30 seconds."
+                Start-Sleep -Seconds 30
+            }
         }
-    }
-    Remove-Item $keyFile
-    if (-not $saved) {
-        throw 'Saving the JWT signing key failed.'
+        Remove-Item $file
+        if (-not $saved) {
+            throw "Saving the secret $($secret.Name) failed."
+        }
+        $written += $secret.Name
     }
 
-    if ($Rotate) {
+    if ($Rotate -and $written.Count -gt 0) {
         $app = (Get-DeploymentOutputs).webAppName.value
         az webapp restart --resource-group $ResourceGroup --name $app
         Assert-Success 'Restarting the web app'
     }
 
-    'The JWT signing key is saved in Key Vault. The storage connection string is already there: the template wrote it, so no one handles the account key.'
+    if ($written -contains $DevAuthSecretName) {
+        "The access code for reviewers is: $AccessCode"
+        'Keep it: it is the only time it is shown. Read it later with: az keyvault secret show --vault-name <vault> --name devauth-secret --query value -o tsv'
+    }
+    'The storage connection string is already in the vault: the template wrote it, so no one handles the account key.'
 }
 
 function Invoke-Verify {
@@ -360,8 +403,12 @@ function Invoke-Verify {
 
     $userId = az webapp config appsettings list --resource-group $ResourceGroup --name $app --query "[?name=='DevAuth__Users__0__Id'].value | [0]" -o tsv
     Assert-Success 'Reading the dev user id'
+    $vault = $outputs.keyVaultName.value
+    $accessCode = az keyvault secret show --vault-name $vault --name $DevAuthSecretName --query value -o tsv
+    Assert-Success 'Reading the access code'
     $body = @{ userId = $userId } | ConvertTo-Json -Compress
-    $token = (Invoke-RestMethod -Method Post -Uri "https://$hostName/api/dev/token" -ContentType 'application/json' -Body $body).token
+    $signInHeaders = @{ 'X-DevAuth-Secret' = $accessCode }
+    $token = (Invoke-RestMethod -Method Post -Uri "https://$hostName/api/dev/token" -Headers $signInHeaders -ContentType 'application/json' -Body $body).token
     $headers = @{ Authorization = "Bearer $token" }
     (Invoke-WebRequest -UseBasicParsing -Headers $headers "https://$hostName/api/claims").StatusCode
 }
@@ -402,7 +449,7 @@ switch ($Step) {
     'Identity' { Invoke-Identity }
     'GitHub' { Invoke-GitHub }
     'Provision' { Invoke-Provision }
-    'JwtKey' { Invoke-JwtKey }
+    'Secrets' { Invoke-Secrets }
     'Verify' { Invoke-Verify }
     'Teardown' { Invoke-Teardown }
 }

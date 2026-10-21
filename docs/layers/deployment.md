@@ -10,20 +10,20 @@ infra/
     demo.bicepparam       the demo environment: region, SKUs, switches, dev users; no secrets
     modules/              one resource family each: identity, monitoring, storage, keyvault, sql, staticwebapp, appservice, roles
     sql/                  grant-app-user.sql, verify-app-user.sql
-    bootstrap.md          the one-time manual runbook and the teardown
+    bootstrap.ps1         the one-time PowerShell script (step by step) and the teardown
 .github/workflows/
-    build-and-test.yml    every pull request and push to main; also called by the deployment
+    build-and-test.yml    every pull request and push to main; produces the artifacts the deployment ships
     deployment.yml        manual only (workflow_dispatch), environment demo
 ```
 
-- One environment, `demo`, in one resource group (`rg-claims-demo`, Poland Central; the static web app in West Europe). Names are `<kind>-claims-demo-<suffix>` (the storage account, which allows no hyphens, is `stclaimsdemo<suffix>`), the suffix taken from the resource group id; every resource carries the `application` and `environment` tags.
+- One environment, `demo`, in one resource group (`rg-claims-demo`, Poland Central; the static web app in Central US, because West Europe refuses new subscriptions and only its management data lives there). Names are `<kind>-claims-demo-<suffix>` (the storage account, which allows no hyphens, is `stclaimsdemo<suffix>`), the suffix taken from the resource group id; every resource carries the `application` and `environment` tags.
 - Outputs are names and hostnames only; no secret is ever a parameter or an output.
 
 ## Azure resources
 
 - **API:** App Service plan Linux B1 and one web app (`DOTNETCORE|9.0`): Always On (Hangfire runs in the process), HTTPS only, TLS 1.2, FTP off, no ARR affinity, health check on `/health/ready`, diagnostics to Log Analytics.
 - **Identity:** a user-assigned managed identity for the web app. It is the database user and reads Key Vault; its client id is an ARM property, so the pipeline creates the database user without Microsoft Graph.
-- **Database:** Azure SQL logical server with Entra-only authentication (no SQL password exists) and one Basic database; the deploy identity is the Entra administrator. The firewall allows Azure services; the pipeline opens a rule for its runner and closes it at the end.
+- **Database:** Azure SQL logical server with Entra-only authentication (no SQL password exists) and one Basic database; the deploy identity is the Entra administrator. The firewall rule that allows Azure services is what admits the GitHub-hosted runner; there is no per-run rule. If a run is refused with a client IP error, add a temporary rule step to the deployment job.
 - **Storage:** StorageV2 Standard LRS, TLS 1.2, no public blob access, the private container `claim-documents`. Downloads are SAS links straight from the blob (S:BR-D-02).
 - **Key Vault:** RBAC mode, soft-delete retention 7 days. Secrets: `jwt-signing-key` and `devauth-secret` (set by the bootstrap runbook), `storage-connection-string` (written by the template from the account key). The web app identity and the deploy identity hold Key Vault Secrets User.
 - **Frontend:** a Free static web app serving the Angular build; `staticwebapp.config.json` rewrites every route to `index.html`.
@@ -57,23 +57,23 @@ The template writes every app setting; the README 'Configuration' table lists wh
 ## Pipelines
 
 - **Build and Test:** two jobs. Frontend: `npm ci`, lint, format check, tests, build (Node 24). Backend: restore, Release build, tests against a SQL Server 2022 service container (`CLAIMS_TEST_SQLSERVER` set, so the SQL Server, API and Hangfire tests run instead of skipping), then the published API and the self-contained linux-x64 migration bundle as the artifacts `api` and `database`. The deployed API and migration bundle are the tested bytes; the frontend is rebuilt in the deployment with the API's URL.
-- **Deployment:** runs Build and Test, then one job in the GitHub environment `demo` (main only, a required reviewer), signed in to Azure by OIDC with a federated credential bound to that environment. Steps: what-if and create from `demo.bicepparam`; the access code read from Key Vault and masked; runner firewall rule; migrations (retried for firewall propagation); grant and verify scripts; zip deploy of the API and a restart; the smoke test; the frontend build against the API's URL and its upload to the static web app; the firewall rule removed in an always step.
+- **Deployment:** it does not build. A `select` job picks the latest successful Build and Test run of a push to main, or the run in the optional `run_id` input (a rollback to any build whose artifacts are still stored, 7 days). It refuses a run that is not Build and Test, not a push to main, not successful or whose artifacts expired, and warns when the chosen commit is not the latest on main. Then one job in the GitHub environment `demo` (main only, a required reviewer) checks out that run's commit, so the Bicep and SQL scripts match the API, downloads its artifacts and signs in to Azure by OIDC with a federated credential bound to that environment. Steps: create from `demo.bicepparam` (no what-if: the run already waits for approval); the access code read from Key Vault and masked; a second sign-in so the database token is fetched inside the five-minute lifetime of the GitHub token; migrations (retried); grant and verify scripts; zip deploy of the API and a restart; the smoke test; the frontend build against the API's URL and its upload to the static web app.
 - **Smoke test:** `/health/ready` answers 200 within five minutes, the OpenAPI document answers 200, the dev token call with `X-DevAuth-Secret` returns a token and `GET /api/claims` answers 200 with it. A failure stops the run; there is no automatic rollback (one instance, no slot).
-- Actions are pinned to commit SHAs, workflow permissions are `contents: read` (plus `id-token: write` on the deploy job), a deployment never cancels another, and a superseded build is cancelled.
+- Actions are pinned to commit SHAs, workflow permissions are `contents: read` and `actions: read` (plus `id-token: write` on the deploy job), a deployment never cancels another, and a superseded build is cancelled.
 
 ## Bootstrap and teardown
 
-`infra/bootstrap.md` holds the one-time steps the pipeline cannot do for itself, run by hand after `az login`:
+`infra/bootstrap.ps1` holds the one-time steps the pipeline cannot do for itself. Run it in Windows PowerShell after `az login` and `gh auth login`, one step per call (`.\infra\bootstrap.ps1 -Step <name>`); every step looks up what it needs, so it can be repeated:
 
-1. Check the providers and the region's services and quota.
-2. Create the resource group.
-3. Create the deploy identity: an app registration with the federated credential for `repo:attole/claims-management-system:environment:demo`, Contributor and Role Based Access Control Administrator on the resource group.
-4. Create the GitHub environment `demo` and its variables (`AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_RESOURCE_GROUP`, `SQL_ADMIN_OBJECT_ID`, `SQL_ADMIN_LOGIN`); ids only, no secrets.
-5. Provision once from the same template.
-6. Set `jwt-signing-key` and `devauth-secret` in the vault; give the reviewers the access code.
-7. Run the deployment workflow.
+1. `Check`: register the providers and check the region's services.
+2. `ResourceGroup`: create the resource group.
+3. `Identity`: create the deploy identity: an app registration with a federated credential for the environment `demo`, Contributor and Role Based Access Control Administrator on the resource group. GitHub puts the numeric owner and repository ids into the token subject (`repo:owner@id/name@id:environment:demo`), and Azure compares it exactly, so the script builds the subject from those ids.
+4. `GitHub`: create the environment `demo` (main only, you as required reviewer) and its variables (`AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_RESOURCE_GROUP`, `SQL_ADMIN_OBJECT_ID`, `SQL_ADMIN_LOGIN`); ids only, no secrets.
+5. `Provision`: show the what-if, then provision once from the same template after your yes.
+6. `Secrets`: set `jwt-signing-key` and `devauth-secret` in the vault (it gives you the Key Vault Secrets Officer role first) and show the access code once; give the reviewers the access code.
+7. Run the deployment workflow, then `Verify`.
 
-Teardown deletes the Log Analytics workspace with force, the resource group, purges the soft-deleted vault and deletes the app registration, so a rebuild can reuse the names.
+`Teardown` deletes the Log Analytics workspace with force, the resource group, purges the soft-deleted vault and deletes the app registration, so a rebuild can reuse the names.
 
 ## Accepted trade-offs
 
