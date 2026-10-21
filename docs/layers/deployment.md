@@ -11,6 +11,7 @@ infra/
     modules/              one resource family each: identity, monitoring, storage, keyvault, sql, staticwebapp, appservice, roles
     sql/                  grant-app-user.sql, verify-app-user.sql
     bootstrap.ps1         the one-time PowerShell script (step by step) and the teardown
+    seed-demo-data.ps1    demo claims through the API, run by hand
 .github/workflows/
     build-and-test.yml    every pull request and push to main; produces the artifacts the deployment ships
     deployment.yml        manual only (workflow_dispatch), environment demo
@@ -74,6 +75,10 @@ The template writes every app setting; the README 'Configuration' table lists wh
 7. Run the deployment workflow, then `Verify`.
 
 `Teardown` deletes the Log Analytics workspace with force, the resource group, purges the soft-deleted vault and deletes the app registration, so a rebuild can reuse the names.
+
+## Demo data
+
+`infra/seed-demo-data.ps1` fills the deployed demo with claims for testing lists, filters and paging. It is run by hand and is not a migration: it signs in as the three demo users and calls the API, so every claim passes the Domain rules and carries its audit entries, issues and balances. It creates Draft, Open, UnderInvestigation, PendingPayment, Closed and Withdrawn claims (80 by default), reserves approved by a supervisor or a manager, some waiting or rejected, and PDF documents on some claims, which also exercises the Blob adapter. It stops when claims already exist unless `-Force` is given, and a refused step is counted and shown without stopping the run.
 
 ## Accepted trade-offs
 
