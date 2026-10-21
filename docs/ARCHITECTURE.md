@@ -15,7 +15,7 @@ Clean Architecture with five projects, dependencies pointing inward: `API` -> `A
 | Layer | State |
 |---|---|
 | Domain, Application, Persistence, Infrastructure, API | complete, with tests; the rules and contracts of each are in `docs/layers/` |
-| Frontend | not started; the API is described in `docs/layers/api.md` and the README |
+| Frontend | Angular 22 workspace with the theme, the app shell, the mock sign-in and the HTTP pipeline; the three screens follow; rules in `docs/layers/frontend.md` |
 
 Key choices:
 
@@ -31,7 +31,7 @@ Key choices:
 Settings, secrets and feature switches follow `.claude/CLAUDE.md` 'Configuration'; the settings table and setup steps are in the root `README.md`. Two points are specific to this design:
 
 - The Hangfire dashboard is open to every request when its switch is on, because a page load carries no Bearer token, so enabling it in a shared environment exposes job data to anyone with the URL.
-- `DevAuth:Enabled` is only a key in the appsettings files; nothing binds or reads it until the dev token endpoint exists.
+- `DevAuth:Enabled` serves `POST /api/dev/token`, a simulated sign-in that needs no secret: anyone who reaches it gets a token for any configured user, a manager included. A deployment that needs test credentials therefore has to decide how to protect that endpoint (a parked decision) or keep it off.
 
 ## Task documents
 
@@ -71,7 +71,7 @@ How the documents are read and carried out where they are ambiguous, silent or i
 | Liability confirmation | the status-change request carries an explicit confirmation, required for PendingPayment and written to the audit entry; nothing is stored on the claim | LIABILITY_CONFIRMATION_REQUIRED | gap |
 | Loss date | a Critical issue when later than the time of the change; every claim input carries that time (`Now`); the evidence is the loss date only, so the issue does not churn | S:BR-C-01 | mechanism |
 | Waiver lifecycle | an issue matches its finding by code and evidence, so a waiver or acknowledgement lapses when the checked values change | none | mechanism |
-| Moves see current issues | every move re-evaluates the issues before and after it; a refused move keeps the refreshed issues | S:BR-ST-02, S:CC-02 | mechanism |
+| Moves see current issues | every move re-evaluates the issues before and after it; a refused move commits nothing, so its refreshed issues are not saved | S:BR-ST-02, S:CC-02 | mechanism |
 | Drafts stay | the transition table has no exit from Draft except Open; the SLA job flags an abandoned one | S:BR-ST-01 | reading |
 | Claim numbers | a counter row per organisation and year, incremented atomically in the claim's transaction; the format holds seven digits | S:CLAIMNO-Atomic | mechanism |
 | Unknown policy at intake | the claim is created without a policy and returns a warning; linking an unknown policy to an existing claim is a not found | POLICY_NOT_FOUND | gap |
@@ -85,11 +85,13 @@ How the documents are read and carried out where they are ambiguous, silent or i
 | Reversal during payment | allowed; a reserve is independent of the claim state | none | gap |
 | Document aggregate | its own root, frozen with the claim; the size limit and the content-type allowlist are Domain rules; the Application builds the path and talks to storage | S:DOC-MaxSize, S:DOC-MimeAllowlist | mechanism |
 | Blob name | the specification's path with a random upload id before the file name (`{uploadId}_{name}`): a path is unique by construction, so a failed commit or a removed document never blocks a name, and an orphan blob only costs storage | S:BR-D-01 | departure |
-| Audited events | the specification's fixed list, plus limit override changes, component state changes and the two document events; other edits leave their trace in the audit columns | S:AUD-Events | gap |
+| Lazy-loaded feature modules | each screen is a lazily loaded route file of standalone components; Angular no longer needs NgModules for lazy loading | S:UI-General | reading |
+| Mock authentication | the header's role switcher signs in through the API's dev token route as one of three configured users, so the interceptor sends a real bearer token | S:UI-General | mechanism |
+| Audited events | the specification's fixed list, plus five more types (issue acknowledged, issue waived, limit override changed, reserve component state changed, document removed) kept apart in `AuditEventTypes.Additional`, because a waiver or an override is a significant action (S:BR-A-02); other edits leave their trace in the audit columns | S:AUD-Events | gap |
 | Guarded times and actors | a missing time or actor, or a business time earlier than the one it follows, throws | none | mechanism |
 | Error body | an error without a field goes under the key `General`, set in the API's one error mapper | S:API-ErrorShape | gap |
-| Claim list date range | filters the claim's reported date | none | gap |
-| Unspecified cases | authentication failures (401 and 403 in the error body), concurrent edits (a 409 in the error body) and idempotency-key replays (stored response replayed, 409 while running, 422 for another body) are decided in `docs/layers/api.md` 'Errors' and 'Idempotency-Key'; oversized uploads are decided with the upload pack | none | gap |
+| Claim list date range | filters the loss date of the claim | none | gap |
+| Unspecified cases | authentication failures (401 and 403 in the error body), concurrent edits (a 409 in the error body) and idempotency-key replays (the stored success replayed, 409 while running, 422 for another body; a refused request is not stored) are decided in `docs/layers/api.md` 'Errors' and 'Idempotency-Key'; oversized uploads are decided with the upload pack | none | gap |
 
 ### Schema departures from the spec
 
@@ -117,6 +119,8 @@ Table names are the spec's (section 9): `Claims`, `LossEvents`, `ClaimParties`, 
 | Cause code sort order | a shadow column; the Domain holds no order | display order is a read concern |
 | Document soft delete (added) | `IsDeleted` and `DeletedAt` on the document | the spec lists no delete column |
 | Claim list view (added) | the database view `ClaimListView` joining claims, loss events and policies, created by the second migration | the list filters, sorts and pages on columns of three tables in one query |
+| Claim policy | `Claims.PolicyId` is a non-null id with the empty id for "no policy", and has no foreign key to `Policies` | the Domain keeps no null and EF cannot map a non-nullable property as an optional foreign key; the Application checks that a policy exists when it is linked, and policies are never deleted |
+| History delete behaviour | the foreign keys of the audit log, the state changes and the reserve history restrict a delete (the third migration); the other children still cascade | a hard delete of a claim must never take its audit trail or its history with it |
 | Audit table permission (added) | update and delete on `ClaimAuditLog` are denied to the database role `claims_app`, created by the second migration | the spec forbids updating or deleting audit rows; the deployment adds the app's database user to the role (S:AUD-NoUpdateDelete) |
 
 ### Decisions on gaps
@@ -128,7 +132,8 @@ Conditions and constants that no document states and that this repo added. Each 
 | Claim | Reasons | withdrawal and reopen need both a code and a text; the code is free text until a list exists | STATE_CHANGE_REASON_REQUIRED |
 | Claim | Loss report date | required on create | LOSS_REPORT_DATE_REQUIRED |
 | Claim | Edits after Draft | a loss update that would leave a Critical loss issue is refused; a waived problem stays allowed | LOSS_INCOMPLETE_AFTER_DRAFT |
-| Claim | Handler | a Draft opens only with an assigned handler, which cannot be removed after Draft | CLAIM_HANDLER_REQUIRED, CLAIM_HANDLER_NOT_KEPT |
+| Claim | Handler | a Draft opens only with an assigned handler, which cannot be removed after Draft; a new claim is created with its creator as the handler | CLAIM_HANDLER_REQUIRED, CLAIM_HANDLER_NOT_KEPT |
+| Claim | Back to Open | a move from UnderInvestigation to Open meets the conditions of opening a Draft (no unresolved critical issue, no unacknowledged policy-period warning, a claimant, a handler); a move from Reopened stays unconditional | S:BR-ST-02 |
 | Claim | Frozen claims | a closed or withdrawn claim refuses edits to its data, reserves and documents, and its components close and reopen with it; notes stay editable | CLAIM_NOT_EDITABLE, RESERVE_CLAIM_NOT_EDITABLE, DOCUMENT_CLAIM_NOT_EDITABLE |
 | Claim | Waivers | supervisor or manager only; a missing loss date, an inactive cause code and a missing claimant can never be waived | ISSUE_MUST_BE_FIXED |
 | Claim | Primary risk object | only one active risk object is primary | RISK_OBJECT_PRIMARY_EXISTS |
@@ -143,6 +148,8 @@ Conditions and constants that no document states and that this repo added. Each 
 | Policy | Status | shown only: Active up to the effective end date (the earlier of expiry and cancellation), then Cancelled when a cancellation ended the cover, otherwise Expired; the date is an argument, the Domain reads no clock | none |
 | Read | Recent audit entries | the claim detail shows 10 | none |
 | Read | Page size cap | a page holds at most 100 rows | none |
+| Audit | Additional event types | acknowledged and waived issues, limit override changes (only when the value changes), reserve component state changes and removed documents are audited besides the specification's fixed list | AuditEventTypes.Additional |
+| Job | Batch caps | one SLA run flags at most 500 claims and one posting sweep re-enqueues at most 500 rows; the rest wait for the next run | none |
 
 ## Backend details
 
@@ -191,6 +198,68 @@ The Domain loads nothing and knows no identity. Everything a change needs that t
 - The finding states its severity and the step decides the consequence: a step stops on a Critical finding, while the issue evaluation stores each finding as an issue. A warning that must block is its own rule with its own Critical finding.
 - Reserve authority is a set of rules over the amount: up to 10,000 may be auto-approved, approving up to 100,000 needs a supervisor, anything above needs a manager, nobody approves their own row, and a change that would take the claim over 10 million needs the manager override.
 - The rules are listed by their `Code` in the `Rules/` folders and cited by that code in the tests.
+
+### Request flow
+
+One write request, top to bottom (a read skips the filter, the validator and the Unit of Work):
+
+```text
+HTTP request
+    middleware: correlation id, exception handler, HTTPS, CORS, authentication, current user, authorization
+    Idempotency-Key filter (a write with the header)
+    controller action: maps its request record to a command
+    MediatR pipeline: the FluentValidation behavior checks the shape
+    handler: loads the aggregate and the outside facts, builds the input, calls one aggregate method
+    aggregate: runs the rules, changes its state, raises its events
+    Unit of Work: before-commit handlers (audit), one save, after-commit handlers (enqueue a job)
+    controller: maps the Result to { data, warnings } or to the error body
+```
+
+### Domain events and their handlers
+
+The Unit of Work dispatches the events an aggregate raised: before the save for the handlers that must commit with the change (audit, the components following a claim), after it for the handlers that start outside work.
+
+| Event | Before commit | After commit |
+|---|---|---|
+| `ClaimCreatedEvent` | audit CLAIM_CREATED | none |
+| `ClaimStateChangedEvent` | audit STATUS_CHANGED (and CLAIM_CLOSED or CLAIM_REOPENED); the reserve components close or reopen with the claim | none |
+| `PartyAddedEvent`, `PartyRemovedEvent` | audit PARTY_ADDED, PARTY_REMOVED | none |
+| `ValidationIssueRaisedEvent` | audit VALIDATION_ISSUE_ADDED | none |
+| `ValidationIssueAcknowledgedEvent`, `ValidationIssueWaivedEvent` | audit of the same names (additional types) | none |
+| `ValidationIssueClearedEvent` | none | none |
+| `AggregateLimitOverrideChangedEvent` | audit LIMIT_OVERRIDE_CHANGED | none |
+| `ReserveHistorySubmittedEvent` | audit RESERVE_CREATED | none |
+| `ReserveHistoryApprovalStateChangedEvent` | audit RESERVE_AUTO_APPROVED, RESERVE_APPROVED, RESERVE_REJECTED or RESERVE_RETRACTED | enqueue the posting job when the row is approved |
+| `ReserveHistoryPostingStateChangedEvent` | audit GL_POSTING_SIMULATED or GL_POSTING_FAILED, with the simulated journal | enqueue the posting job again when a failed row returns to pending |
+| `ReserveComponentStateChangedEvent` | audit RESERVE_COMPONENT_STATE_CHANGED (additional type) | none |
+| `ClaimDocumentUploadedEvent`, `ClaimDocumentRemovedEvent` | audit DOCUMENT_UPLOADED, DOCUMENT_REMOVED (additional type) | none |
+
+### Background jobs
+
+| Job | Trigger | What it does | Idempotency |
+|---|---|---|---|
+| Posting (GL simulation) | enqueued after the commit of an approval, and again on a retry | marks the history row posted, which writes the simulated journal entry to the audit log, or marks it failed after the retries | the row computes the key `Reserve:{component id}:Change:{sequence}`; marking a row that is already posted is a no-op, so a second run writes nothing |
+| SLA detection | recurring, every 15 minutes | writes SLA_BREACH_DETECTED for a Draft or Open claim not updated for 48 hours, at most 500 a run | no entry for a claim flagged in the last 24 hours |
+| Posting sweep | recurring, every 5 minutes | enqueues the posting job again for an approved row still unposted after 10 minutes, at most 500 a run | the posting job is idempotent |
+| Idempotency cleanup | recurring, hourly | deletes stored Idempotency-Key rows older than 24 hours | a delete of expired rows only |
+| Blob sweep | recurring, every 12 hours, off by default | deletes stored blobs no document row refers to | a blob already gone is ignored |
+
+A job holds no business logic: it sends a command through MediatR with its own scope and tenant. The details are in `docs/layers/infrastructure.md`.
+
+### Data model
+
+Every business table carries the tenant column, the audit columns and a soft delete flag (the history tables refuse a delete). Relationships, one line per parent:
+
+```text
+Policies 1 - * PolicyCoverageTypes
+Claims 1 - 1 LossEvents
+Claims 1 - * ClaimParties, ClaimRiskObjects, ClaimIssues, ClaimStateChanges, ClaimDocuments, ClaimAuditLog
+Claims 1 - * ClaimReserveComponents 1 - * ReserveHistory
+Claims * - 1 Policies (a claim without a policy keeps an empty id)
+Claims.CauseOfLossCode refers to CauseOfLossCodes by code, without a foreign key
+ClaimNumberCounters: one row per organisation and year
+IdempotencyKeys: one row per user, key, method and route
+```
 
 ## Known risks
 

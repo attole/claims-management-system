@@ -37,6 +37,8 @@ Verifies that business rules from the local domain documents are enforced and te
     - flags: `derived`; `conflict:<other ID>` where the documents disagree (listed on both rules).
 2. **Originals:** `docs/spec.local.md` and `docs/assessment.local.md`. Open ONLY the section a register line points to, to judge a deviation. Never read a whole document for a passive run.
 
+3. **Decisions:** the table 'Decisions on gaps' in `docs/ARCHITECTURE.md` lists conditions and constants the user accepted that no document states. Code that implements a listed decision is not an orphan; where a decision narrows or extends a document rule, report it once as `decided`, not as a deviation, and only when its row is missing or its code or test is missing.
+
 If the register is missing, a passive run does nothing. An explicit run may fall back to grepping the originals for the area at hand.
 
 ### Tying code to rules

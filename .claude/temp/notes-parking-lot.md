@@ -17,3 +17,7 @@ NEXT: Deployment - the CI/CD pipeline and the Azure deployment, every outward ac
 NEXT: Deployment - provision the claims_app database role membership for the app user (the second migration creates the role and denies update and delete on ClaimAuditLog); give CI a SQL Server service and set CLAIMS_TEST_SQLSERVER, so an unreachable server fails the run instead of skipping the SQL Server tests
 NEXT: Docs - a final pass on README.md, docs/ARCHITECTURE.md and docs/AI-WORKFLOW.md, with the correction section generated from the journal, and the export of the conversation history
 TOPIC: Live review - be ready to explain why business rules stay in the Domain and validators check request shape only; the assessment suggests rules as validators too (docs/ARCHITECTURE.md 'Overview' states the choice)
+TOPIC: DevAuth issues a token for any configured user with no secret; decide how a deployed environment protects the test sign-in (shared secret header, or keep it off).
+TOPIC: the document MIME allowlist trusts the declared content type; consider sniffing the file content.
+TOPIC: claim intake raises transient VALIDATION_ISSUE_ADDED audit rows (about six for a complete claim) because each assembly step re-evaluates the issues; evaluate once at the end of intake.
+NEXT: intake with an initial reserve and no known policy refuses the whole create (a reserve needs a linked policy); decide refuse, create without the reserve plus a warning, or block it in the form.

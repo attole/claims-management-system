@@ -483,6 +483,37 @@ def check_code_layout():
             check_domain(sources)
 
 
+FRONTEND_SRC = "frontend/src"
+FRONTEND_GENERATED = {"app/core/api/api-schema.ts", "styles/_theme-colors.scss"}
+TS_STRING = re.compile(r'"(?:[^"\\]|\\.)*"|\'(?:[^\'\\]|\\.)*\'|`(?:[^`\\]|\\.)*`')
+
+
+def frontend_files():
+    root = ROOT / FRONTEND_SRC
+    if not root.exists():
+        return
+    for path in sorted(root.rglob("*")):
+        rel = path.relative_to(root).as_posix()
+        if path.is_file() and path.suffix in {".ts", ".html", ".scss"} and rel not in FRONTEND_GENERATED:
+            yield rel, path.read_text(encoding="utf-8", errors="replace")
+
+
+def check_frontend():
+    max_line = line_limit()
+    files = dict(frontend_files())
+    for rel, text in files.items():
+        for number, line in enumerate(text.splitlines(), 1):
+            if len(line) > max_line:
+                fail("code", f"{FRONTEND_SRC}/{rel}:{number} is longer than {max_line} characters")
+            code = TS_STRING.sub('""', line)
+            if re.search(r"(?<![:/])//", code) or "/*" in code or "<!--" in code:
+                fail("code", f"{FRONTEND_SRC}/{rel}:{number} is a comment (CLAUDE.md 'No explanatory comments')")
+            if rel.endswith(".ts") and re.search(r":\s*any\b|<any>|as any\b", code):
+                fail("code", f"{FRONTEND_SRC}/{rel}:{number} uses any")
+        if rel.endswith(".spec.ts") and rel[: -len(".spec.ts")] + ".ts" not in files:
+            fail("layout", f"{FRONTEND_SRC}/{rel} has no source file to mirror")
+
+
 def check_overlap(window=8):
     words = []
     for rel in LOCAL_DOCS:
@@ -518,7 +549,8 @@ def main():
     rules = parse_register()
     for run in (check_ascii, check_citations, check_architecture_citations, check_headings, check_settings,
                 lambda: check_register(rules), lambda: check_quoted_counts(rules), check_skills, check_paths,
-                check_journal, check_parking_lot, check_code_layout, check_overlap, check_layer_docs):
+                check_journal, check_parking_lot, check_code_layout, check_frontend, check_overlap,
+                check_layer_docs):
         ran += 1
         run()
     for line in findings:

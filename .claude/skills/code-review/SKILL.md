@@ -32,7 +32,7 @@ Spawn prompt:
 Perform a code review. Scope: <uncommitted (default) | branch <name> vs origin/<base> | PR>.
 Areas changed: <backend | frontend | both>. Follow the Procedure subsections Collect, Contract review,
 Per-file review and Confidence filter, and the Output section, of .claude/skills/code-review/SKILL.md.
-Read .claude/CLAUDE.md in full, docs/CODING-STANDARDS.md, and the file in docs/layers/ of each changed layer (docs/layers/domain.md, docs/layers/application.md, docs/layers/persistence.md, docs/layers/infrastructure.md or docs/layers/api.md). Read-only: no checkout, no git
+Read .claude/CLAUDE.md in full, docs/CODING-STANDARDS.md, and the file in docs/layers/ of each changed layer (docs/layers/domain.md, docs/layers/application.md, docs/layers/persistence.md, docs/layers/infrastructure.md, docs/layers/api.md or docs/layers/frontend.md). Read-only: no checkout, no git
 writes, no file edits. Return only findings.
 ```
 
