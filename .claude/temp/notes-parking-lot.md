@@ -18,3 +18,4 @@ NEXT: Deployment - provision the claims_app database role membership for the app
 NEXT: Persistence - add a SQL Server test for the claim list loss-date filter (untestable on SQLite)
 NEXT: Infrastructure - run the Azure blob list and delete and the Hangfire jobs against Azurite or a real account and a real Hangfire database before turning Hangfire:BlobSweep:Enabled on in Azure (docs/layers/infrastructure.md 'Jobs')
 NEXT: API pack 6 - the upload action sets its request size and form limits with attributes (authorization-stage filters, so they apply before the Idempotency-Key filter reads the form); a test must prove a body just under 50 MB reaches the action with the key header sent (docs/layers/api.md 'Idempotency-Key')
+NEXT: API pack 4 (intake POST claims)

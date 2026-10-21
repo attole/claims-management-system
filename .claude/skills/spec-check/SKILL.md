@@ -82,12 +82,10 @@ Create or refresh `docs/rules.local.md` from the two local documents; the phrase
 
 Per CLAUDE.md 'Output discipline'. Findings are paraphrased, never quoted; the register's paraphrase is the most that may appear.
 
-Passive, appended after the review findings:
+Printed as plain text, never inside a code block. Passive, appended after the review findings:
 
-```text
 rules - <areas checked>
 <rule ID> - <verdict>: <paraphrased problem>. Fix: <one-line fix>.
-```
 
 - An invented rule has no rule ID: `orphan - <file>:<line>: <condition>. Fix: ask the user for the source.`
 - A conflict names both IDs: `<ID> / <ID> - conflict: <difference>. Fix: ask the user.`

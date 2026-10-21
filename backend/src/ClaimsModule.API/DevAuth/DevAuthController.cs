@@ -1,5 +1,4 @@
 using ClaimsModule.API.DevAuth.Configuration;
-using ClaimsModule.API.DevAuth.Dtos;
 using ClaimsModule.API.Errors;
 using ClaimsModule.Application.Results;
 using Microsoft.AspNetCore.Authorization;

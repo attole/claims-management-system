@@ -21,7 +21,7 @@ public sealed class ListClaimsQueryTests
         var handlerId = Guid.NewGuid();
         var query = new ListClaimsQuery(2, 20)
         {
-            Status = ClaimStateKind.Open,
+            Statuses = [ClaimStateKind.Open],
             AssignedHandlerId = handlerId,
             Search = "Stone",
         };
@@ -69,7 +69,7 @@ public sealed class ListClaimsQueryTests
         var validator = new ListClaimsQueryValidator();
         var query = new ListClaimsQuery(1, 20)
         {
-            Status = ClaimStateKind.Closed,
+            Statuses = [ClaimStateKind.Closed],
             DateFrom = new DateOnly(2026, 1, 1),
             DateTo = new DateOnly(2026, 12, 31),
         };
@@ -83,11 +83,11 @@ public sealed class ListClaimsQueryTests
     public void Validate_WithAnUnknownStatus_FailsOnTheField()
     {
         var validator = new ListClaimsQueryValidator();
-        var query = new ListClaimsQuery(1, 20) { Status = (ClaimStateKind)99 };
+        var query = new ListClaimsQuery(1, 20) { Statuses = [(ClaimStateKind)99] };
 
         var result = validator.TestValidate(query);
 
-        result.ShouldHaveValidationErrorFor(request => request.Status);
+        result.ShouldHaveValidationErrorFor("Statuses[0]");
     }
 
     [Fact]

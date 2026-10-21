@@ -12,6 +12,8 @@ public sealed record ClaimSummaryDto
 
     public DateTimeOffset LossDate { get; init; } = DateTimeOffset.MinValue;
 
+    public string CauseOfLossCode { get; init; } = string.Empty;
+
     public string Status { get; init; } = string.Empty;
 
     public decimal TotalReserves { get; init; } = 0m;

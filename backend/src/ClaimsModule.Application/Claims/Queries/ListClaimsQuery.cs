@@ -12,7 +12,7 @@ namespace ClaimsModule.Application.Claims.Queries;
 public sealed record ListClaimsQuery(int Page, int PageSize)
     : IQuery<Result<PagedResult<ClaimSummaryDto>>>, IPagedQuery
 {
-    public ClaimStateKind? Status { get; init; }
+    public IReadOnlyList<ClaimStateKind> Statuses { get; init; } = [];
 
     public DateOnly? DateFrom { get; init; }
 
@@ -28,11 +28,9 @@ public sealed record ListClaimsQuery(int Page, int PageSize)
 
     public ClaimListFilter ToFilter()
     {
-        IReadOnlyList<ClaimStateKind> statuses = Status.HasValue ? [Status.Value] : [];
-
         return new ClaimListFilter
         {
-            Statuses = statuses,
+            Statuses = Statuses,
             DateFrom = DateFrom ?? DateOnly.MinValue,
             DateTo = DateTo ?? DateOnly.MaxValue,
             AssignedHandlerId = AssignedHandlerId,
@@ -49,7 +47,7 @@ public sealed class ListClaimsQueryValidator : PagedQueryValidator<ListClaimsQue
 
     public ListClaimsQueryValidator()
     {
-        RuleFor(query => query.Status).IsInEnum().When(query => query.Status.HasValue);
+        RuleForEach(query => query.Statuses).IsInEnum();
         RuleFor(query => query.CauseOfLossCode).NotNull().MaximumLength(ClaimFieldLengths.CauseOfLossCode);
         RuleFor(query => query.Search).NotNull().MaximumLength(ClaimFieldLengths.SearchText);
         RuleFor(query => query.DateTo)

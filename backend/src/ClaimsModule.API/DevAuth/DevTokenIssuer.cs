@@ -1,6 +1,5 @@
 using System.Text;
 using ClaimsModule.API.DevAuth.Configuration;
-using ClaimsModule.API.DevAuth.Dtos;
 using ClaimsModule.API.Pipeline.Identity;
 using ClaimsModule.API.Pipeline.Jwt;
 using ClaimsModule.Application.Abstractions;

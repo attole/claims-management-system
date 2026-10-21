@@ -138,6 +138,7 @@ internal sealed class ClaimReader(ClaimsDbContext context, IMapper mapper) : ICl
             ClientName = row.ClientName,
             PolicyNumber = row.PolicyNumber,
             LossDate = row.LossDate ?? DateTimeOffset.MinValue,
+            CauseOfLossCode = row.CauseOfLossCode,
             Status = row.Status,
             TotalReserves = totals.GetValueOrDefault(row.ClaimId),
         };

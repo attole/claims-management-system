@@ -3,6 +3,15 @@ using ClaimsModule.API.Tests.Support.TestEndpoints;
 using ClaimsModule.Application.Abstractions;
 using ClaimsModule.Application.Paging;
 using ClaimsModule.Application.Results;
+using ClaimsModule.Domain.CauseOfLoss;
+using ClaimsModule.Domain.Claims;
+using ClaimsModule.Domain.Claims.Inputs;
+using ClaimsModule.Domain.Claims.Loss;
+using ClaimsModule.Domain.Claims.Loss.Inputs;
+using ClaimsModule.Domain.Policies;
+using ClaimsModule.Domain.Roles;
+using ClaimsModule.Infrastructure.Identity;
+using ClaimsModule.Persistence;
 using Hangfire;
 using MediatR;
 using Microsoft.AspNetCore.Hosting;
@@ -18,6 +27,8 @@ namespace ClaimsModule.API.Tests.Support;
 public sealed class ApiFactory(ApiFixture database, bool isDevAuthEnabled = true) : WebApplicationFactory<Program>
 {
     public static readonly Guid SeedOrganisationId = Guid.Parse("3a44da3d-69e0-b835-4a7c-2859c519e664");
+    public const string SeedCauseOfLossCode = "WATER";
+
     public static readonly Guid HandlerId = Guid.Parse("b2000000-0000-4000-8000-000000000001");
     public static readonly Guid SupervisorId = Guid.Parse("b2000000-0000-4000-8000-000000000002");
     public static readonly Guid ManagerId = Guid.Parse("b2000000-0000-4000-8000-000000000003");
@@ -28,6 +39,27 @@ public sealed class ApiFactory(ApiFixture database, bool isDevAuthEnabled = true
     {
         return WithWebHostBuilder(builder => builder.ConfigureAppConfiguration(
             (_, configuration) => configuration.AddInMemoryCollection(settings)));
+    }
+
+    public async Task<string> SeedClaimAsync(Guid organisationId)
+    {
+        using var scope = Services.CreateScope();
+        scope.ServiceProvider.GetRequiredService<ScopedCurrentUser>()
+            .Set(Guid.NewGuid(), organisationId, UserRole.From(UserRoleKind.Handler));
+        var context = scope.ServiceProvider.GetRequiredService<ClaimsDbContext>();
+        var number = ClaimNumber.Create(2026, Random.Shared.Next(1, 9_999_999));
+        var now = DateTimeOffset.UtcNow;
+        var causeCodes = new CauseCodes([SeedCauseOfLossCode]);
+        var input = new CreateClaimInput(organisationId, number, now, now, PolicyPeriod.Empty, causeCodes);
+        var claim = Claim.Create(input).Value;
+        var today = DateOnly.FromDateTime(now.UtcDateTime);
+        var period = new PolicyPeriod(Guid.Empty, today.AddYears(-1), today.AddYears(1), DateOnly.MinValue);
+        var loss = new LossDetails(new LossDate(now.AddDays(-3)), "Water damage in the kitchen", SeedCauseOfLossCode);
+        claim.UpdateLossDetails(new UpdateLossDetailsInput(loss, period, causeCodes, now));
+        context.Claims.Add(claim);
+        await context.SaveChangesAsync();
+
+        return number.Value;
     }
 
     public HttpClient CreateClientFor(Guid userId, Guid organisationId, string role)

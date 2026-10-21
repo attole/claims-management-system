@@ -1,3 +1,3 @@
-namespace ClaimsModule.API.DevAuth.Dtos;
+namespace ClaimsModule.API.DevAuth;
 
 public sealed record DevTokenRequest(Guid UserId);

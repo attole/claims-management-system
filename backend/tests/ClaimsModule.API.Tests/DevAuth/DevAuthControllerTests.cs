@@ -1,7 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using ClaimsModule.API.DevAuth.Dtos;
+using ClaimsModule.API.DevAuth;
 using ClaimsModule.API.Errors;
 using ClaimsModule.API.Tests.Support;
 using ClaimsModule.API.Tests.Support.TestEndpoints;
