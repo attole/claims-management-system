@@ -1,4 +1,5 @@
 using ClaimsModule.Application.Abstractions;
+using ClaimsModule.Application.ClaimDocuments.Contracts;
 using ClaimsModule.Infrastructure.Storage.Azure;
 using ClaimsModule.Infrastructure.Storage.Local;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,6 +18,7 @@ internal static class StorageServiceExtensions
         services.AddSingleton<IValidateOptions<StorageOptions>, StorageOptionsValidator>();
         services.AddSingleton<LocalDownloadToken>();
         services.AddSingleton<LocalFileSystemStorageService>();
+        services.AddSingleton<ILocalDocumentDownloads, LocalDocumentDownloads>();
         services.AddSingleton<AzureBlobStorageService>();
         services.AddSingleton<IStorageService>(CreateStorage);
 

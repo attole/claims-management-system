@@ -7,10 +7,18 @@ public static partial class DocumentBlobPath
     public const string Container = "claim-documents";
 
     private const string FallbackName = "file";
+    private const char NameSeparator = '_';
 
     public static string Build(Guid organisationId, Guid claimId, Guid uploadId, string fileName)
     {
-        return $"{Container}/{organisationId}/{claimId}/{uploadId:N}_{Sanitise(fileName)}";
+        return $"{Container}/{organisationId}/{claimId}/{uploadId:N}{NameSeparator}{Sanitise(fileName)}";
+    }
+
+    public static string FileNameFrom(string blobPath)
+    {
+        string blobName = Path.GetFileName(blobPath);
+
+        return blobName[(blobName.IndexOf(NameSeparator) + 1)..];
     }
 
     public static string Sanitise(string fileName)

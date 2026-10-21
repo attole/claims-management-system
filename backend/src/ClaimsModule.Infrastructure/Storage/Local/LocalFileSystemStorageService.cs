@@ -53,6 +53,11 @@ public sealed class LocalFileSystemStorageService(IOptions<StorageOptions> optio
         return Task.CompletedTask;
     }
 
+    public bool HasFile(string path)
+    {
+        return File.Exists(Resolve(path));
+    }
+
     public Stream OpenRead(string path)
     {
         return File.OpenRead(Resolve(path));

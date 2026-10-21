@@ -18,6 +18,17 @@ public sealed class DocumentBlobPathTests
     }
 
     [Fact]
+    [Trait("Rule", "S:BR-D-01")]
+    public void FileNameFrom_APathBuiltForAFile_ReturnsTheOriginalName()
+    {
+        var path = DocumentBlobPath.Build(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "my_report.pdf");
+
+        var result = DocumentBlobPath.FileNameFrom(path);
+
+        result.Should().Be("my_report.pdf");
+    }
+
+    [Fact]
     public void Build_ForTwoUploadsOfTheSameName_ReturnsDifferentPaths()
     {
         var organisationId = Guid.NewGuid();

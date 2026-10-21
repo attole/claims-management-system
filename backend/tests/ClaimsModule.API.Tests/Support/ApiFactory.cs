@@ -34,7 +34,11 @@ public sealed class ApiFactory(ApiFixture database, bool isDevAuthEnabled = true
     public static readonly Guid SupervisorId = Guid.Parse("b2000000-0000-4000-8000-000000000002");
     public static readonly Guid ManagerId = Guid.Parse("b2000000-0000-4000-8000-000000000003");
 
+    private readonly string _storageRoot = Path.Combine(Path.GetTempPath(), $"claims-api-test-{Guid.NewGuid():N}");
+
     public RecordingPostingScheduler Scheduler { get; } = new();
+
+    public string StorageRoot => _storageRoot;
 
     public WebApplicationFactory<Program> WithSettings(IReadOnlyDictionary<string, string?> settings)
     {
@@ -89,6 +93,16 @@ public sealed class ApiFactory(ApiFixture database, bool isDevAuthEnabled = true
         return client;
     }
 
+    protected override void Dispose(bool disposing)
+    {
+        base.Dispose(disposing);
+
+        if (disposing && Directory.Exists(_storageRoot))
+        {
+            Directory.Delete(_storageRoot, true);
+        }
+    }
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
@@ -118,6 +132,7 @@ public sealed class ApiFactory(ApiFixture database, bool isDevAuthEnabled = true
             ["Jwt:SigningKey"] = TestTokens.SigningKey,
             ["Cors:AllowedOrigins:0"] = "http://localhost:4200",
             ["LocalBaseUrl"] = "http://localhost:5000",
+            ["LocalRoot"] = _storageRoot,
             ["LocalSigningKey"] = "test-local-signing-key-0123456789",
             ["DevAuth:Enabled"] = isDevAuthEnabled.ToString(),
             ["DevAuth:OrganisationId"] = SeedOrganisationId.ToString(),

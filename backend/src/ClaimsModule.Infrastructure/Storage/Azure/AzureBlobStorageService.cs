@@ -2,6 +2,7 @@ using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Azure.Storage.Sas;
 using ClaimsModule.Application.Abstractions;
+using ClaimsModule.Application.ClaimDocuments;
 using Microsoft.Extensions.Options;
 
 namespace ClaimsModule.Infrastructure.Storage.Azure;
@@ -56,7 +57,14 @@ internal sealed class AzureBlobStorageService(IOptions<StorageOptions> options, 
     {
         var target = StoragePath.From(path);
         var blob = _client.GetBlobContainerClient(target.Container).GetBlobClient(target.Name);
-        var url = blob.GenerateSasUri(BlobSasPermissions.Read, clock.UtcNow.Add(lifetime));
+        var sas = new BlobSasBuilder(BlobSasPermissions.Read, clock.UtcNow.Add(lifetime))
+        {
+            BlobContainerName = blob.BlobContainerName,
+            BlobName = blob.Name,
+            Resource = "b",
+            ContentDisposition = $"attachment; filename=\"{DocumentBlobPath.FileNameFrom(path)}\"",
+        };
+        var url = blob.GenerateSasUri(sas);
 
         return Task.FromResult(url.ToString());
     }

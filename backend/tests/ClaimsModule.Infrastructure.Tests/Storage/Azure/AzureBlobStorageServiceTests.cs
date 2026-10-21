@@ -36,6 +36,18 @@ public sealed class AzureBlobStorageServiceTests
 
     [Fact]
     [Trait("Rule", "S:BR-D-02")]
+    public async Task GetDownloadUrlAsync_Path_DownloadsUnderTheOriginalFileName()
+    {
+        var result = await _service.GetDownloadUrlAsync(
+            StorageTestData.BlobPath,
+            TimeSpan.FromHours(1),
+            CancellationToken.None);
+
+        HttpUtility.ParseQueryString(new Uri(result).Query)["rscd"].Should().Be("attachment; filename=\"file.pdf\"");
+    }
+
+    [Fact]
+    [Trait("Rule", "S:BR-D-02")]
     public async Task GetDownloadUrlAsync_OneHourLifetime_ExpiresOneHourFromNow()
     {
         var result = await _service.GetDownloadUrlAsync(

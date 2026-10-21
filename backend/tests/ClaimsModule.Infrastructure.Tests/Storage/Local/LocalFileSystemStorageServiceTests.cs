@@ -31,6 +31,26 @@ public sealed class LocalFileSystemStorageServiceTests : IDisposable
 
     [Fact]
     [Trait("Rule", "S:BR-D-03")]
+    public async Task HasFile_AfterUpload_IsTrue()
+    {
+        await Upload(StorageTestData.BlobPath);
+
+        var result = _service.HasFile(StorageTestData.BlobPath);
+
+        result.Should().BeTrue();
+    }
+
+    [Fact]
+    [Trait("Rule", "S:BR-D-03")]
+    public void HasFile_PathNeverStored_IsFalse()
+    {
+        var result = _service.HasFile(StorageTestData.BlobPath);
+
+        result.Should().BeFalse();
+    }
+
+    [Fact]
+    [Trait("Rule", "S:BR-D-03")]
     public async Task OpenRead_AfterUploadToANestedPath_ReturnsTheSameBytes()
     {
         await Upload(StorageTestData.BlobPath);
