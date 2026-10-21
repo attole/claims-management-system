@@ -1,4 +1,3 @@
-import { HttpErrorResponse, HttpStatusCode } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
@@ -7,7 +6,7 @@ import { MatStepper, MatStepperModule } from '@angular/material/stepper';
 import { Router, RouterLink } from '@angular/router';
 import { filter, of, switchMap } from 'rxjs';
 import { Claim, WriteResult } from '../../core/api/api.model';
-import { readErrorBody } from '../../core/http/error-body';
+import { isRefusal, readErrorBody } from '../../core/http/error-body';
 import { NotifyService } from '../../core/notify/notify.service';
 import { confirmWith } from '../../shared/ui/confirm-dialog';
 import { applyServerErrors } from '../../shared/validators/server-errors';
@@ -105,9 +104,7 @@ export class IntakePage {
   }
 
   private refused(error: unknown): void {
-    const isFormError = error instanceof HttpErrorResponse && error.status === HttpStatusCode.UnprocessableEntity;
-
-    if (!isFormError) {
+    if (!isRefusal(error)) {
       return;
     }
 

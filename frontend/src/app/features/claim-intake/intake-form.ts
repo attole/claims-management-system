@@ -1,23 +1,15 @@
 import { AbstractControl, FormArray, FormControl, FormGroup, ValidationErrors, Validators } from '@angular/forms';
 import { calendarDateOf, NO_DATE, toIsoDateTime } from '../../core/api/api-dates';
 import { FIELD_LENGTHS, MINIMUM_DESCRIPTION_LENGTH } from '../../core/api/api-limits';
-import {
-  AssetType,
-  CreateClaimRequest,
-  PartyRole,
-  PartyType,
-  Policy,
-  ReserveComponentType,
-  ReserveRequest,
-} from '../../core/api/api.model';
+import { AssetType, CreateClaimRequest, Policy, ReserveComponentType, ReserveRequest } from '../../core/api/api.model';
 import { EMPTY_ID } from '../../core/api/api-ids';
+import { PartyGroup, trimmedParty } from '../../shared/forms/party-form';
 import {
   atLeastOneClaimant,
   minTrimmedLength,
   nonZero,
   notInFuture,
   oneOf,
-  partyNameRequired,
 } from '../../shared/validators/claim-validators';
 
 export const POLICY_REQUIRED_ERROR = 'policyRequired';
@@ -25,8 +17,6 @@ export const AMOUNT_REQUIRED_ERROR = 'amountRequired';
 export const RESERVE_NEEDS_POLICY_ERROR = 'reserveNeedsPolicy';
 export const INITIAL_RESERVE_REASON = 'Initial reserve at intake';
 
-export const PARTY_ROLES: readonly PartyRole[] = ['Claimant', 'Insured', 'ThirdParty', 'Witness', 'Attorney'];
-export const PARTY_TYPES: readonly PartyType[] = ['Person', 'Company'];
 export const ASSET_TYPES: readonly AssetType[] = ['Property', 'Vehicle', 'Equipment', 'Person', 'Other'];
 export const RESERVE_COMPONENTS: readonly ReserveComponentType[] = [
   'Indemnity',
@@ -36,27 +26,6 @@ export const RESERVE_COMPONENTS: readonly ReserveComponentType[] = [
 ];
 
 export type InForce = 'unknown' | 'inForce' | 'outside';
-
-export function createPartyGroup() {
-  return new FormGroup(
-    {
-      role: new FormControl<PartyRole>('Claimant', { nonNullable: true }),
-      type: new FormControl<PartyType>('Person', { nonNullable: true }),
-      firstName: new FormControl('', { nonNullable: true, validators: Validators.maxLength(FIELD_LENGTHS.firstName) }),
-      lastName: new FormControl('', { nonNullable: true, validators: Validators.maxLength(FIELD_LENGTHS.lastName) }),
-      companyName: new FormControl('', {
-        nonNullable: true,
-        validators: Validators.maxLength(FIELD_LENGTHS.companyName),
-      }),
-      email: new FormControl('', {
-        nonNullable: true,
-        validators: [Validators.email, Validators.maxLength(FIELD_LENGTHS.email)],
-      }),
-      phone: new FormControl('', { nonNullable: true, validators: Validators.maxLength(FIELD_LENGTHS.phone) }),
-    },
-    { validators: partyNameRequired },
-  );
-}
 
 export function createRiskObjectGroup() {
   return new FormGroup({
@@ -73,7 +42,6 @@ export function createRiskObjectGroup() {
   });
 }
 
-export type PartyGroup = ReturnType<typeof createPartyGroup>;
 export type RiskObjectGroup = ReturnType<typeof createRiskObjectGroup>;
 
 export function createIntakeForm(causeCodes: () => readonly string[], now: () => Date = () => new Date()) {
@@ -150,7 +118,7 @@ export function toCreateRequest(value: IntakeValue, reportedAt: Date): CreateCla
       location: value.loss.location.trim(),
       estimatedLossAmount: value.loss.estimatedLossAmount,
     },
-    parties: value.parties.map((party) => ({ ...party, email: party.email.trim(), phone: party.phone.trim() })),
+    parties: value.parties.map((party) => trimmedParty(party)),
     riskObjects: value.riskObjects,
     reserves: reservesOf(value),
   };

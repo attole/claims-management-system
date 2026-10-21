@@ -1,5 +1,8 @@
 import { TestBed } from '@angular/core/testing';
-import { createIntakeForm, PartyGroup } from '../intake-form';
+import { By } from '@angular/platform-browser';
+import { PartyValue } from '../../../shared/forms/party-form';
+import { PartyEditor } from '../../../shared/ui/party-editor';
+import { createIntakeForm } from '../intake-form';
 import { PartiesStep } from './parties-step';
 
 describe('PartiesStep (S:UI-Intake-Parties)', () => {
@@ -20,13 +23,18 @@ describe('PartiesStep (S:UI-Intake-Parties)', () => {
       buttons.find((button) => button.textContent?.trim() === text)?.click();
       await refresh();
     };
-    const addParty = async (values: Partial<ReturnType<PartyGroup['getRawValue']>>) => {
+    const addParty = async (party: Partial<PartyValue>) => {
       await click('button', 'Add party');
-      (fixture.componentInstance as unknown as { party: PartyGroup }).party.patchValue(values);
-      await click('form[aria-label="New party"] button', 'Add');
+      const editor = fixture.debugElement.query(By.directive(PartyEditor)).componentInstance as PartyEditor;
+      editor.submitted.emit({ ...createdParty(), ...party });
+      await refresh();
     };
 
     return { form, element, addParty, click, refresh };
+  }
+
+  function createdParty(): PartyValue {
+    return { role: 'Claimant', type: 'Person', firstName: '', lastName: '', companyName: '', email: '', phone: '' };
   }
 
   it('shows the claimant warning until a claimant is added', async () => {
@@ -38,25 +46,7 @@ describe('PartiesStep (S:UI-Intake-Parties)', () => {
     expect(warningBefore).toBe(true);
     expect(form.controls.parties.length).toBe(1);
     expect(element.textContent?.includes('Add at least one claimant')).toBe(false);
-  });
-
-  it('does not add a party without a name and says why', async () => {
-    const { form, element, addParty } = await render();
-
-    await addParty({ firstName: ' ' });
-
-    expect(form.controls.parties.length).toBe(0);
-    expect(element.textContent).toContain('Enter a name for the party.');
-  });
-
-  it('a company keeps only its company name, not names typed before the type changed', async () => {
-    const { form, addParty } = await render();
-
-    await addParty({ firstName: 'Ada', lastName: 'Lovelace', type: 'Company', companyName: 'Harbor' });
-
-    expect(form.controls.parties.at(0).getRawValue()).toEqual(
-      expect.objectContaining({ firstName: '', lastName: '', companyName: 'Harbor' }),
-    );
+    expect(element.querySelector('app-party-editor')).toBeNull();
   });
 
   it('shows a server error on the card of the party it names', async () => {

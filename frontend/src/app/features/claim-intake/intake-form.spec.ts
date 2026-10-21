@@ -2,7 +2,6 @@ import { Policy } from '../../core/api/api.model';
 import {
   AMOUNT_REQUIRED_ERROR,
   createIntakeForm,
-  createPartyGroup,
   createRiskObjectGroup,
   inForce,
   INITIAL_RESERVE_REASON,
@@ -12,6 +11,7 @@ import {
   RESERVE_NEEDS_POLICY_ERROR,
   toCreateRequest,
 } from './intake-form';
+import { createPartyGroup } from '../../shared/forms/party-form';
 
 describe('intake form (S:UI-Intake-Steps, S:UI-Intake-Policy, S:UI-Intake-Reserve, S:API-POST-claims)', () => {
   const now = () => new Date(2026, 9, 21, 12, 0);

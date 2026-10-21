@@ -1,0 +1,43 @@
+.card {
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  background: var(--app-surface);
+}
+
+.editor {
+  padding: var(--app-gap);
+  border-bottom: 1px solid var(--app-border);
+}
+
+.party {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px var(--app-gap);
+  border-bottom: 1px solid var(--app-border);
+
+  &:last-child {
+    border-bottom: 0;
+  }
+}
+
+.inactive {
+  opacity: 0.6;
+}
+
+.who {
+  flex: 1;
+}
+
+.muted {
+  color: var(--app-muted);
+}
+
+.empty {
+  margin: 0;
+  padding: var(--app-gap);
+}
+
+.add-row {
+  margin-top: 14px;
+}

@@ -1,0 +1,31 @@
+.card {
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  background: var(--app-surface);
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.reloading {
+  opacity: 0.6;
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+.state {
+  display: grid;
+  justify-items: center;
+  gap: var(--app-gap-small);
+  padding: 32px var(--app-gap);
+  color: var(--app-muted);
+}
+
+.note {
+  margin: var(--app-gap-small) 0 0;
+  font-size: 12px;
+  color: var(--app-muted);
+}

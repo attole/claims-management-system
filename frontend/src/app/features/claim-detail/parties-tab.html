@@ -1,0 +1,36 @@
+<section class="card" aria-label="Parties">
+  @if (isAdding()) {
+    <div class="editor">
+      <app-party-editor [isSaving]="isSaving()" (submitted)="added.emit($event)" (cancelled)="isAdding.set(false)" />
+    </div>
+  }
+  @for (card of cards(); track card.party.id) {
+    <div class="party" [class.inactive]="!card.party.isActive">
+      <span class="badge" [class.badge--info]="card.party.role === 'Claimant'">{{ card.party.role | enumLabel }}</span>
+      <div class="who">
+        <strong>{{ card.name }}</strong>
+        <div class="muted">{{ card.party.type }}{{ card.contact ? ' - ' + card.contact : '' }}</div>
+      </div>
+      <span class="badge" [class.badge--ok]="card.party.isActive">{{
+        card.party.isActive ? 'Active' : 'Inactive'
+      }}</span>
+      <button
+        mat-stroked-button
+        type="button"
+        [disabled]="!card.party.isActive || isSaving()"
+        [attr.aria-label]="'Remove ' + card.name"
+        (click)="removed.emit(card.party)"
+      >
+        Remove
+      </button>
+    </div>
+  } @empty {
+    <p class="muted empty">No parties.</p>
+  }
+</section>
+
+@if (!isAdding()) {
+  <div class="add-row">
+    <button mat-stroked-button type="button" (click)="isAdding.set(true)">Add party</button>
+  </div>
+}

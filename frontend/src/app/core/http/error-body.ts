@@ -1,4 +1,4 @@
-import { HttpErrorResponse } from '@angular/common/http';
+import { HttpErrorResponse, HttpStatusCode } from '@angular/common/http';
 import { ErrorBody } from '../api/api.model';
 
 export const GENERAL_ERROR_KEY = 'General';
@@ -15,6 +15,10 @@ export function readErrorBody(error: HttpErrorResponse): ErrorBody {
   };
 
   return isErrorBody(body) ? body : fallback;
+}
+
+export function isRefusal(error: unknown): error is HttpErrorResponse {
+  return error instanceof HttpErrorResponse && error.status === HttpStatusCode.UnprocessableEntity;
 }
 
 export function describeError(error: HttpErrorResponse): string {

@@ -46,10 +46,10 @@ describe('IntakeStore (S:UI-Intake-Policy, S:API-IdempotencyKey)', () => {
     search.flush({ items: [], page: 1, pageSize: 10, totalCount: 0, totalPages: 0 });
   });
 
-  it('a retry after a refusal sends the same key, and a success starts a new one', () => {
+  it('a retry after a failure without an answer sends the same key, and a success starts a new one', () => {
     store.create(request).subscribe({ error: () => undefined });
-    const refused = http.expectOne(apiUrl('claims'));
-    refused.flush(null, { status: 422, statusText: 'Unprocessable Entity' });
+    const failed = http.expectOne(apiUrl('claims'));
+    failed.flush(null, { status: 503, statusText: 'Service Unavailable' });
 
     store.create(request).subscribe();
     const succeeded = http.expectOne(apiUrl('claims'));
@@ -58,9 +58,21 @@ describe('IntakeStore (S:UI-Intake-Policy, S:API-IdempotencyKey)', () => {
     const next = http.expectOne(apiUrl('claims'));
     next.flush({ data: { id: 'c2' }, warnings: [] });
 
-    const key = (call: typeof refused) => call.request.headers.get('Idempotency-Key');
-    expect(key(succeeded)).toBe(key(refused));
+    const key = (call: typeof failed) => call.request.headers.get('Idempotency-Key');
+    expect(key(succeeded)).toBe(key(failed));
     expect(key(next)).not.toBe(key(succeeded));
     expect(store.isSubmitting()).toBe(false);
+  });
+
+  it('a refusal starts a new key, so the corrected form is a new request', () => {
+    store.create(request).subscribe({ error: () => undefined });
+    const refused = http.expectOne(apiUrl('claims'));
+    refused.flush(null, { status: 422, statusText: 'Unprocessable Entity' });
+
+    store.create(request).subscribe();
+
+    const corrected = http.expectOne(apiUrl('claims'));
+    expect(corrected.request.headers.get('Idempotency-Key')).not.toBe(refused.request.headers.get('Idempotency-Key'));
+    corrected.flush({ data: { id: 'c1' }, warnings: [] });
   });
 });

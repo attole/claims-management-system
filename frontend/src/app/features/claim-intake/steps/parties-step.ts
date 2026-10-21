@@ -5,19 +5,12 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
+import { createPartyGroup, PartyGroup, partyName, PartyValue } from '../../../shared/forms/party-form';
 import { EnumLabelPipe } from '../../../shared/pipes/enum-label.pipe';
-import { CLAIMANT_REQUIRED_ERROR, NAME_REQUIRED_ERROR } from '../../../shared/validators/claim-validators';
+import { PartyEditor } from '../../../shared/ui/party-editor';
+import { CLAIMANT_REQUIRED_ERROR } from '../../../shared/validators/claim-validators';
 import { ErrorMessagePipe } from '../../../shared/validators/error-message.pipe';
-import {
-  ASSET_TYPES,
-  createPartyGroup,
-  createRiskObjectGroup,
-  IntakeForm,
-  IntakeValue,
-  PARTY_ROLES,
-  PARTY_TYPES,
-  PartyGroup,
-} from '../intake-form';
+import { ASSET_TYPES, createRiskObjectGroup, IntakeForm, IntakeValue } from '../intake-form';
 
 @Component({
   selector: 'app-parties-step',
@@ -30,6 +23,7 @@ import {
     MatSelectModule,
     EnumLabelPipe,
     ErrorMessagePipe,
+    PartyEditor,
   ],
   templateUrl: './parties-step.html',
   styleUrl: './parties-step.scss',
@@ -39,13 +33,9 @@ export class PartiesStep {
   readonly form = input.required<IntakeForm>();
   readonly value = input.required<IntakeValue>();
 
-  protected readonly roles = PARTY_ROLES;
-  protected readonly types = PARTY_TYPES;
   protected readonly assetTypes = ASSET_TYPES;
   protected readonly claimantRequired = CLAIMANT_REQUIRED_ERROR;
-  protected readonly nameRequired = NAME_REQUIRED_ERROR;
 
-  protected readonly party = createPartyGroup();
   protected readonly riskObject = createRiskObjectGroup();
   protected readonly isAddingParty = signal(false);
   protected readonly isAddingRiskObject = signal(false);
@@ -55,24 +45,15 @@ export class PartiesStep {
 
     return this.form().controls.parties.controls.map((control) => ({
       control,
-      name: nameOf(control),
+      name: partyName(control.getRawValue()),
       errors: errorsOf(control),
     }));
   });
 
-  protected addParty(): void {
-    const isCompany = this.party.controls.type.value === 'Company';
-    this.party.patchValue(isCompany ? { firstName: '', lastName: '' } : { companyName: '' });
-    this.party.markAllAsTouched();
-
-    if (this.party.invalid) {
-      return;
-    }
-
+  protected addParty(party: PartyValue): void {
     const added = createPartyGroup();
-    added.setValue(this.party.getRawValue());
+    added.setValue(party);
     this.form().controls.parties.push(added);
-    this.party.reset();
     this.isAddingParty.set(false);
   }
 
@@ -103,10 +84,4 @@ function errorsOf(party: PartyGroup): ValidationErrors | null {
   const invalidField = Object.values(party.controls).find((control) => control.invalid);
 
   return party.errors ?? invalidField?.errors ?? null;
-}
-
-function nameOf(party: PartyGroup): string {
-  const value = party.getRawValue();
-
-  return value.type === 'Company' ? value.companyName : `${value.firstName} ${value.lastName}`.trim();
 }

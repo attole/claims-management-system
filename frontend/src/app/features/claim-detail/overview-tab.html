@@ -1,0 +1,99 @@
+@let loss = detail().loss;
+
+<div class="grid">
+  <section class="card pad" aria-labelledby="loss-title">
+    <h2 id="loss-title">Loss event</h2>
+    <dl class="rows">
+      <div>
+        <dt>Date</dt>
+        <dd>{{ loss.lossDate | claimDate: 'dateTime' }}</dd>
+      </div>
+      <div>
+        <dt>Reported</dt>
+        <dd>{{ loss.reportDate | claimDate: 'dateTime' }}</dd>
+      </div>
+      <div>
+        <dt>Description</dt>
+        <dd>{{ loss.description || '-' }}</dd>
+      </div>
+      <div>
+        <dt>Location</dt>
+        <dd>{{ loss.location || '-' }}</dd>
+      </div>
+      <div>
+        <dt>Cause</dt>
+        <dd>{{ causeName() || '-' }}</dd>
+      </div>
+      <div>
+        <dt>Severity</dt>
+        <dd>
+          <span class="badge" [class]="severityTone()">{{ detail().claim.severity | enumLabel }}</span>
+        </dd>
+      </div>
+      <div>
+        <dt>Estimated loss amount</dt>
+        <dd>{{ loss.hasEstimatedLossAmount ? (loss.estimatedLossAmount | money) : '-' }}</dd>
+      </div>
+      @if (loss.policeReportNumber) {
+        <div>
+          <dt>Police report number</dt>
+          <dd>{{ loss.policeReportNumber }}</dd>
+        </div>
+      }
+    </dl>
+  </section>
+
+  <section class="card pad" aria-labelledby="notes-title">
+    <h2 id="notes-title">Claim notes</h2>
+    <mat-form-field class="wide">
+      <mat-label>Notes</mat-label>
+      <textarea matInput rows="8" [formControl]="notes"></textarea>
+    </mat-form-field>
+    <button mat-flat-button type="button" [disabled]="isSaving() || notes.pristine" (click)="saveNotes()">
+      Save notes
+    </button>
+  </section>
+
+  <section class="card pad" aria-labelledby="issues-title">
+    <h2 id="issues-title">Validation issues</h2>
+    @if (openIssues().length === 0) {
+      <p class="muted">No open issues.</p>
+    }
+    <ul class="list">
+      @for (issue of openIssues(); track issue.id) {
+        <li>
+          <span class="badge" [class]="issueTones[issue.severity]">{{ issue.severity }}</span>
+          <span class="grow">{{ issue.message }}</span>
+          <button mat-button type="button" [disabled]="isSaving()" (click)="acknowledged.emit(issue)">
+            Acknowledge
+          </button>
+          <button mat-button type="button" [disabled]="isSaving()" (click)="waived.emit(issue)">Waive</button>
+        </li>
+      }
+    </ul>
+    @if (resolvedCount() > 0) {
+      <p class="muted">{{ resolvedCount() }} resolved</p>
+    }
+  </section>
+
+  <section class="card pad" aria-labelledby="risk-title">
+    <h2 id="risk-title">Risk objects</h2>
+    @if (riskObjects().length === 0) {
+      <p class="muted">No risk objects.</p>
+    }
+    <ul class="list">
+      @for (item of riskObjects(); track item.id) {
+        <li>
+          <span class="badge">{{ item.assetType }}</span>
+          <span class="grow">
+            <strong>{{ item.assetDescription }}</strong>
+            <span class="muted">{{ item.damageDescription }}</span>
+          </span>
+          @if (item.isPrimary) {
+            <span class="badge badge--info">Primary</span>
+          }
+        </li>
+      }
+    </ul>
+  </section>
+</div>

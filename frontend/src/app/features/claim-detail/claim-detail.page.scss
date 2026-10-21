@@ -1,0 +1,39 @@
+:host {
+  display: block;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.back {
+  margin: -8px 0 var(--app-gap-small) -12px;
+}
+
+.card {
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  background: var(--app-surface);
+}
+
+.state {
+  display: grid;
+  justify-items: center;
+  gap: var(--app-gap-small);
+  padding: 48px var(--app-gap);
+}
+
+.banner {
+  margin-top: var(--app-gap);
+
+  ul {
+    margin: 6px 0 0;
+    padding-left: 20px;
+  }
+}
+
+.tabs {
+  margin-top: var(--app-gap);
+}
+
+.tab-body {
+  padding-top: var(--app-gap);
+}

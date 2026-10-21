@@ -1,0 +1,55 @@
+@let claim = detail().claim;
+
+<section class="card head" aria-labelledby="claim-number">
+  <div class="head-top">
+    <h1 id="claim-number" class="claim-number">{{ claim.claimNumber }}</h1>
+    <button
+      mat-stroked-button
+      class="copy"
+      type="button"
+      [cdkCopyToClipboard]="claim.claimNumber"
+      (cdkCopyToClipboardCopied)="copied.emit($event)"
+    >
+      Copy
+    </button>
+    <app-status-badge [status]="claim.state" />
+    <span class="spacer"></span>
+    <button
+      mat-flat-button
+      type="button"
+      [matMenuTriggerFor]="moves"
+      [disabled]="nextStatuses().length === 0 || isSaving()"
+    >
+      Change status
+      <mat-icon iconPositionEnd>expand_more</mat-icon>
+    </button>
+    <mat-menu #moves="matMenu" xPosition="before">
+      @for (status of nextStatuses(); track status) {
+        <button mat-menu-item type="button" (click)="statusChosen.emit(status)">{{ status | enumLabel }}</button>
+      }
+    </mat-menu>
+  </div>
+
+  <dl class="facts">
+    <div>
+      <dt>Policy</dt>
+      <dd>{{ policyNumber() }}</dd>
+    </div>
+    <div>
+      <dt>Client</dt>
+      <dd>{{ detail().clientName || '-' }}</dd>
+    </div>
+    <div>
+      <dt>Loss date</dt>
+      <dd>{{ detail().loss.lossDate | claimDate: 'day' }}</dd>
+    </div>
+    <div>
+      <dt>Cause of loss</dt>
+      <dd>{{ causeName() || '-' }}</dd>
+    </div>
+    <div>
+      <dt>Assigned handler</dt>
+      <dd>{{ handlerName() }}</dd>
+    </div>
+  </dl>
+</section>

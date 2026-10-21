@@ -1,0 +1,49 @@
+<h2 mat-dialog-title>Change status to {{ data.to | enumLabel }}</h2>
+
+<mat-dialog-content>
+  <p class="muted">The claim moves from {{ data.from | enumLabel }} to {{ data.to | enumLabel }}.</p>
+
+  <h3>{{ isClosing ? 'Closure checklist' : 'Checks' }}</h3>
+  <ul class="checks">
+    @for (blocker of blockers; track $index) {
+      <li><span class="badge badge--bad">Blocked</span>{{ blocker.message }}</li>
+    }
+    @for (item of askedMessages; track $index) {
+      <li><span class="badge badge--info">Fill in</span>{{ item.message }}</li>
+    }
+    @for (warning of warnings; track $index) {
+      <li><span class="badge badge--warn">Note</span>{{ warning.message }}</li>
+    }
+    @if (blockers.length === 0 && askedMessages.length === 0 && warnings.length === 0) {
+      <li><span class="badge badge--ok">Pass</span>All checks pass.</li>
+    }
+  </ul>
+
+  <form class="fields" [formGroup]="form" (ngSubmit)="confirm()" id="status-form">
+    @if (asked.has('Reason')) {
+      <mat-form-field>
+        <mat-label>Reason code</mat-label>
+        <input matInput formControlName="reasonCode" />
+        <mat-error>{{ form.controls.reasonCode.errors | errorMessage }}</mat-error>
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>Reason</mat-label>
+        <textarea matInput rows="2" formControlName="reasonText"></textarea>
+        <mat-error>{{ form.controls.reasonText.errors | errorMessage }}</mat-error>
+      </mat-form-field>
+    }
+    @if (asked.has('IsLiabilityConfirmed')) {
+      <mat-checkbox formControlName="isLiabilityConfirmed">Liability is confirmed</mat-checkbox>
+    }
+    <mat-form-field>
+      <mat-label>{{ asked.has('Note') ? 'Note' : 'Note (optional)' }}</mat-label>
+      <textarea matInput rows="3" formControlName="note"></textarea>
+      <mat-error>{{ form.controls.note.errors | errorMessage }}</mat-error>
+    </mat-form-field>
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button type="button" mat-dialog-close>Cancel</button>
+  <button mat-flat-button type="submit" form="status-form" [disabled]="!canConfirm()">Confirm</button>
+</mat-dialog-actions>
