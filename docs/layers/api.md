@@ -1,6 +1,6 @@
 # API layer
 
-Rules and contracts of the API: controllers, the error body, identity, correlation, the Idempotency-Key filter, uploads and downloads. It fills the current user from the token and supplies the correlation id the Application expects (Infrastructure registers the clock and the current user holder) (`docs/layers/application.md` 'Provides and expects'). `.claude/CLAUDE.md` holds the short rules and points here; read this file before changing the API project or reviewing its code. Status: packs 1 and 2 are built: correlation, the current-user middleware, the fallback authorization policy, the dev token endpoint, the API test fixture, the error mapper with its envelopes, the concurrency-conflict exception handler and the Idempotency-Key filter. The endpoints are not. The decisions below were settled on 2026-10-21 and are binding for the pack; the 'Tests' section lists how each one is enforced as the layer is written.
+Rules and contracts of the API: controllers, the error body, identity, correlation, the Idempotency-Key filter, uploads and downloads. It fills the current user from the token and supplies the correlation id the Application expects (Infrastructure registers the clock and the current user holder) (`docs/layers/application.md` 'Provides and expects'). `.claude/CLAUDE.md` holds the short rules and points here; read this file before changing the API project or reviewing its code. Status: complete, with tests: every route of the specification plus four for screen elements. The decisions below were settled on 2026-10-21 and are binding; the 'Tests' section lists how each one is enforced.
 
 ## Layout
 
@@ -84,7 +84,7 @@ The header is optional and the filter applies to every write action; a request w
 
 ## Tests
 
-The rules above are enforced by tests once the layer is written; a rule without a test here is a rule to add one for.
+The rules above are enforced by tests; a rule without a test here is a rule to add one for.
 
 - A route test checks that every route is kebab-case plural (S:DATA-Naming), with the listed exceptions as an explicit allow-list.
 - A reflection test checks that no action uses `[Authorize(Roles = ...)]`, that every action is authenticated except the three anonymous routes, that every write action is covered by the Idempotency-Key filter, and that every action of a controller derived from `ApiControllerBase` declares exactly one 2xx `[ProducesResponseType]` (a write action with `CommandResponse<>` as its type).

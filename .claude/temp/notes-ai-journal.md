@@ -644,3 +644,57 @@ decisions: the user chose the dev token endpoint in the API, a server-generated 
 ai-errors: the AI misread which layer was meant and recommended a URI error type and an upload exemption without checking the spec; it also proposed a bearer-token requirement for the dashboard that a browser page cannot satisfy, which it caught itself while answering. The user's questions caught the rest.
 human-vs-ai: the user drove by asking what each term meant and which source said it; the AI verified against the specs and code, argued options, wrote the layer note and the parking-lot update, and made no code changes in this flow.
 refs: CORRECTION-041, CORRECTION-042, PROMPT-011, ASSESSMENT-014, SPLIT-010
+
+## CORRECTION-043 | p3 backend | 2026-10-21
+what: the API code broke rules the AI wrote itself: a query bound directly with no request record, a collection named Status, a hand-built 422 for a missing file, and enums accepted as numbers
+caught-by: code-review
+fix: a request record was added for the query, the property became Statuses, the missing file became a binding error and the enum converter now refuses numbers
+lesson: re-read the layer note before writing each controller and check the new code against every rule in it
+
+## CORRECTION-044 | p3 backend | 2026-10-21
+what: tests written by the AI broke the test rules in every pack: two-statement acts, a second HTTP call in an assert, wrong result names, attribute order, a missing Rule trait and lines over 120
+caught-by: code-review
+fix: each review round's findings were fixed and the tests rerun; the workflow check caught the long lines and the using order
+lesson: check test shape against the standard before submitting; the reviews found the same classes of defect round after round
+
+## CORRECTION-045 | p3 backend | 2026-10-21
+what: write tests used new organisations with no cause codes, so the Domain threw and the API answered 500; a later review asked for one organisation per test, which could not work as written
+caught-by: test
+fix: a helper creates an organisation with its own cause code; that showed the code column has a global unique index, so each code carries the organisation id
+lesson: check a review finding against the real schema and Domain before applying it; a 500 in a test points at missing data, not at the route
+
+## CORRECTION-046 | p3 backend | 2026-10-21
+what: the download controller used the concrete local storage classes and did its own provider check; the review then found a token forgery risk under Azure when the signing key is empty
+caught-by: user
+fix: an Application port with an Infrastructure implementation now holds the provider check, the token check and the file naming; the controller only streams the result
+lesson: keep controllers thin and put a security check next to what it protects; the user's why-question found the design smell first
+
+## CORRECTION-047 | p3 backend | 2026-10-21
+what: the AI said an Azure download link takes its file name from the blob, but the blob name carries an upload id prefix, so the browser would save the wrong name
+caught-by: user
+fix: the Azure SAS link now carries a content disposition with the original file name, with a test on the link
+lesson: verify what a storage link returns before describing it; the user's question about what the API does exposed the vague explanation
+
+## PROMPT-012 | p3 backend | 2026-10-21
+purpose: question each abstraction and name the AI proposed in the API layer
+prompt: short why-questions on AutoMapper for requests, whether it is common, the conceptual difference, the envelope name, the Requests folder and why the controller used local storage classes
+outcome: kept
+note: each question forced an argued comparison and a decision (hand-written ToCommand kept, CommandResponse rename, Requests folders, a download port), so the questions drove the design
+
+## ASSESSMENT-015 | p3 backend | 2026-10-21
+area: fresh-context code review and the rule check on each API pack
+helped: high
+note: four rounds that passed build, tests and the workflow check still had 4, 7, 9 and 4 findings; two were wrong or unworkable as written and were questioned, not applied
+
+## SPLIT-011 | p3 backend | 2026-10-21
+item: API packs 3 to 6: routes, requests, tests, docs and the review fixes
+who: hybrid
+note: the AI wrote the code, tests and docs; the user merged packs 4 and 5, chose folder layout, naming, the download port and the pack 6 deferral, and ran every git write
+
+## SUMMARY-025 | p3 backend | 2026-10-21
+topic: API endpoints, packs 3 to 6
+story: the AI built the claim list and reference routes, then one merged pack for intake, detail, status, status-check, notes, audit and parties, then reserves and documents with a local download route, then hardening: convention tests, the Swagger bearer scheme and reserve success tests. Each pack ended with a fresh-context review, a rule check and a fix round.
+decisions: the user merged packs 4 and 5, chose Requests folders, hand-written ToCommand over AutoMapper, CommandResponse as the write wrapper name, an Application port for local downloads and a unique cause code per test organisation, and left the real-server run and the 413 test for later.
+ai-errors: the AI broke its own layer rules (request record, naming, hand-built 422, enum numbers), wrote tests that broke the test rules every round, used organisations without cause codes, coupled the download controller to local storage with a forgery risk under Azure, and misdescribed Azure file names. Reviews, tests and the user's questions caught them.
+human-vs-ai: the AI drafted, built and tested; the user drove by asking why, merged or split packs and made each design choice; every git write was the user's.
+refs: CORRECTION-043, CORRECTION-044, CORRECTION-045, CORRECTION-046, CORRECTION-047, PROMPT-012, ASSESSMENT-015, SPLIT-011

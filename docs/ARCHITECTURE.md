@@ -14,8 +14,8 @@ Clean Architecture with five projects, dependencies pointing inward: `API` -> `A
 
 | Layer | State |
 |---|---|
-| Domain, Application, Persistence, Infrastructure | complete, with tests; the contracts are in `docs/layers/persistence.md` and `docs/layers/infrastructure.md` |
-| API, frontend | not started; what the Application hands over is in `docs/layers/api.md` |
+| Domain, Application, Persistence, Infrastructure, API | complete, with tests; the rules and contracts of each are in `docs/layers/` |
+| Frontend | not started; the API is described in `docs/layers/api.md` and the README |
 
 Key choices:
 
