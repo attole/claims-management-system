@@ -277,6 +277,25 @@ public sealed class ClaimsControllerTests(ApiFixture database) : IDisposable
     }
 
     [ApiFact]
+    [Trait("Rule", "S:API-POST-claims")]
+    public async Task Create_AFullBody_StoresTheLossPartiesRiskObjectsAndTheReserveByComponentType()
+    {
+        using var client = CreateSeedClient();
+        var policy = await FindPolicyAsync(client);
+        var created = await client.PostAsJsonAsync("/api/claims", CreateBody(policy));
+        var envelope = await created.Content.ReadFromJsonAsync<ApiControllerBase.CommandResponse<ClaimDto>>();
+
+        var detail = await client.GetFromJsonAsync<ClaimDetailDto>($"/api/claims/{envelope!.Data.Id}");
+
+        created.StatusCode.Should().Be(HttpStatusCode.Created);
+        detail!.Loss.Location.Should().Be("Kitchen");
+        detail.Parties.Select(party => party.Role).Should().Equal("Claimant");
+        detail.RiskObjects.Select(riskObject => riskObject.AssetDescription).Should().Equal("Kitchen");
+        detail.Reserves.Components.Select(component => component.ComponentType).Should().Equal("Indemnity");
+        detail.Reserves.History.Select(entry => entry.Amount).Should().Equal(5_000m);
+    }
+
+    [ApiFact]
     [Trait("Rule", "S:ST-Draft-Open")]
     public async Task Journey_CreateWithPolicyAndReserveThenOpen_LeavesAnOpenClaimWithItsAuditTrail()
     {

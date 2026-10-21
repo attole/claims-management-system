@@ -24,7 +24,12 @@ public sealed record UploadDocumentCommand(
 
     public string Notes { get; init; } = string.Empty;
 
-    public UploadClaimDocumentInput ToInput(ClaimReference claim, string blobPath, Guid actorId, DateTimeOffset now)
+    public UploadClaimDocumentInput ToInput(
+        ClaimReference claim,
+        string blobPath,
+        IReadOnlyList<byte> header,
+        Guid actorId,
+        DateTimeOffset now)
     {
         var details = new ClaimDocumentDetails(
             DocumentType ?? string.Empty,
@@ -36,7 +41,7 @@ public sealed record UploadDocumentCommand(
             Notes = Notes ?? string.Empty,
         };
 
-        return new UploadClaimDocumentInput(claim, details, actorId, now);
+        return new UploadClaimDocumentInput(claim, details, actorId, now) { Header = header };
     }
 }
 
@@ -75,8 +80,9 @@ public sealed class UploadDocumentCommandHandler(
         }
 
         var claim = loaded.Value;
+        var content = await DocumentContent.ReadAsync(command.Content, cancellationToken);
         var blobPath = DocumentBlobPath.Build(claim.OrganisationId, claim.Id, Guid.NewGuid(), command.FileName);
-        var input = command.ToInput(claim.Reference, blobPath, user.Id, clock.UtcNow);
+        var input = command.ToInput(claim.Reference, blobPath, content.Header, user.Id, clock.UtcNow);
         var result = ClaimDocument.Upload(input).ToResult();
 
         if (!result.IsSuccess)
@@ -84,7 +90,7 @@ public sealed class UploadDocumentCommandHandler(
             return result.ToFailure<ClaimDocumentDto>();
         }
 
-        await storage.UploadAsync(blobPath, command.Content, command.ContentType, cancellationToken);
+        await storage.UploadAsync(blobPath, content.Content, command.ContentType, cancellationToken);
         await documents.AddAsync(result.Value, cancellationToken);
         await unitOfWork.CommitAsync(cancellationToken);
 

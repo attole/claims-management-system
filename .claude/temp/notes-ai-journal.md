@@ -698,3 +698,51 @@ decisions: the user merged packs 4 and 5, chose Requests folders, hand-written T
 ai-errors: the AI broke its own layer rules (request record, naming, hand-built 422, enum numbers), wrote tests that broke the test rules every round, used organisations without cause codes, coupled the download controller to local storage with a forgery risk under Azure, and misdescribed Azure file names. Reviews, tests and the user's questions caught them.
 human-vs-ai: the AI drafted, built and tested; the user drove by asking why, merged or split packs and made each design choice; every git write was the user's.
 refs: CORRECTION-043, CORRECTION-044, CORRECTION-045, CORRECTION-046, CORRECTION-047, PROMPT-012, ASSESSMENT-015, SPLIT-011
+
+## CORRECTION-048 | p4 frontend | 2026-10-21
+what: zoneless OnPush children read the shared form through methods, so the intake review step and the party cards showed stale values after edits in another step or a 422
+caught-by: code-review
+fix: the page passes the form value as a signal input to each step, and the steps derive their view with computed signals
+lesson: under zoneless change detection an OnPush child sees only its own events and its inputs; anything from another component reaches it as a signal input
+
+## CORRECTION-049 | p4 frontend | 2026-10-21
+what: hidden form state leaked: party names kept after switching to a company, and the policy search kept the old query and results after Change
+caught-by: code-review
+fix: the shared party editor keeps only the name fields of the chosen type and trims on submit, and choosing a policy also clears the store query
+lesson: when a field is hidden by a condition, clear its value at submit; reset every copy of a value, not only the visible input
+
+## CORRECTION-050 | p4 frontend | 2026-10-21
+what: the stores kept an idempotency key after a 422, so a changed body after a lost success would be refused for the key's lifetime
+caught-by: code-review
+fix: a key is kept only after a failure without an answer and dropped after a refusal or a success; one shared isRefusal check in core/http, used by both stores and pages
+lesson: decide the key lifetime per outcome (no answer, refused, done) and apply it the same way in every store
+
+## CORRECTION-051 | p4 frontend | 2026-10-21
+what: in the reserves and documents tabs an upload shared the isSaving flag and locked the page, dropped write warnings, showed 0% when the size was unknown, and history sorted by a per-component sequence
+caught-by: code-review
+fix: pending counters with a separate isUploading, one success handler that shows warnings, an indeterminate bar until a percent arrives, and history sorted by submit time
+lesson: a long operation needs its own busy state; check what a sort key is numbered over in the backend before ordering by it
+
+## CORRECTION-052 | p4 frontend | 2026-10-21
+what: AI-written specs that could not fail: a 422 test whose stepper never left step 1, a removal test covering only the confirmed path, and a spec restating its own constants
+caught-by: code-review
+fix: the 422 test asserts the stepper was on step 3 first, a declined-confirmation case was added, and the restating spec was moved out of the repo
+lesson: for each test ask which code change would make it fail; a test that passes either way asserts nothing
+
+## CORRECTION-053 | p4 frontend | 2026-10-21
+what: the app date adapter gave no time formats, so the intake page crashed on the timepicker; the build passed and only the component tests exposed it
+caught-by: test
+fix: TIME_FORMAT added in api-dates and the adapter given the time input and option formats
+lesson: a provider that a new Material control depends on must be checked by rendering that control in a test, not by the build
+
+## CORRECTION-054 | p4 frontend | 2026-10-21
+what: resource state was handled loosely: value() read in the error state froze the list on a spinner, a lazy linkedSignal lost the shown page, and a bad claim id spun forever
+caught-by: test
+fix: stores guard reads with hasValue and hasError and copy each resolved value into a last-value signal; an id that is not a GUID is an error state
+lesson: a resource throws on value() in error and resets on new params, so a store keeps its own last good value and names every state it can be in
+
+## CORRECTION-055 | p4 frontend | 2026-10-21
+what: the claim detail could lose its screen on a failed reload, and notes were marked saved before the server answered, so a refused save could be overwritten
+caught-by: code-review
+fix: the page keeps the last loaded claim through a failed reload, and notes count as saved only when a reload returns the same text
+lesson: a value is saved when the server confirms it, not when the button is clicked

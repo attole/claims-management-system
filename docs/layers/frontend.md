@@ -77,6 +77,7 @@ frontend/
 ## Sign-in
 
 - The mock sign-in uses the API's dev token route: `AuthService.signInAs(user)` posts `{ userId }` to `/api/dev/token` and keeps the token in memory and the user id in sessionStorage. The signed-in user (id, name, role) is taken from the token response, never from the local list, and a sign-in that finishes after a newer one is ignored, so a late 401 retry cannot switch the user back. At startup the app signs in as the stored user, or the handler. The header's role switcher changes the user.
+- A deployed API needs an access code on the dev token call (`X-DevAuth-Secret`, `DevAuth:Secret` in Key Vault). When the call answers 403, `AuthService.needsAccessCode` turns true and the app root asks for the code in the shared prompt dialog; `useAccessCode` keeps it in sessionStorage, signs in again and the page reloads. Locally the API has no secret and nothing is asked. The code is never part of the bundle.
 - The three users in `core/auth/dev-users.ts` must equal `DevAuth:Users` in the API's development settings, or sign-in answers 404.
 
 ## API types

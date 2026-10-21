@@ -9,7 +9,11 @@ public sealed record UploadClaimDocumentInput(
     Guid ActorId,
     DateTimeOffset Now)
 {
+    public const int HeaderLength = 512;
+
     public Guid ActorId { get; } = InputActor.Required(ActorId);
 
     public DateTimeOffset Now { get; } = InputTime.Required(Now);
+
+    public IReadOnlyList<byte> Header { get; init; } = [];
 }

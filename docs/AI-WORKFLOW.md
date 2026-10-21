@@ -74,4 +74,82 @@ Each of these has one fixed format and procedure, so the result does not depend 
 
 ## AI correction journal
 
-Cases where the AI was wrong or weak, and how each was corrected, are recorded as they happen in `.claude/temp/notes-ai-journal.md`. This section will be generated at the end by the ai-journal skill (compile mode), then reviewed and edited by me.
+Cases where the AI was wrong or weak, and how each was corrected, are recorded as they happen in `.claude/temp/notes-ai-journal.md` (entries `CORRECTION-NNN`). This section is compiled from them and grouped by kind of mistake; trivial cases are left out.
+
+Of 52 recorded corrections, I caught 33 myself, mostly with a "why does this exist?" or "where does the spec say that?" question. Code review caught 11, tests 4, the build 2 and spec-check 2. The split changed with the layer: on the backend my questions caught most mistakes, because they were design mistakes; on the frontend the fresh-context review caught most, because they were state and timing bugs that only show in a running component.
+
+### Reading the documents
+
+The AI filled gaps with rules no source states, or read an example as a rule.
+
+| Case | Caught by | Fix |
+|---|---|---|
+| Read a sample error body and the not-null columns as proof that create must reject bad input, overriding the stated severity (005) | me | Drafts save incomplete with stored issues; the schema departure is recorded |
+| Showed a reserve flow where the frontend computes a delta, which no source describes (008) | me | the amount is the signed change the user types |
+| Named the ledger row after spec prose instead of its table, and assumed one component per kind (011, 012, 025) | me | entities follow the spec tables; no uniqueness the tables do not state |
+| Proposed a warning on a stored cancelled status, which would fire on valid claims (010) | me | a cancellation date column and a coverage window derived from dates |
+| Recorded its own conditions as decisions (a loss-after-report rule, a report-date refusal, a narrowed reading) (033) | spec-check | the spec's literal reading; own conditions listed separately for confirmation |
+| Recommended a URI error type and an upload exemption from Idempotency-Key without checking the spec or the framework (041, 042) | me | the spec's short error names; uploads covered like every write |
+
+### Over-built design
+
+The AI's first drafts often added a layer that carried nothing. Each was removed after I asked what it was for.
+
+| Case | Caught by | Fix |
+|---|---|---|
+| Transition design with an edge list, info and capability interfaces and a shared input base (006) | me | one input record per transition, rules as plain classes |
+| Engine with a Unit type, gate hooks, before and after hooks, and a third type to carry hook state (013, 019, 023) | me | a step returns an outcome; follow-ups chain on it; two engine types |
+| A one-field context object for the time, then Domain bases that chained steps (015, 022) | me | the time travels on the input; the Application calls one aggregate method |
+| Per-input builder classes, a context loader, four files per use case (027, 029) | me | explicit readers, one file per use case with its validator and handler |
+| Two Application ports that only reached EF, an opt-out switch for soft delete, needless helpers and stubs in Infrastructure (031, 036, 038) | me | Unit of Work in Persistence; soft delete from a Domain interface; helpers inlined |
+
+### Data placed in the wrong spot
+
+| Case | Caught by | Fix |
+|---|---|---|
+| Hangfire packages on the API project (001) | me | each layer registers itself through its own extension methods |
+| A closed-set registry in the Domain, described as both a check and a lookup (009) | me | markers in the Domain, the factory in the Application, converters in Persistence |
+| Withdrawal and reopen reasons as fields on the claim (007) | me | an append-only state-change history; closed date and reason derived from it |
+| Policy period bundled with the cause codes, cause codes kept under Loss (024, 028) | me | each fact under its owner, listed explicitly on every claim input |
+| A download controller using local storage classes, with a token forgery risk under Azure (046) | me | an Application port; the check sits next to what it protects |
+
+### Claims the AI did not verify
+
+| Case | Caught by | Fix |
+|---|---|---|
+| A code review said editorconfig settings would not work, while naming rules were really never enforced (004) | build | a scratch file with deliberate violations; naming rules now fail the build |
+| A version pin recommended before checking its advisory (002) | build | risk accepted for that one advisory and recorded in this repo |
+| Layer docs promised an EF mapping that EF refuses (034, 035) | test, me | shadow columns; mapping shapes changed instead of forced |
+| Said an Azure download keeps the original file name; the blob name has an upload prefix (047) | me | the link carries the original name, with a test |
+| A review fix put the reject reason in the wrong audit field (032) | spec-check | moved back; spec-check now runs inside each pack |
+| Test data without cause codes produced 500s; a review asked for a fix that could not work as written (045) | test | an organisation helper with its own code; findings checked against the schema first |
+
+### Rules the AI broke in its own code
+
+| Case | Caught by | Fix |
+|---|---|---|
+| Overridable transitions, missing events and guards (017, 018) | code review | sealed flows, events and existence rules with tests |
+| A validation behavior that threw, with a scan test as the guard (030) | me | marker interfaces the compiler enforces; the behavior returns a result |
+| Controllers broke the layer note: no request record, a plural property named in the singular, a hand-built 422, enums as numbers (043) | code review | fixed; the layer note is reread before writing a controller |
+| Tests broke the test shape in every API pack (044) | code review | fixed each round; the workflow check catches length and using order |
+| A green pack still had five defects (039) | code review | fresh-context review is part of every pack, not optional |
+
+### Frontend state and tests
+
+Every frontend pack passed build, tests and lint before the review, and every review still found real defects.
+
+| Case | Caught by | Fix |
+|---|---|---|
+| OnPush children read the shared intake form through methods and showed stale values after edits in another step or a 422 (048) | code review | the form value reaches each step as a signal input |
+| Hidden state leaked: party names kept after switching to a company, an old policy search kept after Change (049) | code review | the shared party editor clears the other type's fields; the store query is reset |
+| Idempotency keys kept after a 422, which would refuse a corrected body (050) | code review | keep a key only after a failure without an answer; one shared refusal check |
+| An upload locked the whole page, dropped warnings and showed 0% with no size; history sorted by a per-component number (051) | code review | separate upload state, one success handler, an indeterminate bar, sort by submit time |
+| Resource reads in the error state froze a list; a bad id spun forever; a failed reload wiped the screen and unsaved notes (054, 055) | test, code review | stores keep the last good value and name every state; notes count as saved only when the server confirms |
+| A missing time format crashed the intake page; only rendering the control in a test showed it (053) | test | the date adapter gets the time formats |
+| Specs that could not fail: a 422 test that never left step 1, a removal test without the declined path, a spec restating its constants (052) | code review | each test now fails when the behavior it names breaks |
+
+### What changed in the process
+
+- A repeated correction became a rule or a check: one word per concept (016, 021), explicit safe defaults in the type (003), CLAUDE.md exceptions instead of noisy per-case ones (014), and checks for naming, GUIDs, test shape and confidential text overlap in the workflow check.
+- Review findings are claims to test, not verdicts: two of them were wrong or unworkable as written (004, 045).
+- My most effective tool was the short why-question; it removed more structure than any review round.

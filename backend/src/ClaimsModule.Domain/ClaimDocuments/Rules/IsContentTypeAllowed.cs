@@ -9,20 +9,9 @@ internal sealed class IsContentTypeAllowed(string contentType) : IRule<object>
     private const string Message = "The file type is not allowed.";
     private const string Field = "ContentType";
 
-    private static readonly HashSet<string> _allowed = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "application/pdf",
-        "image/jpeg",
-        "image/png",
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "text/plain",
-        "text/csv",
-    };
-
     public CheckResult Check(object subject)
     {
-        bool isAllowed = _allowed.Contains(contentType);
+        bool isAllowed = DocumentContentTypes.IsAllowed(contentType);
 
         return isAllowed
             ? CheckResult.Pass

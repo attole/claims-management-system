@@ -14,7 +14,10 @@ internal static class TestDocuments
         {
             Notes = "Filed on the day",
         };
-        var input = new UploadClaimDocumentInput(claim, details, TestDatabase.UserId, now);
+        var input = new UploadClaimDocumentInput(claim, details, TestDatabase.UserId, now)
+        {
+            Header = "%PDF-1.7"u8.ToArray(),
+        };
 
         return ClaimDocument.Upload(input).Value;
     }

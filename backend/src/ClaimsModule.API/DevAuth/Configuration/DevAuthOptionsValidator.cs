@@ -3,9 +3,10 @@ using Microsoft.Extensions.Options;
 
 namespace ClaimsModule.API.DevAuth.Configuration;
 
-internal sealed class DevAuthOptionsValidator : IValidateOptions<DevAuthOptions>
+internal sealed class DevAuthOptionsValidator(bool isSecretRequired) : IValidateOptions<DevAuthOptions>
 {
     public const int MaxTokenLifetimeMinutes = 1440;
+    public const int MinSecretLength = 16;
 
     public ValidateOptionsResult Validate(string? name, DevAuthOptions options)
     {
@@ -19,7 +20,7 @@ internal sealed class DevAuthOptionsValidator : IValidateOptions<DevAuthOptions>
         return failures.Count == 0 ? ValidateOptionsResult.Success : ValidateOptionsResult.Fail(failures);
     }
 
-    private static List<string> ListFailures(DevAuthOptions options)
+    private List<string> ListFailures(DevAuthOptions options)
     {
         var failures = new List<string>();
 
@@ -30,6 +31,11 @@ internal sealed class DevAuthOptionsValidator : IValidateOptions<DevAuthOptions>
         failures.AddRange(isLifetimeValid ? [] : [lifetimeFailure]);
         var invalidUsers = options.Users.Where(user => !IsValid(user));
         failures.AddRange(invalidUsers.Select(user => $"DevAuth user '{user.Name}' is invalid."));
+        bool isSecretMissing = isSecretRequired && !options.HasSecret;
+        failures.AddRange(isSecretMissing ? ["DevAuth:Secret is required outside Development."] : []);
+        bool isSecretShort = options.HasSecret && options.Secret.Length < MinSecretLength;
+        var shortSecretFailure = $"DevAuth:Secret must have at least {MinSecretLength} characters.";
+        failures.AddRange(isSecretShort ? [shortSecretFailure] : []);
 
         return failures;
     }

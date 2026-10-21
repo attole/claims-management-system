@@ -22,21 +22,21 @@ public sealed class DocumentDownloadControllerTests(ApiFixture database) : IDisp
     [Trait("Rule", "S:API-GET-claims-documents")]
     public async Task Download_WithTheLinkOfAnUpload_ReturnsTheFileWithoutAToken()
     {
-        var link = await UploadAndGetLinkAsync("evidence.pdf", [1, 2, 3, 4]);
+        var link = await UploadAndGetLinkAsync("evidence.pdf", [0x25, 0x50, 0x44, 0x46]);
         using var anonymous = _factory.CreateClient();
 
         var response = await anonymous.GetAsync(new Uri(link).PathAndQuery);
 
         var bytes = await response.Content.ReadAsByteArrayAsync();
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        bytes.Should().Equal(1, 2, 3, 4);
+        bytes.Should().Equal(0x25, 0x50, 0x44, 0x46);
     }
 
     [ApiFact]
     [Trait("Rule", "S:API-GET-claims-documents")]
     public async Task Download_WithTheLinkOfAnUpload_NamesTheFileAfterTheOriginal()
     {
-        var link = await UploadAndGetLinkAsync("evidence.pdf", [1, 2, 3, 4]);
+        var link = await UploadAndGetLinkAsync("evidence.pdf", [0x25, 0x50, 0x44, 0x46]);
         using var anonymous = _factory.CreateClient();
 
         var response = await anonymous.GetAsync(new Uri(link).PathAndQuery);
@@ -49,7 +49,7 @@ public sealed class DocumentDownloadControllerTests(ApiFixture database) : IDisp
     [Trait("Rule", "S:API-GET-claims-documents")]
     public async Task Download_WithATamperedToken_Answers404()
     {
-        var link = await UploadAndGetLinkAsync("evidence.pdf", [1, 2, 3, 4]);
+        var link = await UploadAndGetLinkAsync("evidence.pdf", [0x25, 0x50, 0x44, 0x46]);
         using var anonymous = _factory.CreateClient();
 
         var response = await anonymous.GetAsync(new Uri(link).PathAndQuery + "x");
