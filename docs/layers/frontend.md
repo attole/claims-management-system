@@ -1,6 +1,6 @@
 # Frontend layer
 
-Rules and contracts of the Angular client in `frontend/`. It talks only to the API described in `docs/layers/api.md`, through one typed service layer. `.claude/CLAUDE.md` holds the short rules and points here; read this file before changing the frontend or reviewing its code. Status: bootstrapped (workspace, theme, app shell, sign-in, HTTP pipeline); the three screens are built next, one pack each. The static mockups in `frontend/design/` are the visual reference and are not part of the build.
+Rules and contracts of the Angular client in `frontend/`. It talks only to the API described in `docs/layers/api.md`, through one typed service layer. `.claude/CLAUDE.md` holds the short rules and points here; read this file before changing the frontend or reviewing its code. Status: bootstrapped (workspace, theme, app shell, sign-in, HTTP pipeline) with the typed API services; the three screens are built next, one pack each. The static mockups in `frontend/design/` are the visual reference and are not part of the build.
 
 ## Stack
 
@@ -47,9 +47,11 @@ frontend/
 
 ## Services and HTTP
 
-- Only services in `core/api/` call `HttpClient`, one service per resource (`claims.service.ts`, `reserves.service.ts`, ...). A service returns typed Observables, builds every URL with `apiUrl(path)` and unwraps the `WriteResult` envelope where the caller only needs the data.
+- Only services in `core/api/` call `HttpClient`, one service per resource: `ClaimsService` (list, detail, create, status change and check, notes, handler, policy, loss, audit), `PartiesService`, `RiskObjectsService`, `IssuesService`, `ReservesService`, `DocumentsService`, `PoliciesService` and `ReferenceService`. A service returns typed Observables and builds every URL with `apiUrl(path)`. A write returns the whole `WriteResult` (data and warnings), because the screens show the warnings; a read returns the data or the `PagedResult` as sent.
+- The list filter is a `ClaimsFilter`; empty values are left out of the query string and every selected status repeats as `status`. An upload returns `UploadProgress` events (a percent, then the result). `ReferenceService` caches the cause codes and the status table for the session, and drops a failed load so the next call tries again.
+- A 422 is mapped onto a form by `applyServerErrors(form, body)` in `shared/validators/server-errors.ts`: it sets a `server` error on each control its key names (dotted and indexed paths, any casing) and returns the messages that matched no control, `General` included, for the banner.
 - Interceptors, in this order: `loadingInterceptor` (the global progress bar), `errorInterceptor` (a snackbar for every failure except 422; a body that is not the API's error body is reported by its status code) and `authInterceptor` (adds the bearer token to API calls, never to the dev token call; on a 401 it waits for one shared re-sign-in, `AuthService.refresh()`, however many requests failed, and repeats the request).
-- Idempotency: a write that the user may repeat (create a claim, submit a reserve, upload) gets a key from `newIdempotencyKey()` when the user starts the action and sends it with `idempotencyHeaders(key)`. A retry of the same action reuses the key; the API stores only successful responses, so retrying a refused request with the same key is safe. Keys are never generated inside an interceptor.
+- Idempotency: every write method takes an optional key and sends it with `idempotencyHeaders(key)`; without one it creates a fresh key for that call. A write that the user may repeat (create a claim, submit a reserve, upload) creates its key with `newIdempotencyKey()` when the user starts the action and passes it on every retry of that action; the API stores only successful responses, so retrying a refused request with the same key is safe. Keys are never generated inside an interceptor.
 
 ## Sign-in
 
@@ -69,8 +71,12 @@ frontend/
 
 ## Formats
 
-- Dates and money go through pipes only: `claimDate` (one date and one date-time format), `money` (signed, two decimals, USD), `enumLabel` (`PendingPayment` becomes "Pending Payment"). Times are shown in the browser's time zone; the API receives ISO strings with the offset.
-- Policy dates arrive as `yyyy-MM-dd` and are compared as calendar dates, the way the backend compares the UTC date of the loss.
+- One date convention on the wire, kept in `core/api/api-dates.ts`, the only place that turns a `Date` into an API value:
+  - a timestamp is an `IsoDateTime`, always sent in UTC (`toIsoDateTime`, for example `2026-10-21T08:30:00.000Z`): loss date, report date;
+  - a calendar date is a `CalendarDate`, `yyyy-MM-dd` (`toCalendarDate`), for values the API binds as dates only: the claim list date filters and the policy period. An empty filter is `NO_DATE` (`''`) and is left out of the query.
+  - The in-force badge compares `calendarDateOf(lossDate)` (the UTC day of the loss) with the policy dates, as the backend does.
+- Dates and money are displayed through pipes only: `claimDate` (one date and one date-time format), `money` (signed, two decimals, USD), `enumLabel` (`PendingPayment` becomes "Pending Payment"). Times are shown in the browser's time zone.
+- Every status that crosses the wire is a union in `api.model.ts` (claim, reserve approval and posting, reserve component, policy), never a plain string.
 
 ## Styles
 
