@@ -1,0 +1,175 @@
+name: Deployment
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deployment-demo
+  cancel-in-progress: false
+
+jobs:
+  build-and-test:
+    name: Build, test and package
+    uses: ./.github/workflows/build-and-test.yml
+
+  deploy:
+    name: Provision, migrate, deploy and smoke test
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: demo
+    permissions:
+      id-token: write
+      contents: read
+    env:
+      RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+      SQL_ADMIN_OBJECT_ID: ${{ vars.SQL_ADMIN_OBJECT_ID }}
+      SQL_ADMIN_LOGIN: ${{ vars.SQL_ADMIN_LOGIN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: api
+          path: artifacts/api
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: database
+          path: artifacts/database
+
+      - uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Provision infrastructure
+        id: provision
+        run: |
+          az deployment group what-if --resource-group "$RESOURCE_GROUP" --parameters infra/demo.bicepparam
+          outputs=$(az deployment group create \
+            --resource-group "$RESOURCE_GROUP" \
+            --name "deployment-${GITHUB_RUN_ID}" \
+            --parameters infra/demo.bicepparam \
+            --query properties.outputs \
+            --output json)
+          {
+            echo "web_app_name=$(jq -r .webAppName.value <<< "$outputs")"
+            echo "web_app_host=$(jq -r .webAppHostName.value <<< "$outputs")"
+            echo "sql_server_name=$(jq -r .sqlServerName.value <<< "$outputs")"
+            echo "sql_server_fqdn=$(jq -r .sqlServerFqdn.value <<< "$outputs")"
+            echo "database_name=$(jq -r .databaseName.value <<< "$outputs")"
+            echo "identity_name=$(jq -r .identityName.value <<< "$outputs")"
+            echo "identity_client_id=$(jq -r .identityClientId.value <<< "$outputs")"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Open the SQL firewall for this runner
+        env:
+          SQL_SERVER_NAME: ${{ steps.provision.outputs.sql_server_name }}
+        run: |
+          runner_ip=$(curl -fsS https://api.ipify.org)
+          az sql server firewall-rule create \
+            --resource-group "$RESOURCE_GROUP" \
+            --server "$SQL_SERVER_NAME" \
+            --name "github-run-${GITHUB_RUN_ID}" \
+            --start-ip-address "$runner_ip" \
+            --end-ip-address "$runner_ip"
+
+      - name: Sign in to Azure again for the database token
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Apply migrations
+        env:
+          SQL_SERVER_FQDN: ${{ steps.provision.outputs.sql_server_fqdn }}
+          DATABASE_NAME: ${{ steps.provision.outputs.database_name }}
+        run: |
+          chmod +x artifacts/database/efbundle
+          connection="Server=tcp:${SQL_SERVER_FQDN},1433;Database=${DATABASE_NAME};Authentication=Active Directory Default;Encrypt=True;"
+          for attempt in 1 2 3 4 5 6; do
+            if artifacts/database/efbundle --connection "$connection"; then
+              exit 0
+            fi
+            sleep 30
+          done
+          exit 1
+
+      - name: Create the web app database user
+        uses: azure/sql-action@eb1f9a80487ca52b90f41a473f53da4943526994
+        with:
+          connection-string: Server=tcp:${{ steps.provision.outputs.sql_server_fqdn }},1433;Initial Catalog=${{ steps.provision.outputs.database_name }};Authentication=Active Directory Default;Encrypt=True;
+          path: infra/sql/grant-app-user.sql
+          arguments: -v UserName="${{ steps.provision.outputs.identity_name }}" UserClientId="${{ steps.provision.outputs.identity_client_id }}"
+
+      - name: Verify the web app database user
+        uses: azure/sql-action@eb1f9a80487ca52b90f41a473f53da4943526994
+        with:
+          connection-string: Server=tcp:${{ steps.provision.outputs.sql_server_fqdn }},1433;Initial Catalog=${{ steps.provision.outputs.database_name }};Authentication=Active Directory Default;Encrypt=True;
+          path: infra/sql/verify-app-user.sql
+          arguments: -v UserName="${{ steps.provision.outputs.identity_name }}"
+
+      - name: Deploy the API
+        uses: azure/webapps-deploy@02a81bead70021f5284939794bcec79c271ab383
+        with:
+          app-name: ${{ steps.provision.outputs.web_app_name }}
+          package: artifacts/api
+
+      - name: Restart the web app
+        env:
+          WEB_APP_NAME: ${{ steps.provision.outputs.web_app_name }}
+        run: az webapp restart --resource-group "$RESOURCE_GROUP" --name "$WEB_APP_NAME"
+
+      - name: Smoke test
+        env:
+          WEB_APP_NAME: ${{ steps.provision.outputs.web_app_name }}
+          WEB_APP_HOST: ${{ steps.provision.outputs.web_app_host }}
+        run: |
+          status=000
+          for attempt in $(seq 1 30); do
+            status=$(curl -s -o /dev/null -w '%{http_code}' "https://${WEB_APP_HOST}/health/ready" || true)
+            if [ "$status" = "200" ]; then
+              break
+            fi
+            sleep 10
+          done
+          test "$status" = "200"
+
+          curl -fsS -o /dev/null "https://${WEB_APP_HOST}/openapi/v1.json"
+
+          user_id=$(az webapp config appsettings list \
+            --resource-group "$RESOURCE_GROUP" \
+            --name "$WEB_APP_NAME" \
+            --query "[?name=='DevAuth__Users__0__Id'].value | [0]" \
+            --output tsv)
+          token=$(curl -fsS -X POST "https://${WEB_APP_HOST}/api/dev/token" \
+            -H 'Content-Type: application/json' \
+            -d "{\"userId\":\"${user_id}\"}" | jq -r .token)
+          test -n "$token"
+          test "$token" != "null"
+
+          curl -fsS -o /dev/null -H "Authorization: Bearer ${token}" "https://${WEB_APP_HOST}/api/claims"
+
+          {
+            echo "### Deployed"
+            echo "- API: https://${WEB_APP_HOST}"
+            echo "- Swagger: https://${WEB_APP_HOST}/swagger"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Close the SQL firewall for this runner
+        if: always() && steps.provision.outcome == 'success'
+        env:
+          SQL_SERVER_NAME: ${{ steps.provision.outputs.sql_server_name }}
+        run: |
+          az sql server firewall-rule delete \
+            --resource-group "$RESOURCE_GROUP" \
+            --server "$SQL_SERVER_NAME" \
+            --name "github-run-${GITHUB_RUN_ID}" || true

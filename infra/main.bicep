@@ -51,6 +51,15 @@ var tags = {
 var databaseName = 'claims'
 var storageSecretName = 'storage-connection-string'
 
+module identity 'modules/identity.bicep' = {
+  name: 'identity'
+  params: {
+    name: 'id-${baseName}-${suffix}'
+    location: location
+    tags: tags
+  }
+}
+
 module monitoring 'modules/monitoring.bicep' = {
   name: 'monitoring'
   params: {
@@ -110,7 +119,7 @@ var wiringSettings = [
   { name: 'Jwt__SigningKey', value: '@Microsoft.KeyVault(SecretUri=${keyVault.outputs.uri}secrets/${jwtSecretName}/)' }
   {
     name: 'ConnectionStrings__ClaimsDb'
-    value: 'Server=tcp:${sql.outputs.fullyQualifiedDomainName},1433;Database=${sql.outputs.databaseName};Authentication=Active Directory Managed Identity;Encrypt=True;'
+    value: 'Server=tcp:${sql.outputs.fullyQualifiedDomainName},1433;Database=${sql.outputs.databaseName};Authentication=Active Directory Managed Identity;User Id=${identity.outputs.clientId};Encrypt=True;'
   }
   { name: 'Cors__AllowedOrigins__0', value: 'https://${staticWebApp.outputs.defaultHostname}' }
   { name: 'StorageProvider', value: 'AzureBlob' }
@@ -146,6 +155,7 @@ module appService 'modules/appservice.bicep' = {
     location: location
     tags: tags
     skuName: appServiceSkuName
+    identityId: identity.outputs.id
     workspaceId: monitoring.outputs.workspaceId
     appSettings: appSettings
   }
@@ -155,13 +165,15 @@ module roles 'modules/roles.bicep' = {
   name: 'roles'
   params: {
     vaultName: keyVault.outputs.name
-    principalId: appService.outputs.principalId
+    principalId: identity.outputs.principalId
   }
 }
 
 output resourceGroupName string = resourceGroup().name
 output webAppName string = appService.outputs.name
 output webAppHostName string = appService.outputs.defaultHostName
+output identityName string = identity.outputs.name
+output identityClientId string = identity.outputs.clientId
 output sqlServerName string = sql.outputs.serverName
 output sqlServerFqdn string = sql.outputs.fullyQualifiedDomainName
 output databaseName string = sql.outputs.databaseName
