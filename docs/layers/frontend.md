@@ -1,6 +1,6 @@
 # Frontend layer
 
-Rules and contracts of the Angular client in `frontend/`. It talks only to the API described in `docs/layers/api.md`, through one typed service layer. `.claude/CLAUDE.md` holds the short rules and points here; read this file before changing the frontend or reviewing its code. Status: bootstrapped (workspace, theme, app shell, sign-in, HTTP pipeline) with the typed API services; the three screens are built next, one pack each. The static mockups in `frontend/design/` are the visual reference and are not part of the build.
+Rules and contracts of the Angular client in `frontend/`. It talks only to the API described in `docs/layers/api.md`, through one typed service layer. `.claude/CLAUDE.md` holds the short rules and points here; read this file before changing the frontend or reviewing its code. Status: bootstrapped (workspace, theme, app shell, sign-in, HTTP pipeline) with the typed API services and the claims list screen; the intake form and the claim detail screen follow, one pack each. The static mockups in `frontend/design/` are the visual reference and are not part of the build.
 
 ## Stack
 
@@ -45,6 +45,15 @@ frontend/
 - One store per page (`*.store.ts`), provided on the page component, not in root. It holds writable signals for its inputs (filters, page, claim id), `computed` values for derived state and one resource per read keyed by those signals; a mutation calls a service and reloads the affected resource.
 - Root state is limited to the signed-in user, the theme and the loading counter.
 
+- A resource read through `value()` throws while the resource is in error, and goes back to its default value whenever its params change. So a store never exposes `value()` directly: an effect copies each resolved value into a signal of the last resolved page, and the store exposes `computed` values over that signal plus `hasError`, `hasLoaded` and `isFirstLoad` for the template. A new filter or page keeps the shown rows (dimmed) until the answer arrives.
+
+## Screens
+
+- **Claims list** (`features/claims-list/`, S:UI-List, S:UI-Badges). `ClaimsListStore` holds the `ClaimsFilter` in a signal, reads the page with `rxResource` keyed by it and writes the filter to the query string (`replaceUrl`), so a reload or a shared link shows the same list; it reads the query string once, at start. `ClaimsFilterBar` is a presentational form (status chips, loss date range with an order check, cause of loss, handler, search) that emits one `changed` after a 300 ms debounce and only while valid. The page shows the count, a spinner on the first load, an error state with a retry, an empty state with a clear button, the table (cause names from the reference list, status badges, money) and the paginator; a row (click or Enter) opens the claim detail.
+- The handler filter is a select of the known users, not a text search: the API filters by handler id and has no handler name to search (a decision in `docs/ARCHITECTURE.md` 'Decisions on gaps'). The list has no handler column, because the summary rows carry no handler. Search matches the claim number and the client name, as the API does.
+- Values read from the URL are checked before they reach the API: statuses against the known set, dates against `yyyy-MM-dd`, handler and policy ids against the GUID pattern (`core/api/api-ids.ts`), paging against the allowed sizes; anything else is dropped. A page past the end (an old link) moves to the last page.
+- The filter bar emits a change only when it differs from the current filter, and writes the filter back into the form only for fields whose value differs, so text being typed (a trailing space, a half-typed date) is never overwritten.
+
 ## Services and HTTP
 
 - Only services in `core/api/` call `HttpClient`, one service per resource: `ClaimsService` (list, detail, create, status change and check, notes, handler, policy, loss, audit), `PartiesService`, `RiskObjectsService`, `IssuesService`, `ReservesService`, `DocumentsService`, `PoliciesService` and `ReferenceService`. A service returns typed Observables and builds every URL with `apiUrl(path)`. A write returns the whole `WriteResult` (data and warnings), because the screens show the warnings; a read returns the data or the `PagedResult` as sent.
@@ -75,7 +84,8 @@ frontend/
   - a timestamp is an `IsoDateTime`, always sent in UTC (`toIsoDateTime`, for example `2026-10-21T08:30:00.000Z`): loss date, report date;
   - a calendar date is a `CalendarDate`, `yyyy-MM-dd` (`toCalendarDate`), for values the API binds as dates only: the claim list date filters and the policy period. An empty filter is `NO_DATE` (`''`) and is left out of the query.
   - The in-force badge compares `calendarDateOf(lossDate)` (the UTC day of the loss) with the policy dates, as the backend does.
-- Dates and money are displayed through pipes only: `claimDate` (one date and one date-time format), `money` (signed, two decimals, USD), `enumLabel` (`PendingPayment` becomes "Pending Payment"). Times are shown in the browser's time zone.
+- Date work uses date-fns (with `@date-fns/utc` for UTC days), never hand-built strings; the format patterns live as constants in `api-dates.ts` (`CALENDAR_DATE_FORMAT`, `DATE_TIME_DISPLAY_FORMAT`). Material date pickers use the date-fns adapter with the same calendar format (`provideAppDateAdapter()` in `core/dates/`), so a picker shows and reads `yyyy-MM-dd` like every other date on screen.
+- Dates and money are displayed through pipes only: `claimDate` (`'day'` shows the UTC day of a timestamp, the same day the filters and the backend use; `'dateTime'` shows the date and time in the browser's time zone), `money` (two decimals, USD, a minus sign only below half a cent), `enumLabel` (`PendingPayment` becomes "Pending Payment").
 - Every status that crosses the wire is a union in `api.model.ts` (claim, reserve approval and posting, reserve component, policy), never a plain string.
 
 ## Styles

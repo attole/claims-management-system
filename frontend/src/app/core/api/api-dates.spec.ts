@@ -1,4 +1,11 @@
-import { calendarDateOf, isCalendarDate, toCalendarDate, toIsoDateTime } from './api-dates';
+import {
+  calendarDateOf,
+  isCalendarDate,
+  isSetDate,
+  parseCalendarDate,
+  toCalendarDate,
+  toIsoDateTime,
+} from './api-dates';
 
 describe('api-dates (S:BR-C-02, S:UI-List)', () => {
   it('toIsoDateTime sends a timestamp in UTC', () => {
@@ -17,6 +24,20 @@ describe('api-dates (S:BR-C-02, S:UI-List)', () => {
     const result = calendarDateOf('2026-03-01T01:30:00+02:00');
 
     expect(result).toBe('2026-02-28');
+  });
+
+  it('parseCalendarDate gives the local midnight of that day', () => {
+    const result = parseCalendarDate('2026-01-05');
+
+    expect([result.getFullYear(), result.getMonth(), result.getDate(), result.getHours()]).toEqual([2026, 0, 5, 0]);
+  });
+
+  it('isSetDate treats an empty value and the API minimum value as not set', () => {
+    const empty = isSetDate('');
+    const minimum = isSetDate('0001-01-01T00:00:00+00:00');
+    const real = isSetDate('2026-10-21T08:30:00Z');
+
+    expect([empty, minimum, real]).toEqual([false, false, true]);
   });
 
   it('isCalendarDate accepts only yyyy-MM-dd', () => {
