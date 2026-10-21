@@ -1,0 +1,41 @@
+.filters {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) minmax(0, 1.4fr) auto;
+  gap: var(--app-gap-small) var(--app-gap);
+  align-items: center;
+  padding: var(--app-gap);
+  margin-bottom: var(--app-gap);
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  background: var(--app-surface);
+}
+
+.statuses {
+  grid-column: 1 / -1;
+}
+
+.label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--app-muted);
+  font: var(--mat-sys-label-medium);
+}
+
+.error-hint {
+  color: var(--app-danger);
+}
+
+@media (max-width: 1100px) {
+  .filters {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .search,
+  .clear {
+    grid-column: 1 / -1;
+  }
+
+  .clear {
+    justify-self: end;
+  }
+}

@@ -1,0 +1,6 @@
+<div class="indicator" [class]="'indicator indicator--' + authority()" role="status" aria-live="polite">
+  @if (authority() !== 'none') {
+    <mat-icon aria-hidden="true">{{ icon() }}</mat-icon>
+  }
+  <span>{{ text() }}</span>
+</div>

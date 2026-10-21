@@ -1,0 +1,54 @@
+<div class="title-row">
+  <h1>Log new claim</h1>
+  <a mat-button routerLink="/claims">Cancel</a>
+</div>
+
+@if (bannerMessages().length > 0) {
+  <div class="banner banner--bad" role="alert">
+    <strong>The claim could not be created.</strong>
+    <ul>
+      @for (message of bannerMessages(); track message) {
+        <li>{{ message }}</li>
+      }
+    </ul>
+  </div>
+}
+
+<mat-stepper class="card" [linear]="true" #stepper>
+  <mat-step label="Policy and loss" [completed]="isStep1Valid()">
+    <app-policy-loss-step
+      [form]="form"
+      [policyResults]="store.policyResults()"
+      [isSearching]="store.isSearchingPolicies()"
+      [causeCodes]="store.causeCodes()"
+      (policyQuery)="store.policyQuery.set($event)"
+    />
+    <div class="actions">
+      <span></span>
+      <button mat-flat-button type="button" (click)="next(0)">Next</button>
+    </div>
+  </mat-step>
+
+  <mat-step label="Parties and risk objects" [completed]="isStep2Valid()">
+    <app-parties-step [form]="form" [value]="formValue()" />
+    <div class="actions">
+      <button mat-stroked-button type="button" matStepperPrevious>Back</button>
+      <button mat-flat-button type="button" (click)="next(1)">Next</button>
+    </div>
+  </mat-step>
+
+  <mat-step label="Reserve and review">
+    <app-reserve-review-step
+      [form]="form"
+      [value]="formValue()"
+      [causeNames]="store.causeNames()"
+      (goToStep)="goToStep($event)"
+    />
+    <div class="actions">
+      <button mat-stroked-button type="button" matStepperPrevious>Back</button>
+      <button mat-flat-button type="button" [disabled]="!canCreate()" (click)="create()">
+        {{ store.isSubmitting() ? 'Creating...' : 'Create claim' }}
+      </button>
+    </div>
+  </mat-step>
+</mat-stepper>

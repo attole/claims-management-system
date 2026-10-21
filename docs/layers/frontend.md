@@ -1,6 +1,6 @@
 # Frontend layer
 
-Rules and contracts of the Angular client in `frontend/`. It talks only to the API described in `docs/layers/api.md`, through one typed service layer. `.claude/CLAUDE.md` holds the short rules and points here; read this file before changing the frontend or reviewing its code. Status: bootstrapped (workspace, theme, app shell, sign-in, HTTP pipeline); the three screens are built next, one pack each. The static mockups in `frontend/design/` are the visual reference and are not part of the build.
+Rules and contracts of the Angular client in `frontend/`. It talks only to the API described in `docs/layers/api.md`, through one typed service layer. `.claude/CLAUDE.md` holds the short rules and points here; read this file before changing the frontend or reviewing its code. Status: bootstrapped (workspace, theme, app shell, sign-in, HTTP pipeline) with the typed API services, the claims list screen and the intake form; the claim detail screen follows. The static mockups in `frontend/design/` are the visual reference and are not part of the build.
 
 ## Stack
 
@@ -45,11 +45,26 @@ frontend/
 - One store per page (`*.store.ts`), provided on the page component, not in root. It holds writable signals for its inputs (filters, page, claim id), `computed` values for derived state and one resource per read keyed by those signals; a mutation calls a service and reloads the affected resource.
 - Root state is limited to the signed-in user, the theme and the loading counter.
 
+- A resource read through `value()` throws while the resource is in error, and goes back to its default value whenever its params change. So a store never exposes `value()` directly: an effect copies each resolved value into a signal of the last resolved page, and the store exposes `computed` values over that signal plus `hasError`, `hasLoaded` and `isFirstLoad` for the template. A new filter or page keeps the shown rows (dimmed) until the answer arrives.
+
+## Screens
+
+- **Claims list** (`features/claims-list/`, S:UI-List, S:UI-Badges). `ClaimsListStore` holds the `ClaimsFilter` in a signal, reads the page with `rxResource` keyed by it and writes the filter to the query string (`replaceUrl`), so a reload or a shared link shows the same list; it reads the query string once, at start. `ClaimsFilterBar` is a presentational form (status chips, loss date range with an order check, cause of loss, handler, search) that emits one `changed` after a 300 ms debounce and only while valid. The page shows the count, a spinner on the first load, an error state with a retry, an empty state with a clear button, the table (cause names from the reference list, status badges, money) and the paginator; a row (click or Enter) opens the claim detail.
+- The handler filter is a select of the known users, not a text search: the API filters by handler id and has no handler name to search (a decision in `docs/ARCHITECTURE.md` 'Decisions on gaps'). The list has no handler column, because the summary rows carry no handler. Search matches the claim number and the client name, as the API does.
+- Values read from the URL are checked before they reach the API: statuses against the known set, dates against `yyyy-MM-dd`, handler and policy ids against the GUID pattern (`core/api/api-ids.ts`), paging against the allowed sizes; anything else is dropped. A page past the end (an old link) moves to the last page.
+- The filter bar emits a change only when it differs from the current filter, and writes the filter back into the form only for fields whose value differs, so text being typed (a trailing space, a half-typed date) is never overwritten.
+- **Intake** (`features/claim-intake/`, S:UI-Intake-Steps, S:UI-Intake-Policy, S:UI-Intake-Parties, S:UI-Intake-Reserve, S:UI-Intake-Submit). One typed form (`intake-form.ts`: `createIntakeForm`, the mapping `toCreateRequest`, the hints `inForce` and `intakeWarnings`) drives a linear three-step `mat-stepper`: policy and loss, parties and risk objects, reserve and review. Each step is a presentational component that gets the form as an input. Next marks the step's groups touched and moves on only when they are valid; a step header is marked complete from the form's state, so a valid step can be reopened from the top.
+- Policy: an autocomplete over `policies/search` (from two characters, after 300 ms), a picked card with the in-force badge, or the Unknown policy switch, which sends the empty id. Loss date and time are one control shown by a datepicker and a timepicker. The cause of loss is an autocomplete that accepts a typed name or code and must match the reference list.
+- Parties and risk objects are added through inline forms and listed as cards with a remove button; a missing claimant blocks creation, a missing risk object is only advised. The optional initial reserve is one Add with its component and amount, shows the authority indicator, and needs a linked policy (a banner links back to step 1). The review step takes the form value as an input, because an OnPush child does not see edits made in another step.
+- Create: warnings (no policy, outside the policy period, no risk object) open a confirm dialog first; the request carries one idempotency key per form, kept across retries and renewed after a success. A success shows the claim number and opens the detail; a 422 sets the field errors, lists the rest in a banner and returns the stepper to the first invalid step.
+
 ## Services and HTTP
 
-- Only services in `core/api/` call `HttpClient`, one service per resource (`claims.service.ts`, `reserves.service.ts`, ...). A service returns typed Observables, builds every URL with `apiUrl(path)` and unwraps the `WriteResult` envelope where the caller only needs the data.
+- Only services in `core/api/` call `HttpClient`, one service per resource: `ClaimsService` (list, detail, create, status change and check, notes, handler, policy, loss, audit), `PartiesService`, `RiskObjectsService`, `IssuesService`, `ReservesService`, `DocumentsService`, `PoliciesService` and `ReferenceService`. A service returns typed Observables and builds every URL with `apiUrl(path)`. A write returns the whole `WriteResult` (data and warnings), because the screens show the warnings; a read returns the data or the `PagedResult` as sent.
+- The list filter is a `ClaimsFilter`; empty values are left out of the query string and every selected status repeats as `status`. An upload returns `UploadProgress` events (a percent, then the result). `ReferenceService` caches the cause codes and the status table for the session, and drops a failed load so the next call tries again.
+- A 422 is mapped onto a form by `applyServerErrors(form, body)` in `shared/validators/server-errors.ts`: it sets a `server` error on each control its key names (dotted and indexed paths, any casing) and returns the messages that matched no control, `General` included, for the banner.
 - Interceptors, in this order: `loadingInterceptor` (the global progress bar), `errorInterceptor` (a snackbar for every failure except 422; a body that is not the API's error body is reported by its status code) and `authInterceptor` (adds the bearer token to API calls, never to the dev token call; on a 401 it waits for one shared re-sign-in, `AuthService.refresh()`, however many requests failed, and repeats the request).
-- Idempotency: a write that the user may repeat (create a claim, submit a reserve, upload) gets a key from `newIdempotencyKey()` when the user starts the action and sends it with `idempotencyHeaders(key)`. A retry of the same action reuses the key; the API stores only successful responses, so retrying a refused request with the same key is safe. Keys are never generated inside an interceptor.
+- Idempotency: every write method takes an optional key and sends it with `idempotencyHeaders(key)`; without one it creates a fresh key for that call. A write that the user may repeat (create a claim, submit a reserve, upload) creates its key with `newIdempotencyKey()` when the user starts the action and passes it on every retry of that action; the API stores only successful responses, so retrying a refused request with the same key is safe. Keys are never generated inside an interceptor.
 
 ## Sign-in
 
@@ -64,13 +79,18 @@ frontend/
 
 ## Forms and validation
 
-- The client validates shape: required fields, maximum lengths equal to the backend field lengths, email format, a loss date not in the future, a description of at least 20 characters, a non-zero amount and at least one claimant before a claim is created. Messages for these live in one map rendered by `shared/ui/form-errors`.
+- The client validates shape: required fields, maximum lengths equal to the backend field lengths, email format, a loss date not in the future, a description of at least 20 characters, a non-zero amount and at least one claimant before a claim is created. Messages for these live in one map rendered by the `errorMessage` pipe (`shared/validators/error-message.pipe.ts`); the custom validators are in `shared/validators/claim-validators.ts`.
 - Business rules stay on the server. The UI shows hints only (the in-force badge, the authority indicator from the mirrored thresholds in `shared/util/reserve-authority.ts`, the closure checklist from `status-check`) and maps a 422 back onto the form: the error keys match the control paths case-insensitively (`Loss.Description`), and keys that match nothing or `General` go to a banner at the top of the step.
 
 ## Formats
 
-- Dates and money go through pipes only: `claimDate` (one date and one date-time format), `money` (signed, two decimals, USD), `enumLabel` (`PendingPayment` becomes "Pending Payment"). Times are shown in the browser's time zone; the API receives ISO strings with the offset.
-- Policy dates arrive as `yyyy-MM-dd` and are compared as calendar dates, the way the backend compares the UTC date of the loss.
+- One date convention on the wire, kept in `core/api/api-dates.ts`, the only place that turns a `Date` into an API value:
+  - a timestamp is an `IsoDateTime`, always sent in UTC (`toIsoDateTime`, for example `2026-10-21T08:30:00.000Z`): loss date, report date;
+  - a calendar date is a `CalendarDate`, `yyyy-MM-dd` (`toCalendarDate`), for values the API binds as dates only: the claim list date filters and the policy period. An empty filter is `NO_DATE` (`''`) and is left out of the query.
+  - The in-force badge compares `calendarDateOf(lossDate)` (the UTC day of the loss) with the policy dates, as the backend does.
+- Date work uses date-fns (with `@date-fns/utc` for UTC days), never hand-built strings; the format patterns live as constants in `api-dates.ts` (`CALENDAR_DATE_FORMAT`, `TIME_FORMAT`, `DATE_TIME_DISPLAY_FORMAT`). Material date and time pickers use the date-fns adapter with the same formats (`provideAppDateAdapter()` in `core/dates/`), so a picker shows and reads `yyyy-MM-dd` and `HH:mm` like every other date on screen.
+- Dates and money are displayed through pipes only: `claimDate` (`'day'` shows the UTC day of a timestamp, the same day the filters and the backend use; `'dateTime'` shows the date and time in the browser's time zone), `money` (two decimals, USD, a minus sign only below half a cent), `enumLabel` (`PendingPayment` becomes "Pending Payment").
+- Every status that crosses the wire is a union in `api.model.ts` (claim, reserve approval and posting, reserve component, policy), never a plain string.
 
 ## Styles
 

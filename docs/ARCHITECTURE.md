@@ -148,6 +148,7 @@ Conditions and constants that no document states and that this repo added. Each 
 | Policy | Status | shown only: Active up to the effective end date (the earlier of expiry and cancellation), then Cancelled when a cancellation ended the cover, otherwise Expired; the date is an argument, the Domain reads no clock | none |
 | Read | Recent audit entries | the claim detail shows 10 | none |
 | Read | Page size cap | a page holds at most 100 rows | none |
+| UI | Handler filter | the claims list filters the handler with a select of the known users instead of a text search, because the list API filters by handler id and the summary rows carry no handler name | S:UI-List |
 | Audit | Additional event types | acknowledged and waived issues, limit override changes (only when the value changes), reserve component state changes and removed documents are audited besides the specification's fixed list | AuditEventTypes.Additional |
 | Job | Batch caps | one SLA run flags at most 500 claims and one posting sweep re-enqueues at most 500 rows; the rest wait for the next run | none |
 

@@ -1,12 +1,79 @@
+.title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--app-gap);
+  margin-bottom: var(--app-gap);
+}
+
+.title {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
 h1 {
-  margin: 0 0 var(--app-gap);
+  margin: 0;
   font: var(--mat-sys-headline-small);
 }
 
+.count {
+  color: var(--app-muted);
+}
+
 .card {
-  padding: var(--app-gap);
   border: 1px solid var(--app-border);
   border-radius: var(--app-radius);
   background: var(--app-surface);
+  overflow: hidden;
+}
+
+.state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--app-gap-small);
+  padding: 48px var(--app-gap);
   color: var(--app-muted);
+
+  p {
+    margin: 0;
+  }
+}
+
+.table-scroll {
+  overflow-x: auto;
+
+  &.reloading {
+    opacity: 0.6;
+  }
+}
+
+table {
+  width: 100%;
+  min-width: 960px;
+}
+
+th,
+td {
+  white-space: nowrap;
+}
+
+.number {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.claim-number {
+  color: var(--app-link);
+  font-weight: 500;
+}
+
+.row {
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    background: var(--app-hover);
+  }
 }

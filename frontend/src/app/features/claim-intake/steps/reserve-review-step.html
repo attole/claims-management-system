@@ -1,0 +1,52 @@
+@let reserve = form().controls.reserve;
+
+<section class="block" [formGroup]="reserve" aria-labelledby="reserve-title">
+  <h2 id="reserve-title">Initial reserve (optional)</h2>
+
+  <div class="row">
+    <mat-form-field>
+      <mat-label>Component</mat-label>
+      <mat-select formControlName="componentType">
+        <mat-option value="">No initial reserve</mat-option>
+        @for (component of components; track component) {
+          <mat-option [value]="component">{{ component | enumLabel }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field>
+      <mat-label>Amount</mat-label>
+      <input matInput type="number" formControlName="amount" />
+      <span matTextPrefix>$&nbsp;</span>
+      <mat-error>{{ reserve.controls.amount.errors | errorMessage }}</mat-error>
+    </mat-form-field>
+  </div>
+
+  <app-authority-indicator [amount]="amount()" />
+
+  @if (reserve.hasError(amountRequired)) {
+    <p class="error" role="alert">Enter an amount for the reserve, or choose No initial reserve.</p>
+  }
+
+  @if (form().hasError(reserveNeedsPolicy)) {
+    <p class="banner banner--warn" role="alert">
+      A reserve needs a linked policy. Link one in
+      <button type="button" class="link" (click)="goToStep.emit(0)">step 1</button>
+      or remove the reserve.
+    </p>
+  }
+</section>
+
+<section class="block" aria-labelledby="review-title">
+  <h2 id="review-title">Review</h2>
+  <table class="review">
+    <tbody>
+      @for (line of review(); track line.label) {
+        <tr>
+          <th scope="row">{{ line.label }}</th>
+          <td>{{ line.value }}</td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</section>

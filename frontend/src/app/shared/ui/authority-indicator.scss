@@ -1,0 +1,26 @@
+.indicator {
+  display: flex;
+  align-items: center;
+  gap: var(--app-gap-small);
+  padding: 10px 14px;
+  border-radius: var(--app-radius);
+  border: 1px solid color-mix(in srgb, var(--indicator-tone) 60%, transparent);
+  background: color-mix(in srgb, var(--indicator-tone) 16%, transparent);
+  --indicator-tone: var(--tone-neutral);
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    color: var(--indicator-tone);
+  }
+}
+
+.indicator--auto {
+  --indicator-tone: var(--tone-ok);
+}
+
+.indicator--supervisor,
+.indicator--manager {
+  --indicator-tone: var(--tone-warn);
+}
