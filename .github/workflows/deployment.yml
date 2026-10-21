@@ -37,26 +37,14 @@ jobs:
           if [ -z "$run_id" ]; then
             run_id=$(gh run list --workflow build-and-test.yml --branch main --event push --status success --limit 1 --json databaseId --jq '.[0].databaseId // empty')
           fi
-          if [ -z "$run_id" ]; then
-            echo "::error::No successful Build and Test run of a push to main exists. Push a commit to main and wait for it to pass."
-            exit 1
-          fi
           if ! [[ "$run_id" =~ ^[0-9]+$ ]]; then
-            echo "::error::The run id must be a number."
+            echo "::error::No usable run id. Push a commit to main and wait for Build and Test to pass, or give a run number."
             exit 1
           fi
 
           details=$(gh run view "$run_id" --json workflowName,event,headBranch,conclusion,headSha)
-          if [ "$(jq -r .workflowName <<< "$details")" != "Build and Test" ]; then
-            echo "::error::Run $run_id is not a Build and Test run."
-            exit 1
-          fi
-          if [ "$(jq -r .event <<< "$details")" != "push" ] || [ "$(jq -r .headBranch <<< "$details")" != "main" ]; then
-            echo "::error::Run $run_id is not a push to main. Only builds of reviewed code on main can be deployed."
-            exit 1
-          fi
-          if [ "$(jq -r .conclusion <<< "$details")" != "success" ]; then
-            echo "::error::Run $run_id did not succeed."
+          if ! jq -e '.workflowName == "Build and Test" and .event == "push" and .headBranch == "main" and .conclusion == "success"' <<< "$details" > /dev/null; then
+            echo "::error::Run $run_id must be a successful Build and Test run of a push to main."
             exit 1
           fi
 
@@ -72,10 +60,8 @@ jobs:
             echo "::warning::Deploying ${head_sha}, which is not the latest commit on main (${main_sha})."
           fi
 
-          {
-            echo "run_id=$run_id"
-            echo "head_sha=$head_sha"
-          } >> "$GITHUB_OUTPUT"
+          echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+          echo "head_sha=$head_sha" >> "$GITHUB_OUTPUT"
           echo "Deploying commit ${head_sha} from Build and Test run ${run_id}." >> "$GITHUB_STEP_SUMMARY"
 
   deploy:
@@ -119,7 +105,6 @@ jobs:
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
       - name: Provision infrastructure
-        id: provision
         run: |
           outputs=$(az deployment group create \
             --resource-group "$RESOURCE_GROUP" \
@@ -127,29 +112,17 @@ jobs:
             --parameters infra/demo.bicepparam \
             --query properties.outputs \
             --output json)
-          {
-            echo "web_app_name=$(jq -r .webAppName.value <<< "$outputs")"
-            echo "web_app_host=$(jq -r .webAppHostName.value <<< "$outputs")"
-            echo "sql_server_fqdn=$(jq -r .sqlServerFqdn.value <<< "$outputs")"
-            echo "database_name=$(jq -r .databaseName.value <<< "$outputs")"
-            echo "identity_name=$(jq -r .identityName.value <<< "$outputs")"
-            echo "identity_client_id=$(jq -r .identityClientId.value <<< "$outputs")"
-            echo "key_vault_name=$(jq -r .keyVaultName.value <<< "$outputs")"
-            echo "devauth_secret_name=$(jq -r .devAuthSecretName.value <<< "$outputs")"
-            echo "static_web_app_name=$(jq -r .staticWebAppName.value <<< "$outputs")"
-            echo "static_web_app_host=$(jq -r .staticWebAppHostName.value <<< "$outputs")"
-          } >> "$GITHUB_OUTPUT"
+          jq -r 'to_entries[] | "\(.key)=\(.value.value)"' <<< "$outputs" >> "$GITHUB_ENV"
+          server=$(jq -r .sqlServerFqdn.value <<< "$outputs")
+          database=$(jq -r .databaseName.value <<< "$outputs")
+          echo "SQL_CONNECTION=Server=tcp:${server},1433;Initial Catalog=${database};Authentication=Active Directory Default;Encrypt=True;" >> "$GITHUB_ENV"
 
       - name: Read the dev sign-in access code
-        id: access
-        env:
-          KEY_VAULT_NAME: ${{ steps.provision.outputs.key_vault_name }}
-          SECRET_NAME: ${{ steps.provision.outputs.devauth_secret_name }}
         run: |
           for attempt in $(seq 1 10); do
-            if code=$(az keyvault secret show --vault-name "$KEY_VAULT_NAME" --name "$SECRET_NAME" --query value -o tsv); then
+            if code=$(az keyvault secret show --vault-name "$keyVaultName" --name "$devAuthSecretName" --query value -o tsv); then
               echo "::add-mask::$code"
-              echo "code=$code" >> "$GITHUB_OUTPUT"
+              echo "ACCESS_CODE=$code" >> "$GITHUB_ENV"
               exit 0
             fi
             sleep 30
@@ -164,14 +137,10 @@ jobs:
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
       - name: Apply migrations
-        env:
-          SQL_SERVER_FQDN: ${{ steps.provision.outputs.sql_server_fqdn }}
-          DATABASE_NAME: ${{ steps.provision.outputs.database_name }}
         run: |
           chmod +x artifacts/database/efbundle
-          connection="Server=tcp:${SQL_SERVER_FQDN},1433;Database=${DATABASE_NAME};Authentication=Active Directory Default;Encrypt=True;"
           for attempt in 1 2 3 4 5 6; do
-            if artifacts/database/efbundle --connection "$connection"; then
+            if artifacts/database/efbundle --connection "$SQL_CONNECTION"; then
               exit 0
             fi
             sleep 30
@@ -181,59 +150,42 @@ jobs:
       - name: Create the web app database user
         uses: azure/sql-action@eb1f9a80487ca52b90f41a473f53da4943526994
         with:
-          connection-string: Server=tcp:${{ steps.provision.outputs.sql_server_fqdn }},1433;Initial Catalog=${{ steps.provision.outputs.database_name }};Authentication=Active Directory Default;Encrypt=True;
+          connection-string: ${{ env.SQL_CONNECTION }}
           path: infra/sql/grant-app-user.sql
-          arguments: -v UserName="${{ steps.provision.outputs.identity_name }}" UserClientId="${{ steps.provision.outputs.identity_client_id }}"
+          arguments: -v UserName="${{ env.identityName }}" UserClientId="${{ env.identityClientId }}"
 
       - name: Verify the web app database user
         uses: azure/sql-action@eb1f9a80487ca52b90f41a473f53da4943526994
         with:
-          connection-string: Server=tcp:${{ steps.provision.outputs.sql_server_fqdn }},1433;Initial Catalog=${{ steps.provision.outputs.database_name }};Authentication=Active Directory Default;Encrypt=True;
+          connection-string: ${{ env.SQL_CONNECTION }}
           path: infra/sql/verify-app-user.sql
-          arguments: -v UserName="${{ steps.provision.outputs.identity_name }}"
+          arguments: -v UserName="${{ env.identityName }}"
 
       - name: Deploy the API
         uses: azure/webapps-deploy@02a81bead70021f5284939794bcec79c271ab383
         with:
-          app-name: ${{ steps.provision.outputs.web_app_name }}
+          app-name: ${{ env.webAppName }}
           package: artifacts/api
 
       - name: Restart the web app
-        env:
-          WEB_APP_NAME: ${{ steps.provision.outputs.web_app_name }}
-        run: az webapp restart --resource-group "$RESOURCE_GROUP" --name "$WEB_APP_NAME"
+        run: az webapp restart --resource-group "$RESOURCE_GROUP" --name "$webAppName"
 
       - name: Smoke test
-        env:
-          WEB_APP_NAME: ${{ steps.provision.outputs.web_app_name }}
-          WEB_APP_HOST: ${{ steps.provision.outputs.web_app_host }}
-          ACCESS_CODE: ${{ steps.access.outputs.code }}
         run: |
-          status=000
+          api="https://${webAppHostName}"
           for attempt in $(seq 1 30); do
-            status=$(curl -s -o /dev/null -w '%{http_code}' "https://${WEB_APP_HOST}/health/ready" || true)
-            if [ "$status" = "200" ]; then
-              break
-            fi
+            curl -fsS -o /dev/null --max-time 20 "$api/health/ready" && break
             sleep 10
           done
-          test "$status" = "200"
+          curl -fsS -o /dev/null --max-time 20 "$api/health/ready"
+          curl -fsS -o /dev/null --max-time 20 "$api/openapi/v1.json"
 
-          curl -fsS -o /dev/null "https://${WEB_APP_HOST}/openapi/v1.json"
-
-          user_id=$(az webapp config appsettings list \
-            --resource-group "$RESOURCE_GROUP" \
-            --name "$WEB_APP_NAME" \
-            --query "[?name=='DevAuth__Users__0__Id'].value | [0]" \
-            --output tsv)
-          token=$(curl -fsS -X POST "https://${WEB_APP_HOST}/api/dev/token" \
-            -H 'Content-Type: application/json' \
-            -H "X-DevAuth-Secret: ${ACCESS_CODE}" \
-            -d "{\"userId\":\"${user_id}\"}" | jq -r .token)
-          test -n "$token"
-          test "$token" != "null"
-
-          curl -fsS -o /dev/null -H "Authorization: Bearer ${token}" "https://${WEB_APP_HOST}/api/claims"
+          user_id=$(az webapp config appsettings list --resource-group "$RESOURCE_GROUP" --name "$webAppName" \
+            --query "[?name=='DevAuth__Users__0__Id'].value | [0]" --output tsv)
+          token=$(curl -sS --fail-with-body --max-time 20 -X POST "$api/api/dev/token" \
+            -H 'Content-Type: application/json' -H "X-DevAuth-Secret: ${ACCESS_CODE}" \
+            -d "{\"userId\":\"${user_id}\"}" | jq -er .token)
+          curl -fsS -o /dev/null --max-time 20 -H "Authorization: Bearer ${token}" "$api/api/claims"
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
@@ -243,20 +195,16 @@ jobs:
 
       - name: Build the frontend against the deployed API
         working-directory: frontend
-        env:
-          WEB_APP_HOST: ${{ steps.provision.outputs.web_app_host }}
         run: |
-          sed -i "s#apiBaseUrl: '/api'#apiBaseUrl: 'https://${WEB_APP_HOST}/api'#" src/environments/environment.ts
-          grep -q "https://${WEB_APP_HOST}/api" src/environments/environment.ts
+          sed -i "s#apiBaseUrl: '/api'#apiBaseUrl: 'https://${webAppHostName}/api'#" src/environments/environment.ts
+          grep -q "https://${webAppHostName}/api" src/environments/environment.ts
           npm ci
           npm run build
 
       - name: Read the static web app deployment token
         id: swa
-        env:
-          STATIC_WEB_APP_NAME: ${{ steps.provision.outputs.static_web_app_name }}
         run: |
-          token=$(az staticwebapp secrets list --name "$STATIC_WEB_APP_NAME" --resource-group "$RESOURCE_GROUP" \
+          token=$(az staticwebapp secrets list --name "$staticWebAppName" --resource-group "$RESOURCE_GROUP" \
             --query properties.apiKey -o tsv)
           echo "::add-mask::$token"
           echo "token=$token" >> "$GITHUB_OUTPUT"
@@ -271,13 +219,10 @@ jobs:
           skip_api_build: true
 
       - name: Summary
-        env:
-          WEB_APP_HOST: ${{ steps.provision.outputs.web_app_host }}
-          STATIC_WEB_APP_HOST: ${{ steps.provision.outputs.static_web_app_host }}
         run: |
           {
             echo "### Deployed"
-            echo "- App: https://${STATIC_WEB_APP_HOST}"
-            echo "- API: https://${WEB_APP_HOST}"
-            echo "- Swagger: https://${WEB_APP_HOST}/swagger"
+            echo "- App: https://${staticWebAppHostName}"
+            echo "- API: https://${webAppHostName}"
+            echo "- Swagger: https://${webAppHostName}/swagger"
           } >> "$GITHUB_STEP_SUMMARY"

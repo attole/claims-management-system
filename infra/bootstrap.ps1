@@ -380,10 +380,15 @@ function Invoke-Secrets {
         $written += $secret.Name
     }
 
-    if ($Rotate -and $written.Count -gt 0) {
-        $app = (Get-DeploymentOutputs).webAppName.value
-        az webapp restart --resource-group $ResourceGroup --name $app
-        Assert-Success 'Restarting the web app'
+    # App Service remembers a Key Vault reference that failed to resolve, for example because the secret did not
+    # exist yet, and a restart does not retry it. Setting the reference again does, so every run of this step
+    # sets both references again; the values are the same reference text, only the change matters.
+    $app = (Get-DeploymentOutputs).webAppName.value
+    foreach ($setting in 'Jwt__SigningKey', 'DevAuth__Secret') {
+        $reference = az webapp config appsettings list --resource-group $ResourceGroup --name $app --query "[?name=='$setting'].value | [0]" -o tsv
+        Assert-Success "Reading the setting $setting"
+        az webapp config appsettings set --resource-group $ResourceGroup --name $app --settings "$setting=$reference" | Out-Null
+        Assert-Success "Setting the reference $setting again"
     }
 
     if ($written -contains $DevAuthSecretName) {
