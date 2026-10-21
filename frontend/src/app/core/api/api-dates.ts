@@ -5,7 +5,8 @@ export type IsoDateTime = string;
 export type CalendarDate = string;
 
 export const CALENDAR_DATE_FORMAT = 'yyyy-MM-dd';
-export const DATE_TIME_DISPLAY_FORMAT = 'yyyy-MM-dd HH:mm';
+export const TIME_FORMAT = 'HH:mm';
+export const DATE_TIME_DISPLAY_FORMAT = `${CALENDAR_DATE_FORMAT} ${TIME_FORMAT}`;
 export const NO_DATE: CalendarDate = '';
 
 export function toIsoDateTime(value: Date): IsoDateTime {

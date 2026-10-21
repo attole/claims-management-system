@@ -2,6 +2,7 @@
 @use 'styles/theme-colors' as palette;
 @use 'styles/tokens';
 @use 'styles/badges';
+@use 'styles/banners';
 
 html {
   color-scheme: dark;

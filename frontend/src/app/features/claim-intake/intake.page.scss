@@ -1,0 +1,38 @@
+:host {
+  display: block;
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--app-gap);
+}
+
+h1 {
+  margin: 0;
+  font: var(--mat-sys-headline-small);
+}
+
+.banner {
+  margin-bottom: var(--app-gap);
+
+  ul {
+    margin: 6px 0 0;
+    padding-left: 20px;
+  }
+}
+
+.card {
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  background: var(--app-surface);
+}
+
+.actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--app-gap);
+}

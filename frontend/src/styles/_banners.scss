@@ -1,0 +1,24 @@
+.banner {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: var(--app-radius);
+  border: 1px solid color-mix(in srgb, var(--banner-tone) 60%, transparent);
+  background: color-mix(in srgb, var(--banner-tone) 16%, transparent);
+  --banner-tone: var(--tone-neutral);
+}
+
+.banner--ok {
+  --banner-tone: var(--tone-ok);
+}
+
+.banner--warn {
+  --banner-tone: var(--tone-warn);
+}
+
+.banner--bad {
+  --banner-tone: var(--tone-bad);
+}
+
+.banner--info {
+  --banner-tone: var(--tone-info);
+}

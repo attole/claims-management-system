@@ -1,6 +1,6 @@
 # Frontend layer
 
-Rules and contracts of the Angular client in `frontend/`. It talks only to the API described in `docs/layers/api.md`, through one typed service layer. `.claude/CLAUDE.md` holds the short rules and points here; read this file before changing the frontend or reviewing its code. Status: bootstrapped (workspace, theme, app shell, sign-in, HTTP pipeline) with the typed API services and the claims list screen; the intake form and the claim detail screen follow, one pack each. The static mockups in `frontend/design/` are the visual reference and are not part of the build.
+Rules and contracts of the Angular client in `frontend/`. It talks only to the API described in `docs/layers/api.md`, through one typed service layer. `.claude/CLAUDE.md` holds the short rules and points here; read this file before changing the frontend or reviewing its code. Status: bootstrapped (workspace, theme, app shell, sign-in, HTTP pipeline) with the typed API services, the claims list screen and the intake form; the claim detail screen follows. The static mockups in `frontend/design/` are the visual reference and are not part of the build.
 
 ## Stack
 
@@ -53,6 +53,10 @@ frontend/
 - The handler filter is a select of the known users, not a text search: the API filters by handler id and has no handler name to search (a decision in `docs/ARCHITECTURE.md` 'Decisions on gaps'). The list has no handler column, because the summary rows carry no handler. Search matches the claim number and the client name, as the API does.
 - Values read from the URL are checked before they reach the API: statuses against the known set, dates against `yyyy-MM-dd`, handler and policy ids against the GUID pattern (`core/api/api-ids.ts`), paging against the allowed sizes; anything else is dropped. A page past the end (an old link) moves to the last page.
 - The filter bar emits a change only when it differs from the current filter, and writes the filter back into the form only for fields whose value differs, so text being typed (a trailing space, a half-typed date) is never overwritten.
+- **Intake** (`features/claim-intake/`, S:UI-Intake-Steps, S:UI-Intake-Policy, S:UI-Intake-Parties, S:UI-Intake-Reserve, S:UI-Intake-Submit). One typed form (`intake-form.ts`: `createIntakeForm`, the mapping `toCreateRequest`, the hints `inForce` and `intakeWarnings`) drives a linear three-step `mat-stepper`: policy and loss, parties and risk objects, reserve and review. Each step is a presentational component that gets the form as an input. Next marks the step's groups touched and moves on only when they are valid; a step header is marked complete from the form's state, so a valid step can be reopened from the top.
+- Policy: an autocomplete over `policies/search` (from two characters, after 300 ms), a picked card with the in-force badge, or the Unknown policy switch, which sends the empty id. Loss date and time are one control shown by a datepicker and a timepicker. The cause of loss is an autocomplete that accepts a typed name or code and must match the reference list.
+- Parties and risk objects are added through inline forms and listed as cards with a remove button; a missing claimant blocks creation, a missing risk object is only advised. The optional initial reserve is one Add with its component and amount, shows the authority indicator, and needs a linked policy (a banner links back to step 1). The review step takes the form value as an input, because an OnPush child does not see edits made in another step.
+- Create: warnings (no policy, outside the policy period, no risk object) open a confirm dialog first; the request carries one idempotency key per form, kept across retries and renewed after a success. A success shows the claim number and opens the detail; a 422 sets the field errors, lists the rest in a banner and returns the stepper to the first invalid step.
 
 ## Services and HTTP
 
@@ -75,7 +79,7 @@ frontend/
 
 ## Forms and validation
 
-- The client validates shape: required fields, maximum lengths equal to the backend field lengths, email format, a loss date not in the future, a description of at least 20 characters, a non-zero amount and at least one claimant before a claim is created. Messages for these live in one map rendered by `shared/ui/form-errors`.
+- The client validates shape: required fields, maximum lengths equal to the backend field lengths, email format, a loss date not in the future, a description of at least 20 characters, a non-zero amount and at least one claimant before a claim is created. Messages for these live in one map rendered by the `errorMessage` pipe (`shared/validators/error-message.pipe.ts`); the custom validators are in `shared/validators/claim-validators.ts`.
 - Business rules stay on the server. The UI shows hints only (the in-force badge, the authority indicator from the mirrored thresholds in `shared/util/reserve-authority.ts`, the closure checklist from `status-check`) and maps a 422 back onto the form: the error keys match the control paths case-insensitively (`Loss.Description`), and keys that match nothing or `General` go to a banner at the top of the step.
 
 ## Formats
@@ -84,7 +88,7 @@ frontend/
   - a timestamp is an `IsoDateTime`, always sent in UTC (`toIsoDateTime`, for example `2026-10-21T08:30:00.000Z`): loss date, report date;
   - a calendar date is a `CalendarDate`, `yyyy-MM-dd` (`toCalendarDate`), for values the API binds as dates only: the claim list date filters and the policy period. An empty filter is `NO_DATE` (`''`) and is left out of the query.
   - The in-force badge compares `calendarDateOf(lossDate)` (the UTC day of the loss) with the policy dates, as the backend does.
-- Date work uses date-fns (with `@date-fns/utc` for UTC days), never hand-built strings; the format patterns live as constants in `api-dates.ts` (`CALENDAR_DATE_FORMAT`, `DATE_TIME_DISPLAY_FORMAT`). Material date pickers use the date-fns adapter with the same calendar format (`provideAppDateAdapter()` in `core/dates/`), so a picker shows and reads `yyyy-MM-dd` like every other date on screen.
+- Date work uses date-fns (with `@date-fns/utc` for UTC days), never hand-built strings; the format patterns live as constants in `api-dates.ts` (`CALENDAR_DATE_FORMAT`, `TIME_FORMAT`, `DATE_TIME_DISPLAY_FORMAT`). Material date and time pickers use the date-fns adapter with the same formats (`provideAppDateAdapter()` in `core/dates/`), so a picker shows and reads `yyyy-MM-dd` and `HH:mm` like every other date on screen.
 - Dates and money are displayed through pipes only: `claimDate` (`'day'` shows the UTC day of a timestamp, the same day the filters and the backend use; `'dateTime'` shows the date and time in the browser's time zone), `money` (two decimals, USD, a minus sign only below half a cent), `enumLabel` (`PendingPayment` becomes "Pending Payment").
 - Every status that crosses the wire is a union in `api.model.ts` (claim, reserve approval and posting, reserve component, policy), never a plain string.
 

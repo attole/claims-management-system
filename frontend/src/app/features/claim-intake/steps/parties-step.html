@@ -1,0 +1,154 @@
+@let parties = form().controls.parties;
+@let riskObjects = form().controls.riskObjects;
+
+<section class="block" aria-labelledby="parties-title">
+  <h2 id="parties-title">Parties</h2>
+
+  @if (parties.hasError(claimantRequired)) {
+    <p class="banner banner--warn" role="status">Add at least one claimant before the claim can be created.</p>
+  }
+
+  <ul class="items" aria-label="Added parties">
+    @for (card of partyCards(); track card.control; let index = $index) {
+      @let added = card.control;
+      <li class="item">
+        <span class="badge" [class.badge--info]="added.controls.role.value === 'Claimant'">
+          {{ added.controls.role.value | enumLabel }}
+        </span>
+        <div class="grow">
+          <strong>{{ card.name }}</strong>
+          <span class="muted">{{ added.controls.type.value }} {{ added.controls.email.value }}</span>
+          @if (card.errors) {
+            <span class="error">{{ card.errors | errorMessage }}</span>
+          }
+        </div>
+        <button mat-icon-button type="button" [attr.aria-label]="'Remove ' + card.name" (click)="removeParty(index)">
+          <mat-icon>close</mat-icon>
+        </button>
+      </li>
+    }
+  </ul>
+
+  @if (isAddingParty()) {
+    <form class="inline-form" [formGroup]="party" (ngSubmit)="addParty()" aria-label="New party">
+      <mat-form-field>
+        <mat-label>Role</mat-label>
+        <mat-select formControlName="role">
+          @for (role of roles; track role) {
+            <mat-option [value]="role">{{ role | enumLabel }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>Type</mat-label>
+        <mat-select formControlName="type">
+          @for (type of types; track type) {
+            <mat-option [value]="type">{{ type }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      @if (party.controls.type.value === 'Company') {
+        <mat-form-field>
+          <mat-label>Company name</mat-label>
+          <input matInput formControlName="companyName" />
+          <mat-error>{{ party.controls.companyName.errors | errorMessage }}</mat-error>
+        </mat-form-field>
+      } @else {
+        <mat-form-field>
+          <mat-label>First name</mat-label>
+          <input matInput formControlName="firstName" />
+          <mat-error>{{ party.controls.firstName.errors | errorMessage }}</mat-error>
+        </mat-form-field>
+        <mat-form-field>
+          <mat-label>Last name</mat-label>
+          <input matInput formControlName="lastName" />
+          <mat-error>{{ party.controls.lastName.errors | errorMessage }}</mat-error>
+        </mat-form-field>
+      }
+      <mat-form-field>
+        <mat-label>Email</mat-label>
+        <input matInput type="email" formControlName="email" />
+        <mat-error>{{ party.controls.email.errors | errorMessage }}</mat-error>
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>Phone</mat-label>
+        <input matInput formControlName="phone" />
+        <mat-error>{{ party.controls.phone.errors | errorMessage }}</mat-error>
+      </mat-form-field>
+      @if (party.hasError(nameRequired) && party.touched) {
+        <p class="error full" role="alert">Enter a name for the party.</p>
+      }
+      <div class="actions full">
+        <button mat-flat-button type="submit">Add</button>
+        <button mat-button type="button" (click)="isAddingParty.set(false)">Cancel</button>
+      </div>
+    </form>
+  } @else {
+    <div class="add-row">
+      <button mat-stroked-button type="button" (click)="isAddingParty.set(true)">Add party</button>
+    </div>
+  }
+</section>
+
+<section class="block" aria-labelledby="risk-title">
+  <h2 id="risk-title">Risk objects</h2>
+
+  @if (riskObjects.length === 0) {
+    <p class="banner banner--info" role="status">At least one risk object is recommended.</p>
+  }
+
+  <ul class="items" aria-label="Added risk objects">
+    @for (added of riskObjects.controls; track added; let index = $index) {
+      <li class="item">
+        <span class="badge">{{ added.controls.assetType.value }}</span>
+        <div class="grow">
+          <strong>{{ added.controls.assetDescription.value }}</strong>
+          <span class="muted">{{ added.controls.damageDescription.value }}</span>
+        </div>
+        <button
+          mat-icon-button
+          type="button"
+          [attr.aria-label]="'Remove ' + added.controls.assetDescription.value"
+          (click)="removeRiskObject(index)"
+        >
+          <mat-icon>close</mat-icon>
+        </button>
+      </li>
+    }
+  </ul>
+
+  @if (isAddingRiskObject()) {
+    <form class="inline-form" [formGroup]="riskObject" (ngSubmit)="addRiskObject()" aria-label="New risk object">
+      <mat-form-field>
+        <mat-label>Asset type</mat-label>
+        <mat-select formControlName="assetType">
+          @for (assetType of assetTypes; track assetType) {
+            <mat-option [value]="assetType">{{ assetType }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>Asset description</mat-label>
+        <input matInput formControlName="assetDescription" />
+        <mat-error>{{ riskObject.controls.assetDescription.errors | errorMessage }}</mat-error>
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>Damage description</mat-label>
+        <input matInput formControlName="damageDescription" />
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>Reference number (optional)</mat-label>
+        <input matInput formControlName="assetReference" />
+        <mat-error>{{ riskObject.controls.assetReference.errors | errorMessage }}</mat-error>
+      </mat-form-field>
+      <div class="actions full">
+        <button mat-flat-button type="submit">Add</button>
+        <button mat-button type="button" (click)="isAddingRiskObject.set(false)">Cancel</button>
+      </div>
+    </form>
+  } @else {
+    <div class="add-row">
+      <button mat-stroked-button type="button" (click)="isAddingRiskObject.set(true)">Add risk object</button>
+    </div>
+  }
+</section>
