@@ -92,7 +92,7 @@ export function askStatusChange(dialog: MatDialog, data: StatusChangeData): Obse
   return dialog
     .open<StatusChangeDialog, StatusChangeData, ChangeStatusRequest>(StatusChangeDialog, { data, width: '520px' })
     .afterClosed()
-    .pipe(filter((request): request is ChangeStatusRequest => request !== undefined));
+    .pipe(filter((request): request is ChangeStatusRequest => typeof request === 'object'));
 }
 
 function requiredWhen(isRequired: boolean) {

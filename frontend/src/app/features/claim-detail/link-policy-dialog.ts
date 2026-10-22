@@ -45,5 +45,5 @@ export function askPolicyToLink(dialog: MatDialog, data: LinkPolicyData): Observ
   return dialog
     .open<LinkPolicyDialog, LinkPolicyData, Policy>(LinkPolicyDialog, { data, width: '560px' })
     .afterClosed()
-    .pipe(filter((policy): policy is Policy => policy !== undefined));
+    .pipe(filter((policy): policy is Policy => typeof policy === 'object'));
 }

@@ -35,6 +35,18 @@ describe('promptWith (S:API-POST-reserve-reject)', () => {
     expect(answers).toEqual(['Amount not supported by the report.']);
   });
 
+  it('answers nothing when the dialog is cancelled', async () => {
+    const { answers, container, dialogRef } = await open();
+    const cancel = [...container.querySelectorAll<HTMLButtonElement>('button')].find(
+      (b) => b.textContent?.trim() === 'Cancel',
+    );
+
+    cancel?.click();
+    await firstValueFrom(dialogRef.afterClosed());
+
+    expect(answers).toEqual([]);
+  });
+
   it('stays open and says why when the answer is blank', async () => {
     const { answers, container, type } = await open();
 

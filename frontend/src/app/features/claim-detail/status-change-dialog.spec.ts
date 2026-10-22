@@ -36,6 +36,18 @@ describe('askStatusChange (S:UI-Detail-Header, S:ST-Open-Closed)', () => {
     expect(confirm()?.disabled).toBe(true);
   });
 
+  it('sends nothing when the dialog is cancelled', async () => {
+    const { answers, container, dialogRef } = await open({ errors: [], warnings: [] });
+    const cancel = [...container().querySelectorAll<HTMLButtonElement>('button')].find(
+      (b) => b.textContent?.trim() === 'Cancel',
+    );
+
+    cancel?.click();
+    await firstValueFrom(dialogRef.afterClosed());
+
+    expect(answers).toEqual([]);
+  });
+
   it('asks for the note the check reports missing and sends it with the target status', async () => {
     const { answers, container, confirm, dialogRef } = await open({
       errors: [error('Note', 'Add a closing note.')],

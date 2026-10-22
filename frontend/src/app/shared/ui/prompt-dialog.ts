@@ -52,5 +52,5 @@ export function promptWith(dialog: MatDialog, data: PromptDialogData): Observabl
   return dialog
     .open<PromptDialog, PromptDialogData, string>(PromptDialog, { data, width: '460px' })
     .afterClosed()
-    .pipe(filter((answer): answer is string => answer !== undefined));
+    .pipe(filter((answer): answer is string => typeof answer === 'string' && answer.length > 0));
 }

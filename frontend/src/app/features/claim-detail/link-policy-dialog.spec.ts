@@ -1,10 +1,11 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
+import { firstValueFrom } from 'rxjs';
+import { MAT_DIALOG_DATA, MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { By } from '@angular/platform-browser';
 import { Policy } from '../../core/api/api.model';
 import { PolicyPicker } from '../../shared/ui/policy-picker';
-import { LinkPolicyData, LinkPolicyDialog } from './link-policy-dialog';
+import { askPolicyToLink, LinkPolicyData, LinkPolicyDialog } from './link-policy-dialog';
 
 describe('LinkPolicyDialog (S:API-PUT-claims-policy, A:API-GET-policies-coverage)', () => {
   const expired: Policy = {
@@ -40,6 +41,28 @@ describe('LinkPolicyDialog (S:API-PUT-claims-policy, A:API-GET-policies-coverage
 
     return { fixture, element, close, queries, link };
   }
+
+  it('answers nothing when the dialog is cancelled', async () => {
+    const answers: Policy[] = [];
+    const data: LinkPolicyData = {
+      lossDate: '2026-07-22T09:40:00+00:00',
+      results: signal([expired]),
+      isSearching: signal(false),
+      query: () => undefined,
+    };
+    const dialog = TestBed.inject(MatDialog);
+    askPolicyToLink(dialog, data).subscribe((policy) => answers.push(policy));
+    const dialogRef = dialog.openDialogs[0];
+    await firstValueFrom(dialogRef.afterOpened());
+    const cancel = [...document.querySelectorAll<HTMLButtonElement>('mat-dialog-container button')].find(
+      (b) => b.textContent?.trim() === 'Cancel',
+    );
+
+    cancel?.click();
+    await firstValueFrom(dialogRef.afterClosed());
+
+    expect(answers).toEqual([]);
+  });
 
   it('keeps Link off until a policy is chosen', async () => {
     const { link } = await render();
