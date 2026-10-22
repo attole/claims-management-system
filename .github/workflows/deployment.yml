@@ -49,7 +49,7 @@ jobs:
           fi
 
           names=$(gh api "repos/${GH_REPO}/actions/runs/${run_id}/artifacts" --jq '[.artifacts[] | select(.expired | not) | .name] | sort | join(",")')
-          if [ "$names" != "api,database" ]; then
+          if [ "$names" != "api,migrations" ]; then
             echo "::error::The artifacts of run $run_id are missing or expired (found: $names). Push a commit to main to build again."
             exit 1
           fi
@@ -93,8 +93,8 @@ jobs:
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
-          name: database
-          path: artifacts/database
+          name: migrations
+          path: artifacts/migrations
           run-id: ${{ needs.select.outputs.run_id }}
           github-token: ${{ github.token }}
 
@@ -120,9 +120,9 @@ jobs:
 
       - name: Apply migrations
         run: |
-          chmod +x artifacts/database/efbundle
+          chmod +x artifacts/migrations/efbundle
           for attempt in 1 2 3 4 5 6; do
-            if artifacts/database/efbundle --connection "$SQL_CONNECTION"; then
+            if artifacts/migrations/efbundle --connection "$SQL_CONNECTION"; then
               exit 0
             fi
             sleep 30
