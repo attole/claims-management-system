@@ -87,6 +87,7 @@
           @if (open.canAcknowledge) {
             <button
               mat-button
+              class="compact-action"
               type="button"
               [disabled]="isSaving() || !isEditable()"
               (click)="acknowledged.emit(open.issue)"
@@ -95,7 +96,13 @@
             </button>
           }
           @if (open.canWaive) {
-            <button mat-button type="button" [disabled]="isSaving() || !isEditable()" (click)="waived.emit(open.issue)">
+            <button
+              mat-button
+              class="compact-action"
+              type="button"
+              [disabled]="isSaving() || !isEditable()"
+              (click)="waived.emit(open.issue)"
+            >
               Waive
             </button>
           }
@@ -147,7 +154,7 @@
           }
           <button
             mat-stroked-button
-            class="row-action"
+            class="compact-action"
             type="button"
             [disabled]="isSaving() || !isEditable() || !canMakePrimary(item)"
             [attr.title]="canMakePrimary(item) ? null : 'Unset the current primary first'"
@@ -157,7 +164,7 @@
           </button>
           <button
             mat-stroked-button
-            class="row-action"
+            class="compact-action"
             type="button"
             [disabled]="isSaving() || !isEditable()"
             (click)="riskObjectRemoved.emit(item)"

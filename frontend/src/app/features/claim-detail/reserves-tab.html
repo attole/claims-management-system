@@ -89,22 +89,46 @@
           <td mat-cell *matCellDef="let row" class="actions-cell">
             <div class="actions">
               @if (row.canApprove) {
-                <button mat-flat-button type="button" [disabled]="isSaving()" (click)="approved.emit(row.entry)">
+                <button
+                  mat-flat-button
+                  class="compact-action"
+                  type="button"
+                  [disabled]="isSaving()"
+                  (click)="approved.emit(row.entry)"
+                >
                   Approve
                 </button>
               }
               @if (row.canReject) {
-                <button mat-stroked-button type="button" [disabled]="isSaving()" (click)="rejected.emit(row.entry)">
+                <button
+                  mat-stroked-button
+                  class="compact-action"
+                  type="button"
+                  [disabled]="isSaving()"
+                  (click)="rejected.emit(row.entry)"
+                >
                   Reject
                 </button>
               }
               @if (row.canRetract) {
-                <button mat-stroked-button type="button" [disabled]="isSaving()" (click)="retracted.emit(row.entry)">
+                <button
+                  mat-stroked-button
+                  class="compact-action"
+                  type="button"
+                  [disabled]="isSaving()"
+                  (click)="retracted.emit(row.entry)"
+                >
                   Retract
                 </button>
               }
               @if (row.canRetry) {
-                <button mat-stroked-button type="button" [disabled]="isSaving()" (click)="retried.emit(row.entry)">
+                <button
+                  mat-stroked-button
+                  class="compact-action"
+                  type="button"
+                  [disabled]="isSaving()"
+                  (click)="retried.emit(row.entry)"
+                >
                   Retry posting
                 </button>
               }

@@ -3,6 +3,7 @@
 @use 'styles/tokens';
 @use 'styles/badges';
 @use 'styles/banners';
+@use 'styles/buttons';
 
 html {
   color-scheme: dark;
@@ -16,6 +17,30 @@ html {
       ),
       typography: Roboto,
       density: 0,
+    )
+  );
+
+  @include mat.button-overrides(
+    (
+      filled-container-height: 36px,
+      outlined-container-height: 36px,
+      text-container-height: 36px,
+      protected-container-height: 36px,
+      tonal-container-height: 36px,
+    )
+  );
+
+  @include mat.form-field-overrides(
+    (
+      container-height: 40px,
+      container-vertical-padding: 8px,
+      container-text-size: 14px,
+      outlined-label-text-size: 14px,
+    )
+  );
+  @include mat.select-overrides(
+    (
+      trigger-text-size: 14px,
     )
   );
 }

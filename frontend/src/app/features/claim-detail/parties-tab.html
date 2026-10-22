@@ -16,6 +16,7 @@
       }}</span>
       <button
         mat-stroked-button
+        class="compact-action"
         type="button"
         [disabled]="!card.party.isActive || card.isLastClaimant || !isEditable() || isSaving()"
         [attr.title]="card.isLastClaimant ? 'The last claimant cannot be removed' : null"

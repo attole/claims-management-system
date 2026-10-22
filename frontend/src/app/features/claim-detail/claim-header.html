@@ -5,7 +5,7 @@
     <h1 id="claim-number" class="claim-number">{{ claim.claimNumber }}</h1>
     <button
       mat-stroked-button
-      class="copy"
+      class="compact-action"
       type="button"
       [cdkCopyToClipboard]="claim.claimNumber"
       (cdkCopyToClipboardCopied)="copied.emit($event)"
@@ -38,7 +38,7 @@
         @if (!isPolicyLinked()) {
           <button
             mat-stroked-button
-            class="pill"
+            class="compact-action pill"
             type="button"
             [disabled]="isSaving() || !isEditable()"
             (click)="linkPolicyRequested.emit()"

@@ -1,7 +1,8 @@
 .fields {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--app-gap-small) var(--app-gap);
+  gap: var(--app-gap);
+  padding-top: var(--app-gap-small);
 }
 
 .full {
@@ -11,6 +12,7 @@
 .actions {
   display: flex;
   gap: var(--app-gap-small);
+  margin-top: var(--app-gap-small);
 }
 
 @media (max-width: 720px) {

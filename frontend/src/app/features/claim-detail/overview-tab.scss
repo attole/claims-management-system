@@ -40,12 +40,6 @@ h2 {
   margin-bottom: var(--app-gap);
 }
 
-.row-action {
-  --mat-button-outlined-container-height: 24px;
-  --mat-button-outlined-horizontal-padding: 10px;
-  --mat-button-outlined-label-text-size: 12px;
-}
-
 .rows {
   display: grid;
   gap: 14px;

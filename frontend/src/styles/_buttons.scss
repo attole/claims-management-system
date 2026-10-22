@@ -1,0 +1,17 @@
+@use '@angular/material' as mat;
+
+.compact-action {
+  @include mat.button-overrides(
+    (
+      filled-container-height: 24px,
+      filled-horizontal-padding: 10px,
+      filled-label-text-size: 12px,
+      outlined-container-height: 24px,
+      outlined-horizontal-padding: 10px,
+      outlined-label-text-size: 12px,
+      text-container-height: 24px,
+      text-horizontal-padding: 8px,
+      text-label-text-size: 12px,
+    )
+  );
+}
