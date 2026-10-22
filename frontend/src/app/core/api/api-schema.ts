@@ -2679,7 +2679,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    PerilCategory?: "Auto" | "Crime" | "Equipment" | "General" | "Liability" | "Property" | "Weather" | null;
+                    PerilCategory?: string;
                 };
                 header?: never;
                 path?: never;
@@ -3305,7 +3305,6 @@ export interface components {
             reviewReason: string;
             jobId: string;
             failureReason: string;
-            idempotencyKey: string;
         };
         ReserveHistoryDto2: {
             /** Format: uuid */
@@ -3339,7 +3338,6 @@ export interface components {
             reviewReason: string;
             jobId: string;
             failureReason: string;
-            idempotencyKey: string;
         } | null;
         ReserveHistoryStatusDto: {
             /** Format: uuid */

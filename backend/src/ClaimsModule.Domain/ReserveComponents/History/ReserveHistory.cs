@@ -58,8 +58,6 @@ public sealed class ReserveHistory : Entity, IStateful<ReserveApprovalState>, IS
 
     public DateTimeOffset SubmittedAt { get; private set; } = DateTimeOffset.MinValue;
 
-    public string IdempotencyKey => $"Reserve:{ReserveComponentId}:Change:{Details.ChangeSequence}";
-
     ReserveApprovalState IStateful<ReserveApprovalState>.State => ApprovalState;
 
     ReservePostingState IStateful<ReservePostingState>.State => PostingState;

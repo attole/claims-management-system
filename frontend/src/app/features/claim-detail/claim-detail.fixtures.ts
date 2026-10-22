@@ -81,7 +81,6 @@ export function reserveHistory(change: Partial<ReserveHistory>): ReserveHistory 
     reviewReason: '',
     jobId: '',
     failureReason: '',
-    idempotencyKey: '',
     ...change,
   };
 }

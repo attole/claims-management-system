@@ -4345,16 +4345,7 @@
             "name": "PerilCategory",
             "in": "query",
             "schema": {
-              "enum": [
-                "Auto",
-                "Crime",
-                "Equipment",
-                "General",
-                "Liability",
-                "Property",
-                "Weather",
-                null
-              ]
+              "type": "string"
             }
           }
         ],
@@ -5950,9 +5941,6 @@
           },
           "failureReason": {
             "type": "string"
-          },
-          "idempotencyKey": {
-            "type": "string"
           }
         }
       },
@@ -6028,9 +6016,6 @@
             "type": "string"
           },
           "failureReason": {
-            "type": "string"
-          },
-          "idempotencyKey": {
             "type": "string"
           }
         },
@@ -6229,7 +6214,7 @@
   },
   "security": [
     {
-      "Bearer": [ ]
+      "Bearer": []
     }
   ],
   "tags": [

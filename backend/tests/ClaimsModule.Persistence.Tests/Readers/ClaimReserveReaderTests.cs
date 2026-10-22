@@ -89,8 +89,7 @@ public sealed class ClaimReserveReaderTests
             && component.State == "Active"
             && component.ApprovedBalance == TestReserves.AutoApprovedAmount);
         result.History.Should().ContainSingle(row => row.ApprovalStatus == "AutoApproved"
-            && row.PostingStatus == "Pending"
-            && row.IdempotencyKey.StartsWith("Reserve:", StringComparison.Ordinal));
+            && row.PostingStatus == "Pending");
     }
 
     [Fact]

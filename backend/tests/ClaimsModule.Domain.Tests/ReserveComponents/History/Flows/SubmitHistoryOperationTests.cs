@@ -40,7 +40,7 @@ public sealed class SubmitHistoryOperationTests
     [Fact]
     [Trait("Rule", "S:RES-PendingFlow")]
     [Trait("Rule", "S:BR-R-06")]
-    public void Run_RecordsTheSubmitterTheDetailsAndTheIdempotencyKey()
+    public void Run_RecordsTheSubmitterAndTheDetails()
     {
         var component = TestReserves.Component();
         var input = TestReserves.SubmitInput(5_000m);
@@ -49,7 +49,6 @@ public sealed class SubmitHistoryOperationTests
 
         outcome.Value.SubmittedByUserId.Should().Be(TestReserves.Submitter);
         outcome.Value.Details.ChangeSequence.Should().Be(1);
-        outcome.Value.IdempotencyKey.Should().Be($"Reserve:{component.Id}:Change:1");
     }
 
     [Fact]
