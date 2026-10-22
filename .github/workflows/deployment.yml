@@ -203,4 +203,12 @@ jobs:
           token=$(curl -sS --fail-with-body --max-time 20 -X POST "$api/api/dev/token" \
             -H 'Content-Type: application/json' \
             -d "{\"userId\":\"${user_id}\"}" | jq -er .token)
-          curl -fsS -o /dev/null --max-time 20 -H "Authorization: Bearer ${token}" "$api/api/claims"
+          read_ok=0
+          for attempt in 1 2 3; do
+            if curl -sS --fail-with-body --max-time 20 -H "Authorization: Bearer ${token}" "$api/api/claims?pageSize=1"; then
+              read_ok=1
+              break
+            fi
+            sleep 5
+          done
+          test "$read_ok" = 1
