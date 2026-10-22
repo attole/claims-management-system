@@ -3,13 +3,10 @@ import { rxResource } from '@angular/core/rxjs-interop';
 import { finalize, Observable, of, switchMap, tap, timer } from 'rxjs';
 import { Claim, CreateClaimRequest, PagedResult, Policy, WriteResult } from '../../core/api/api.model';
 import { ClaimsService } from '../../core/api/claims.service';
-import { PoliciesService } from '../../core/api/policies.service';
+import { PoliciesService, POLICY_SEARCH_DELAY_MS, POLICY_SEARCH_MIN_LENGTH } from '../../core/api/policies.service';
 import { ReferenceService } from '../../core/api/reference.service';
 import { isRefusal } from '../../core/http/error-body';
 import { newIdempotencyKey } from '../../core/http/idempotency';
-
-export const POLICY_SEARCH_DELAY_MS = 300;
-export const POLICY_SEARCH_MIN_LENGTH = 2;
 
 const NO_POLICIES: PagedResult<Policy> = { items: [], page: 1, pageSize: 0, totalCount: 0, totalPages: 0 };
 

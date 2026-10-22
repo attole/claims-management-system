@@ -1,0 +1,69 @@
+import { signal } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
+import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
+import { By } from '@angular/platform-browser';
+import { Policy } from '../../core/api/api.model';
+import { PolicyPicker } from '../../shared/ui/policy-picker';
+import { LinkPolicyData, LinkPolicyDialog } from './link-policy-dialog';
+
+describe('LinkPolicyDialog (S:API-PUT-claims-policy)', () => {
+  const expired: Policy = {
+    id: 'p2',
+    policyNumber: 'POL-48112',
+    clientName: 'Harbor Logistics',
+    effectiveDate: '2025-01-01',
+    expirationDate: '2025-12-31',
+    status: 'Expired',
+    coverageTypes: [],
+  };
+
+  async function render() {
+    const close = vi.fn();
+    const queries: string[] = [];
+    const data: LinkPolicyData = {
+      lossDate: '2026-07-22T09:40:00+00:00',
+      results: signal([expired]),
+      isSearching: signal(false),
+      query: (text) => queries.push(text),
+    };
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: MAT_DIALOG_DATA, useValue: data },
+        { provide: MatDialogRef, useValue: { close } },
+      ],
+    });
+    const fixture = TestBed.createComponent(LinkPolicyDialog);
+    await fixture.whenStable();
+    const element = fixture.nativeElement as HTMLElement;
+    const link = () => [...element.querySelectorAll('button')].find((button) => button.textContent?.trim() === 'Link');
+
+    return { fixture, element, close, queries, link };
+  }
+
+  it('keeps Link off until a policy is chosen', async () => {
+    const { link } = await render();
+
+    expect(link()?.disabled).toBe(true);
+  });
+
+  it('warns about a policy outside the loss date, and links it on confirm', async () => {
+    const { fixture, element, close, link } = await render();
+    const picker = fixture.debugElement.query(By.directive(PolicyPicker)).componentInstance as PolicyPicker;
+
+    picker.chosen.emit(expired);
+    await fixture.whenStable();
+    link()?.click();
+
+    expect(element.textContent).toContain('The link is saved with a warning.');
+    expect(close).toHaveBeenCalledWith(expired);
+  });
+
+  it('passes the typed search to the store', async () => {
+    const { fixture, queries } = await render();
+    const picker = fixture.debugElement.query(By.directive(PolicyPicker)).componentInstance as PolicyPicker;
+
+    picker.query.emit('harbor');
+
+    expect(queries).toEqual(['harbor']);
+  });
+});

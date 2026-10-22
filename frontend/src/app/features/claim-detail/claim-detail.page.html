@@ -21,6 +21,7 @@
     [isSaving]="store.isSaving()"
     (statusChosen)="changeStatus($event)"
     (copied)="copied($event)"
+    (linkPolicyRequested)="linkPolicy()"
   />
 
   @if (bannerMessages().length > 0) {
@@ -40,10 +41,17 @@
         <app-overview-tab
           [detail]="detail"
           [causeName]="store.causeName()"
+          [causeCodes]="store.causeCodes()"
           [isSaving]="store.isSaving()"
+          [(isEditingLoss)]="isEditingLoss"
+          [(isAddingRiskObject)]="isAddingRiskObject"
           (notesSaved)="saveNotes($event)"
           (acknowledged)="acknowledgeIssue($event)"
           (waived)="waiveIssue($event)"
+          (lossSaved)="saveLoss($event)"
+          (riskObjectAdded)="addRiskObject($event)"
+          (primaryToggled)="togglePrimary($event)"
+          (riskObjectRemoved)="removeRiskObject($event)"
         />
       </div>
     </mat-tab>

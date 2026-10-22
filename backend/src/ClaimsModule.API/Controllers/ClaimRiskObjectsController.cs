@@ -18,6 +18,17 @@ public sealed class ClaimRiskObjectsController(ISender sender) : ApiControllerBa
         return CommandAsync(new AddRiskObjectCommand(claimId, request), cancellationToken);
     }
 
+    [HttpPut("{riskObjectId:guid}")]
+    [ProducesResponseType<CommandResponse<RiskObjectDto>>(StatusCodes.Status200OK)]
+    public Task<IActionResult> Update(
+        Guid claimId,
+        Guid riskObjectId,
+        [FromBody] RiskObjectRequest request,
+        CancellationToken cancellationToken)
+    {
+        return CommandAsync(new UpdateRiskObjectCommand(claimId, riskObjectId, request), cancellationToken);
+    }
+
     [HttpDelete("{riskObjectId:guid}")]
     [ProducesResponseType<CommandResponse<RiskObjectDto>>(StatusCodes.Status200OK)]
     public Task<IActionResult> Remove(Guid claimId, Guid riskObjectId, CancellationToken cancellationToken)

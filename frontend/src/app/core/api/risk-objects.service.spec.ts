@@ -27,6 +27,18 @@ describe('RiskObjectsService (A:UI-General)', () => {
     request.flush({ data: {}, warnings: [] });
   });
 
+  it('update puts the risk object with a key', () => {
+    const riskObject = { assetType: 'Property' as const, assetDescription: 'Kitchen', isPrimary: true };
+
+    service.update('c1', 'r1', riskObject, 'key-1').subscribe();
+
+    const request = http.expectOne(apiUrl('claims/c1/risk-objects/r1'));
+    expect(request.request.method).toBe('PUT');
+    expect(request.request.body).toEqual(riskObject);
+    expect(request.request.headers.get('Idempotency-Key')).toBe('key-1');
+    request.flush({ data: {}, warnings: [] });
+  });
+
   it('remove deletes the risk object of the claim', () => {
     service.remove('c1', 'r1').subscribe();
 

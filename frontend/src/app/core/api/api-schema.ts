@@ -1340,7 +1340,92 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        put?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    claimId: string;
+                    riskObjectId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["RiskObjectRequest"];
+                    "text/json": components["schemas"]["RiskObjectRequest"];
+                    "application/*+json": components["schemas"]["RiskObjectRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CommandResponseOfRiskObjectDto"];
+                        "application/json": components["schemas"]["CommandResponseOfRiskObjectDto"];
+                        "text/json": components["schemas"]["CommandResponseOfRiskObjectDto"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ErrorBody"];
+                        "application/json": components["schemas"]["ErrorBody"];
+                        "text/json": components["schemas"]["ErrorBody"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ErrorBody"];
+                        "application/json": components["schemas"]["ErrorBody"];
+                        "text/json": components["schemas"]["ErrorBody"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ErrorBody"];
+                        "application/json": components["schemas"]["ErrorBody"];
+                        "text/json": components["schemas"]["ErrorBody"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ErrorBody"];
+                        "application/json": components["schemas"]["ErrorBody"];
+                        "text/json": components["schemas"]["ErrorBody"];
+                    };
+                };
+                /** @description Unprocessable Entity */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ErrorBody"];
+                        "application/json": components["schemas"]["ErrorBody"];
+                        "text/json": components["schemas"]["ErrorBody"];
+                    };
+                };
+            };
+        };
         post?: never;
         delete: {
             parameters: {

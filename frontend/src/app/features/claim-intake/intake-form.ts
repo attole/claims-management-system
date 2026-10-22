@@ -1,42 +1,17 @@
-import { AbstractControl, FormArray, FormControl, FormGroup, ValidationErrors, Validators } from '@angular/forms';
-import { calendarDateOf, NO_DATE, toIsoDateTime } from '../../core/api/api-dates';
-import { FIELD_LENGTHS, MINIMUM_DESCRIPTION_LENGTH } from '../../core/api/api-limits';
-import { AssetType, CreateClaimRequest, Policy, ReserveComponentType, ReserveRequest } from '../../core/api/api.model';
+import { AbstractControl, FormArray, FormControl, FormGroup, ValidationErrors } from '@angular/forms';
+import { toIsoDateTime } from '../../core/api/api-dates';
+import { CreateClaimRequest, Policy, ReserveComponentType, ReserveRequest } from '../../core/api/api.model';
 import { EMPTY_ID } from '../../core/api/api-ids';
+import { createLossGroup, toLossRequest } from '../../shared/forms/loss-form';
 import { PartyGroup, trimmedParty } from '../../shared/forms/party-form';
-import {
-  atLeastOneClaimant,
-  minTrimmedLength,
-  nonZero,
-  notInFuture,
-  oneOf,
-} from '../../shared/validators/claim-validators';
+import { RiskObjectGroup } from '../../shared/forms/risk-object-form';
+import { inForce } from '../../shared/util/in-force';
+import { atLeastOneClaimant, nonZero } from '../../shared/validators/claim-validators';
 
 export const POLICY_REQUIRED_ERROR = 'policyRequired';
 export const AMOUNT_REQUIRED_ERROR = 'amountRequired';
 export const RESERVE_NEEDS_POLICY_ERROR = 'reserveNeedsPolicy';
 export const INITIAL_RESERVE_REASON = 'Initial reserve at intake';
-
-export const ASSET_TYPES: readonly AssetType[] = ['Property', 'Vehicle', 'Equipment', 'Person', 'Other'];
-
-export type InForce = 'unknown' | 'inForce' | 'outside';
-
-export function createRiskObjectGroup() {
-  return new FormGroup({
-    assetType: new FormControl<AssetType>('Property', { nonNullable: true }),
-    assetDescription: new FormControl('', {
-      nonNullable: true,
-      validators: [Validators.required, Validators.maxLength(FIELD_LENGTHS.assetDescription)],
-    }),
-    damageDescription: new FormControl('', { nonNullable: true }),
-    assetReference: new FormControl('', {
-      nonNullable: true,
-      validators: Validators.maxLength(FIELD_LENGTHS.assetReference),
-    }),
-  });
-}
-
-export type RiskObjectGroup = ReturnType<typeof createRiskObjectGroup>;
 
 export function createIntakeForm(causeCodes: () => readonly string[], now: () => Date = () => new Date()) {
   return new FormGroup(
@@ -48,19 +23,7 @@ export function createIntakeForm(causeCodes: () => readonly string[], now: () =>
         },
         { validators: policyChosen },
       ),
-      loss: new FormGroup({
-        lossDate: new FormControl<Date | null>(null, [Validators.required, notInFuture(now)]),
-        causeOfLossCode: new FormControl('', {
-          nonNullable: true,
-          validators: [Validators.required, oneOf(causeCodes)],
-        }),
-        description: new FormControl('', {
-          nonNullable: true,
-          validators: [Validators.required, minTrimmedLength(MINIMUM_DESCRIPTION_LENGTH)],
-        }),
-        location: new FormControl('', { nonNullable: true, validators: Validators.maxLength(FIELD_LENGTHS.location) }),
-        estimatedLossAmount: new FormControl<number | null>(null, Validators.min(0)),
-      }),
+      loss: createLossGroup(causeCodes, now),
       parties: new FormArray<PartyGroup>([], atLeastOneClaimant),
       riskObjects: new FormArray<RiskObjectGroup>([]),
       reserve: new FormGroup(
@@ -78,17 +41,6 @@ export function createIntakeForm(causeCodes: () => readonly string[], now: () =>
 export type IntakeForm = ReturnType<typeof createIntakeForm>;
 export type IntakeValue = ReturnType<IntakeForm['getRawValue']>;
 
-export function inForce(policy: Policy | null, lossDate: Date | null): InForce {
-  if (!policy || !lossDate) {
-    return 'unknown';
-  }
-
-  const day = calendarDateOf(toIsoDateTime(lossDate));
-  const isInsidePeriod = day >= policy.effectiveDate && day <= policy.expirationDate;
-
-  return policy.status === 'Active' && isInsidePeriod ? 'inForce' : 'outside';
-}
-
 export function intakeWarnings(value: IntakeValue): string[] {
   const warnings = [
     value.policy.selected ? '' : 'No policy is linked to the claim.',
@@ -105,13 +57,7 @@ export function toCreateRequest(value: IntakeValue, reportedAt: Date): CreateCla
   return {
     policyId: value.policy.selected?.id ?? EMPTY_ID,
     reportDate: toIsoDateTime(reportedAt),
-    loss: {
-      lossDate: value.loss.lossDate ? toIsoDateTime(value.loss.lossDate) : NO_DATE,
-      description: value.loss.description.trim(),
-      causeOfLossCode: value.loss.causeOfLossCode,
-      location: value.loss.location.trim(),
-      estimatedLossAmount: value.loss.estimatedLossAmount,
-    },
+    loss: toLossRequest(value.loss),
     parties: value.parties.map((party) => trimmedParty(party)),
     riskObjects: value.riskObjects,
     reserves: reservesOf(value),

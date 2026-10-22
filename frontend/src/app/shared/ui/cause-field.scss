@@ -1,0 +1,15 @@
+:host {
+  display: block;
+}
+
+.wide {
+  width: 100%;
+}
+
+.muted {
+  color: var(--app-muted);
+}
+
+.error {
+  color: var(--app-danger);
+}

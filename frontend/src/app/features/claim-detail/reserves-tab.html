@@ -80,26 +80,28 @@
           <td mat-cell *matCellDef="let row" class="nowrap">{{ row.reviewedBy }}</td>
         </ng-container>
         <ng-container matColumnDef="actions">
-          <th mat-header-cell *matHeaderCellDef><span class="visually-hidden">Actions</span></th>
-          <td mat-cell *matCellDef="let row" class="actions">
-            @if (row.canDecide) {
-              <button mat-flat-button type="button" [disabled]="isSaving()" (click)="approved.emit(row.entry)">
-                Approve
-              </button>
-              <button mat-stroked-button type="button" [disabled]="isSaving()" (click)="rejected.emit(row.entry)">
-                Reject
-              </button>
-            }
-            @if (row.canRetract) {
-              <button mat-stroked-button type="button" [disabled]="isSaving()" (click)="retracted.emit(row.entry)">
-                Retract
-              </button>
-            }
-            @if (row.canRetry) {
-              <button mat-stroked-button type="button" [disabled]="isSaving()" (click)="retried.emit(row.entry)">
-                Retry posting
-              </button>
-            }
+          <th mat-header-cell *matHeaderCellDef>Actions</th>
+          <td mat-cell *matCellDef="let row" class="actions-cell">
+            <div class="actions">
+              @if (row.canDecide) {
+                <button mat-flat-button type="button" [disabled]="isSaving()" (click)="approved.emit(row.entry)">
+                  Approve
+                </button>
+                <button mat-stroked-button type="button" [disabled]="isSaving()" (click)="rejected.emit(row.entry)">
+                  Reject
+                </button>
+              }
+              @if (row.canRetract) {
+                <button mat-stroked-button type="button" [disabled]="isSaving()" (click)="retracted.emit(row.entry)">
+                  Retract
+                </button>
+              }
+              @if (row.canRetry) {
+                <button mat-stroked-button type="button" [disabled]="isSaving()" (click)="retried.emit(row.entry)">
+                  Retry posting
+                </button>
+              }
+            </div>
           </td>
         </ng-container>
         <tr mat-header-row *matHeaderRowDef="columns"></tr>

@@ -68,7 +68,12 @@ function reviewLines(value: IntakeValue, causeNames: ReadonlyMap<string, string>
       value: value.loss.estimatedLossAmount === null ? '-' : formatMoney(value.loss.estimatedLossAmount),
     },
     { label: 'Parties', value: parties.join('; ') || 'None' },
-    { label: 'Risk objects', value: value.riskObjects.map((item) => item.assetDescription).join('; ') || 'None' },
+    {
+      label: 'Risk objects',
+      value:
+        value.riskObjects.map((item) => `${item.assetDescription}${item.isPrimary ? ' (primary)' : ''}`).join('; ') ||
+        'None',
+    },
     { label: 'Initial reserve', value: reserve },
   ];
 }

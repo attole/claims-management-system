@@ -1,6 +1,6 @@
 import { computed, effect, inject, Injectable, signal, untracked, WritableSignal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
-import { finalize, Observable, tap } from 'rxjs';
+import { finalize, Observable, of, switchMap, tap, timer } from 'rxjs';
 import { EMPTY_ID, isGuid } from '../../core/api/api-ids';
 import {
   AuditEntry,
@@ -9,11 +9,15 @@ import {
   ClaimStatus,
   DocumentUpload,
   Issue,
+  LossRequest,
   PagedResult,
   Party,
   PartyRequest,
+  Policy,
   ReserveHistory,
   ReserveRequest,
+  RiskObject,
+  RiskObjectRequest,
   StatusCheck,
   UploadProgress,
 } from '../../core/api/api.model';
@@ -21,10 +25,13 @@ import { ClaimsService } from '../../core/api/claims.service';
 import { DocumentsService } from '../../core/api/documents.service';
 import { IssuesService } from '../../core/api/issues.service';
 import { PartiesService } from '../../core/api/parties.service';
+import { PoliciesService, POLICY_SEARCH_DELAY_MS, POLICY_SEARCH_MIN_LENGTH } from '../../core/api/policies.service';
 import { ReferenceService } from '../../core/api/reference.service';
 import { ReservesService } from '../../core/api/reserves.service';
+import { RiskObjectsService } from '../../core/api/risk-objects.service';
 import { isRefusal } from '../../core/http/error-body';
 import { newIdempotencyKey } from '../../core/http/idempotency';
+import { withPrimary } from '../../shared/forms/risk-object-form';
 
 export const AUDIT_PAGE_SIZES: readonly number[] = [10, 25, 50];
 
@@ -67,6 +74,8 @@ export const EMPTY_DETAIL: ClaimDetail = {
   recentAudit: [],
 };
 
+const NO_POLICIES: PagedResult<Policy> = { items: [], page: 1, pageSize: 0, totalCount: 0, totalPages: 0 };
+
 const EMPTY_AUDIT: PagedResult<AuditEntry> = {
   items: [],
   page: 1,
@@ -79,6 +88,8 @@ const EMPTY_AUDIT: PagedResult<AuditEntry> = {
 export class ClaimDetailStore {
   private readonly claims = inject(ClaimsService);
   private readonly parties = inject(PartiesService);
+  private readonly riskObjects = inject(RiskObjectsService);
+  private readonly policies = inject(PoliciesService);
   private readonly issues = inject(IssuesService);
   private readonly reserves = inject(ReservesService);
   private readonly documents = inject(DocumentsService);
@@ -87,6 +98,7 @@ export class ClaimDetailStore {
 
   readonly claimId = signal('');
   readonly auditPaging = signal<AuditPaging>({ page: 1, pageSize: AUDIT_PAGE_SIZES[0] });
+  readonly policyQuery = signal('');
   private readonly pendingWrites = signal(0);
   private readonly pendingUploads = signal(0);
 
@@ -107,6 +119,14 @@ export class ClaimDetailStore {
 
   private readonly statusList = rxResource({ stream: () => this.reference.claimStatuses(), defaultValue: [] });
   private readonly causeCodeList = rxResource({ stream: () => this.reference.causeCodes(), defaultValue: [] });
+  private readonly policySearch = rxResource({
+    params: () => this.policyQuery().trim(),
+    stream: ({ params }) =>
+      params.length < POLICY_SEARCH_MIN_LENGTH
+        ? of(NO_POLICIES)
+        : timer(POLICY_SEARCH_DELAY_MS).pipe(switchMap(() => this.policies.search(params))),
+    defaultValue: NO_POLICIES,
+  });
   private readonly lastAudit = signal(EMPTY_AUDIT);
   private readonly lastDetail = signal(EMPTY_DETAIL);
 
@@ -124,12 +144,14 @@ export class ClaimDetailStore {
 
     return statuses.find((info) => info.status === this.status())?.nextStatuses ?? [];
   });
+  readonly causeCodes = computed(() => (this.causeCodeList.hasValue() ? this.causeCodeList.value() : []));
   readonly causeName = computed(() => {
-    const causes = this.causeCodeList.hasValue() ? this.causeCodeList.value() : [];
     const code = this.detail().loss.causeOfLossCode;
 
-    return causes.find((cause) => cause.code === code)?.name ?? code;
+    return this.causeCodes().find((cause) => cause.code === code)?.name ?? code;
   });
+  readonly policyResults = computed(() => (this.policySearch.hasValue() ? this.policySearch.value().items : []));
+  readonly isSearchingPolicies = computed(() => this.policySearch.isLoading());
   readonly audit = this.lastAudit.asReadonly();
   readonly isAuditLoading = computed(() => this.auditResource.isLoading());
   readonly hasAuditError = computed(() => this.auditResource.error() !== undefined);
@@ -170,6 +192,32 @@ export class ClaimDetailStore {
 
   saveNotes(notes: string) {
     return this.save('notes', (key) => this.claims.updateNotes(this.claimId(), notes, key));
+  }
+
+  linkPolicy(policy: Policy) {
+    return this.save('policy', (key) => this.claims.linkPolicy(this.claimId(), policy.id, key));
+  }
+
+  updateLoss(loss: LossRequest) {
+    return this.save('loss', (key) => this.claims.updateLoss(this.claimId(), loss, key));
+  }
+
+  addRiskObject(riskObject: RiskObjectRequest) {
+    return this.save('riskObject', (key) => this.riskObjects.add(this.claimId(), riskObject, key));
+  }
+
+  setPrimaryRiskObject(riskObject: RiskObject, isPrimary: boolean) {
+    const request = withPrimary(riskObject, isPrimary);
+
+    return this.save(`primary:${riskObject.id}`, (key) =>
+      this.riskObjects.update(this.claimId(), riskObject.id, request, key),
+    );
+  }
+
+  removeRiskObject(riskObject: RiskObject) {
+    return this.save(`riskObject:${riskObject.id}`, (key) =>
+      this.riskObjects.remove(this.claimId(), riskObject.id, key),
+    );
   }
 
   addParty(party: PartyRequest) {

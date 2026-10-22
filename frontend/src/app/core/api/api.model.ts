@@ -42,14 +42,15 @@ export type Claim = Omit<ClaimDetailDto['claim'], 'state' | 'severity'> & {
 };
 export type LossDetails = ClaimDetailDto['loss'];
 export type Party = Omit<ClaimDetailDto['parties'][number], 'role' | 'type'> & { role: PartyRole; type: PartyType };
-export type RiskObject = ClaimDetailDto['riskObjects'][number];
+export type RiskObject = Omit<ClaimDetailDto['riskObjects'][number], 'assetType'> & { assetType: AssetType };
 export type Issue = Omit<ClaimDetailDto['issues'][number], 'state' | 'severity'> & {
   state: IssueState;
   severity: IssueSeverity;
 };
-export type ClaimDetail = Omit<ClaimDetailDto, 'claim' | 'parties' | 'issues' | 'reserves'> & {
+export type ClaimDetail = Omit<ClaimDetailDto, 'claim' | 'parties' | 'riskObjects' | 'issues' | 'reserves'> & {
   claim: Claim;
   parties: Party[];
+  riskObjects: RiskObject[];
   issues: Issue[];
   reserves: ClaimReserves;
 };

@@ -19,6 +19,27 @@ h2 {
   font: var(--mat-sys-title-medium);
 }
 
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: var(--app-gap);
+
+  h2 {
+    margin: 0;
+  }
+}
+
+.full {
+  grid-column: 1 / -1;
+}
+
+.editor {
+  display: block;
+  margin-bottom: var(--app-gap);
+}
+
 .rows {
   display: grid;
   gap: 14px;
@@ -37,6 +58,7 @@ h2 {
 
 .wide {
   width: 100%;
+  margin-bottom: var(--app-gap-small);
 }
 
 .list {

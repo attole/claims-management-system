@@ -9,7 +9,8 @@ import { apiUrl } from '../../core/api/api-url';
 import { provideAppDateAdapter } from '../../core/dates/app-date-adapter';
 import { NotifyService } from '../../core/notify/notify.service';
 import { createPartyGroup } from '../../shared/forms/party-form';
-import { createRiskObjectGroup, IntakeForm } from './intake-form';
+import { createRiskObjectGroup } from '../../shared/forms/risk-object-form';
+import { IntakeForm } from './intake-form';
 import { IntakePage } from './intake.page';
 
 describe('IntakePage (S:UI-Intake-Steps, S:UI-Intake-Submit)', () => {

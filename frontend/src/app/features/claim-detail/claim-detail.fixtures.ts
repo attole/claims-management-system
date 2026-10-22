@@ -1,4 +1,4 @@
-import { ClaimDetail, Issue, Party, ReserveComponent, ReserveHistory } from '../../core/api/api.model';
+import { ClaimDetail, Issue, Party, ReserveComponent, ReserveHistory, RiskObject } from '../../core/api/api.model';
 import { DEV_USERS } from '../../core/auth/dev-users';
 import { EMPTY_DETAIL } from './claim-detail.store';
 
@@ -28,6 +28,26 @@ export const RAISED_ISSUE: Issue = {
   state: 'Raised',
   resolvedAt: '0001-01-01T00:00:00+00:00',
   resolvedBy: '00000000-0000-0000-0000-000000000000',
+};
+
+export const PRIMARY_RISK_OBJECT: RiskObject = {
+  id: 'o1000000-0000-4000-8000-000000000001',
+  claimId: CLAIM_ID,
+  assetType: 'Property',
+  assetDescription: 'Warehouse office',
+  damageDescription: 'Flooded floor',
+  isPrimary: true,
+  assetReference: '',
+  isDeleted: false,
+};
+
+export const OTHER_RISK_OBJECT: RiskObject = {
+  ...PRIMARY_RISK_OBJECT,
+  id: 'o1000000-0000-4000-8000-000000000002',
+  assetType: 'Equipment',
+  assetDescription: 'Server rack',
+  damageDescription: 'Water ingress',
+  isPrimary: false,
 };
 
 export const INDEMNITY: ReserveComponent = {
@@ -92,6 +112,7 @@ export function claimDetail(): ClaimDetail {
       estimatedLossAmount: 62500,
     },
     parties: [CLAIMANT],
+    riskObjects: [PRIMARY_RISK_OBJECT, OTHER_RISK_OBJECT],
     issues: [RAISED_ISSUE],
   };
 }

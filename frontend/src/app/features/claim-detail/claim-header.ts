@@ -11,7 +11,7 @@ import { EnumLabelPipe } from '../../shared/pipes/enum-label.pipe';
 import { StatusBadge } from '../../shared/ui/status-badge';
 
 export const UNASSIGNED_HANDLER = 'Unassigned';
-export const UNKNOWN_POLICY = 'Unknown policy';
+export const UNKNOWN_POLICY = 'Not linked';
 
 @Component({
   selector: 'app-claim-header',
@@ -28,6 +28,9 @@ export class ClaimHeader {
 
   readonly statusChosen = output<ClaimStatus>();
   readonly copied = output<boolean>();
+  readonly linkPolicyRequested = output();
+
+  protected readonly isPolicyLinked = computed(() => this.detail().claim.policyId !== EMPTY_ID);
 
   protected readonly policyNumber = computed(() => {
     const detail = this.detail();

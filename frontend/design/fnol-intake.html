@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>New claim</title>
-<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="theme.css?v=2">
 <style>
   main { max-width: 900px; }
   .steps { display: flex; gap: 8px; margin-bottom: 16px; }
@@ -38,7 +38,7 @@
   .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--green); padding: 10px 16px; border-radius: 6px; z-index: 20; }
   dialog::backdrop { background: #0009; }
   .dialog-wrap { border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); padding: 20px; width: min(460px, 92vw); }
-  @media (max-width: 720px) { .two, .three { grid-template-columns: 1fr; } }
+  @media (max-width: 720px) { .two, .three, .form-row { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
@@ -95,12 +95,15 @@
       <h2>Risk objects</h2>
       <div class="banner info" id="riskAdvice">At least one risk object is recommended.</div>
       <div class="items" id="riskItems"></div>
-      <div class="three hidden" id="riskForm">
+      <div class="hidden" id="riskForm" style="margin:14px 0">
+        <div class="form-row">
         <div class="field"><label>Asset type</label><select id="rType"><option>Property</option><option>Vehicle</option><option>Equipment</option><option>Inventory</option></select></div>
         <div class="field"><label>Asset description</label><input id="rDesc"></div>
         <div class="field"><label>Damage description</label><input id="rDamage"></div>
         <div class="field"><label>Reference number (optional)</label><input id="rRef"></div>
-        <div class="btn-row"><button class="btn" id="rSave" type="button">Add</button><button class="btn ghost" id="rCancel" type="button">Cancel</button></div>
+        <div class="field"><label>Primary</label><button class="btn outline" id="rPrimary" type="button" aria-pressed="false">Mark as primary</button><div class="hint" id="rPrimaryHint"></div></div>
+        </div>
+        <div class="form-actions"><button class="btn" id="rSave" type="button">Add</button><button class="btn ghost" id="rCancel" type="button">Cancel</button></div>
       </div>
       <div class="add-row"><button class="btn outline" id="rAdd" type="button">Add risk object</button></div>
     </div>
@@ -209,17 +212,24 @@
     update();
   }
   function renderRisks() {
-    $("riskItems").innerHTML = S.risks.map((x, i) => "<div class='item'><span class='badge neutral'>" + x.type + "</span><div class='grow'><strong>" + x.desc + "</strong> <span class='muted'>" + (x.damage || "") + "</span></div><button class='btn small ghost' data-i='" + i + "'>Remove</button></div>").join("");
+    $("riskItems").innerHTML = S.risks.map((x, i) => "<div class='item'><span class='badge neutral'>" + x.type + "</span><div class='grow'><strong>" + x.desc + "</strong> <span class='muted'>" + (x.damage || "") + "</span></div>" + (x.primary ? "<span class='badge info'>Primary</span>" : "") + "<button class='btn small ghost' data-i='" + i + "'>Remove</button></div>").join("");
     $("riskItems").querySelectorAll("button").forEach((b) => b.onclick = () => { S.risks.splice(b.dataset.i, 1); renderRisks(); });
     $("riskAdvice").classList.toggle("hidden", S.risks.length > 0);
+    const primary = S.risks.find((x) => x.primary);
+    setPrimary($("rPrimary"), false);
+    $("rPrimary").disabled = Boolean(primary);
+    $("rPrimaryHint").textContent = primary ? primary.desc + " is already the primary risk object." : "";
     update();
   }
   $("pAdd").onclick = () => $("partyForm").classList.remove("hidden");
   $("pCancel").onclick = () => $("partyForm").classList.add("hidden");
   $("pSave").onclick = () => { if (!$("pName").value.trim()) return; S.parties.push({ role: $("pRole").value, type: $("pType").value, name: $("pName").value.trim(), email: $("pEmail").value }); $("pName").value = ""; $("pEmail").value = ""; $("pPhone").value = ""; $("partyForm").classList.add("hidden"); renderParties(); };
-  $("rAdd").onclick = () => $("riskForm").classList.remove("hidden");
+  const isPrimary = (b) => b.getAttribute("aria-pressed") === "true";
+  function setPrimary(b, on) { b.setAttribute("aria-pressed", String(on)); b.textContent = on ? "Primary" : "Mark as primary"; }
+  $("rPrimary").onclick = () => setPrimary($("rPrimary"), !isPrimary($("rPrimary")));
+  $("rAdd").onclick =() => $("riskForm").classList.remove("hidden");
   $("rCancel").onclick = () => $("riskForm").classList.add("hidden");
-  $("rSave").onclick = () => { if (!$("rDesc").value.trim()) return; S.risks.push({ type: $("rType").value, desc: $("rDesc").value.trim(), damage: $("rDamage").value }); $("rDesc").value = ""; $("rDamage").value = ""; $("rRef").value = ""; $("riskForm").classList.add("hidden"); renderRisks(); };
+  $("rSave").onclick = () => { if (!$("rDesc").value.trim()) return; S.risks.push({ type: $("rType").value, desc: $("rDesc").value.trim(), damage: $("rDamage").value, primary: isPrimary($("rPrimary")) }); $("rDesc").value = ""; $("rDamage").value = ""; $("rRef").value = ""; $("riskForm").classList.add("hidden"); renderRisks(); };
 
   // reserve
   function authority() {
@@ -240,7 +250,7 @@
       ["Description", $("desc").value || "-"], ["Location", $("loc").value || "-"],
       ["Estimated amount", $("est").value ? money($("est").value) : "-"],
       ["Parties", S.parties.map((p) => p.role + ": " + p.name).join("; ") || "None"],
-      ["Risk objects", S.risks.map((r) => r.type + ": " + r.desc).join("; ") || "None"],
+      ["Risk objects", S.risks.map((r) => r.type + ": " + r.desc + (r.primary ? " (primary)" : "")).join("; ") || "None"],
       ["Initial reserve", $("comp").value && $("amount").value ? $("comp").value + " " + money($("amount").value) : "None"]
     ];
     $("review").innerHTML = rows.map((r) => "<tr><td>" + r[0] + "</td><td>" + r[1] + "</td></tr>").join("");

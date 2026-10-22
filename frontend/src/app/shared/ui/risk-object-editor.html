@@ -1,0 +1,44 @@
+@let isPrimary = riskObject.controls.isPrimary.value;
+
+<form class="inline-form" [formGroup]="riskObject" (ngSubmit)="submit()" aria-label="New risk object">
+  <mat-form-field>
+    <mat-label>Asset type</mat-label>
+    <mat-select formControlName="assetType">
+      @for (assetType of assetTypes; track assetType) {
+        <mat-option [value]="assetType">{{ assetType }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+  <mat-form-field>
+    <mat-label>Asset description</mat-label>
+    <input matInput formControlName="assetDescription" />
+    <mat-error>{{ riskObject.controls.assetDescription.errors | errorMessage }}</mat-error>
+  </mat-form-field>
+  <mat-form-field>
+    <mat-label>Damage description (optional)</mat-label>
+    <input matInput formControlName="damageDescription" />
+  </mat-form-field>
+  <mat-form-field>
+    <mat-label>Reference number (optional)</mat-label>
+    <input matInput formControlName="assetReference" />
+    <mat-error>{{ riskObject.controls.assetReference.errors | errorMessage }}</mat-error>
+  </mat-form-field>
+  <div class="primary">
+    <button
+      type="button"
+      [matButton]="isPrimary ? 'filled' : 'outlined'"
+      [attr.aria-pressed]="isPrimary"
+      [disabled]="hasPrimary()"
+      (click)="togglePrimary()"
+    >
+      {{ isPrimary ? 'Primary' : 'Mark as primary' }}
+    </button>
+    @if (hasPrimary()) {
+      <span class="muted">{{ primaryName() || 'Another risk object' }} is already the primary risk object.</span>
+    }
+  </div>
+  <div class="actions full">
+    <button mat-flat-button type="submit" [disabled]="isSaving()">Add</button>
+    <button mat-button type="button" (click)="cancelled.emit()">Cancel</button>
+  </div>
+</form>
