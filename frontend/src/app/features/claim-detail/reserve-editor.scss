@@ -15,7 +15,7 @@ h3 {
 .fields {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--app-gap-small) var(--app-gap);
+  gap: var(--app-gap);
 }
 
 .full {
@@ -25,6 +25,7 @@ h3 {
 .actions {
   display: flex;
   gap: var(--app-gap-small);
+  margin-top: var(--app-gap-small);
 }
 
 @media (max-width: 720px) {

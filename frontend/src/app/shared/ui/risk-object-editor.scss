@@ -1,7 +1,7 @@
 .inline-form {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--app-gap-small) var(--app-gap);
+  gap: var(--app-gap);
   padding: var(--app-gap);
   border: 1px solid var(--app-border);
   border-radius: var(--app-radius);
@@ -23,6 +23,7 @@
 .actions {
   display: flex;
   gap: var(--app-gap-small);
+  margin-top: var(--app-gap-small);
 }
 
 .muted {
