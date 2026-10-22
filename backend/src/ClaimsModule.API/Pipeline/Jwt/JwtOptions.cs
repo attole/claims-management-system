@@ -14,5 +14,8 @@ public sealed class JwtOptions
 
     [Required]
     [MinLength(32)]
+    [RegularExpression(
+        @"^(?!@Microsoft\.KeyVault).*$",
+        ErrorMessage = "Jwt:SigningKey is an unresolved Key Vault reference.")]
     public string SigningKey { get; init; } = string.Empty;
 }

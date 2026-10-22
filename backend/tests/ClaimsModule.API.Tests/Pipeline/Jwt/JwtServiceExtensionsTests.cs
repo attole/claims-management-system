@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using ClaimsModule.API.Errors;
 using ClaimsModule.API.Pipeline.Identity;
 using ClaimsModule.API.Tests.Support;
+using Microsoft.Extensions.Options;
 
 namespace ClaimsModule.API.Tests.Pipeline.Jwt;
 
@@ -91,6 +92,19 @@ public sealed class JwtServiceExtensionsTests(ApiFixture database) : IDisposable
         var response = await client.GetAsync("/test/whoami");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [ApiFact]
+    [Trait("Rule", "S:API-Auth")]
+    public void AddJwt_SigningKeyIsAnUnresolvedKeyVaultReference_StopsTheApplicationAtStartup()
+    {
+        var reference = "@Microsoft.KeyVault(SecretUri=https://kv.vault.azure.net/secrets/jwt-signing-key/)";
+        var settings = new Dictionary<string, string?> { ["Jwt:SigningKey"] = reference };
+        using var broken = _factory.WithSettings(settings);
+
+        var act = () => broken.CreateClient();
+
+        act.Should().Throw<OptionsValidationException>().WithMessage("*Key Vault reference*");
     }
 
     [ApiFact]

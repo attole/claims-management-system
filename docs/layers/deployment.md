@@ -26,7 +26,7 @@ infra/
 - **Identity:** a user-assigned managed identity for the web app. It is the database user and reads Key Vault; its client id is an ARM property, so the pipeline creates the database user without Microsoft Graph.
 - **Database:** Azure SQL logical server with Entra-only authentication (no SQL password exists) and one Basic database; the deploy identity is the Entra administrator. The firewall rule that allows Azure services is what admits the GitHub-hosted runner; there is no per-run rule. If a run is refused with a client IP error, add a temporary rule step to the deployment job.
 - **Storage:** StorageV2 Standard LRS, TLS 1.2, no public blob access, the private container `claim-documents`. Downloads are SAS links straight from the blob (S:BR-D-02).
-- **Key Vault:** RBAC mode, soft-delete retention 7 days. Secrets: `jwt-signing-key` (set by the bootstrap script), `storage-connection-string` (written by the template from the account key). The web app identity and the deploy identity hold Key Vault Secrets User.
+- **Key Vault:** RBAC mode, soft-delete retention 7 days. Secrets: `jwt-signing-key` (set by the bootstrap script), `storage-connection-string` (written by the template from the account key). The web app identity holds Key Vault Secrets User.
 - **Frontend:** a Free static web app serving the Angular build; `staticwebapp.config.json` rewrites every route to `index.html`.
 - **Monitoring:** a Log Analytics workspace (30 days) receiving the web app's logs.
 
@@ -46,7 +46,7 @@ The template writes every app setting; the README 'Configuration' table lists wh
 | `DevAuth__OrganisationId`, `DevAuth__Users__N__Id`, `Name`, `Role` | the seeded organisation and the three users of `demo.bicepparam` |
 
 - A Key Vault reference is resolved when the app starts, so a changed secret takes effect after a restart.
-- A missing app setting stops the app at startup and names the key, but a reference to a missing secret reaches the app as the reference text itself, which passes the length checks. The readiness check only tests the database, so an unresolved JWT reference would not fail it, and the app would sign tokens with a key anyone can derive from the vault name. The pipeline therefore stops, before it migrates or deploys anything, when `jwt-signing-key` is not in the vault (the deploy identity holds Key Vault Secrets User for this check).
+- A missing app setting stops the app at startup and names the key, but a reference to a missing secret reaches the app as the reference text itself, which passes a length check. The JWT options therefore reject a signing key that starts with `@Microsoft.KeyVault`, so the app stops at startup, readiness never answers and the smoke test fails the run; without that guard the app would sign tokens with a key anyone can derive from the vault name. Run `bootstrap.ps1 -Step Secrets` before the first deployment.
 - The frontend is built with the API's absolute URL written into `environment.ts` by the pipeline; the bundle holds no secret.
 
 ## Database access
@@ -58,8 +58,8 @@ The template writes every app setting; the README 'Configuration' table lists wh
 ## Pipelines
 
 - **Build and Test:** two jobs, backend first, as in the deployment. Backend: restore, Release build, tests against a SQL Server 2022 service container (`CLAIMS_TEST_SQLSERVER` set, so the SQL Server, API and Hangfire tests run instead of skipping), then the published API and the self-contained linux-x64 migration bundle as the artifacts `api` and `database`. Frontend: `npm ci`, lint, format check, tests, build (Node 24); the build only proves it compiles, because the API's URL is part of the bundle and the deployment rebuilds it. The deployed API and migration bundle are the tested bytes.
-- **Deployment:** it does not build. A `select` job picks the latest successful Build and Test run of a push to main, or the run in the optional `run_id` input (a rollback to any build whose artifacts are still stored, 7 days). It refuses a run that is not Build and Test, not a push to main, not successful or whose artifacts expired, and warns when the chosen commit is not the latest on main. Then one job in the GitHub environment `demo` (main only, a required reviewer) checks out that run's commit, so the Bicep and SQL scripts match the API, downloads its artifacts and signs in to Azure by OIDC with a federated credential bound to that environment. Steps: create from `demo.bicepparam` (no what-if: the run already waits for approval); a second sign-in so the database token is fetched inside the five-minute lifetime of the GitHub token; migrations (retried); grant and verify scripts; zip deploy of the API and a restart; the smoke test; the frontend build against the API's URL and its upload to the static web app.
-- **Smoke test:** `/health/ready` answers 200 within five minutes, the OpenAPI document answers 200, the dev token call returns a token and `GET /api/claims` answers 200 with it. A failure stops the run; there is no automatic rollback (one instance, no slot).
+- **Deployment:** it does not build. A `select` job picks the latest successful Build and Test run of a push to main, or the run in the optional `run_id` input (a rollback to any build whose artifacts are still stored, 7 days). It refuses a run that is not Build and Test, not a push to main, not successful or whose artifacts expired, and warns when the chosen commit is not the latest on main. Then one job in the GitHub environment `demo` (main only, a required reviewer) checks out that run's commit, so the Bicep and SQL scripts match the API, downloads its artifacts and signs in to Azure by OIDC with a federated credential bound to that environment. Steps: create from `demo.bicepparam` (no what-if: the run already waits for approval); the first command of that step fetches the database token right after the sign-in, because the GitHub token behind the login lives about five minutes and the Azure CLI caches the database token for later (the migrations and the SQL steps reuse it); migrations (retried); grant and verify scripts; zip deploy of the API, which restarts the app; the frontend build against the API's URL and its upload to the static web app; the smoke test last, so the API's cold start overlaps with the frontend steps (readiness, then the dev token and one authenticated read).
+- **Smoke test:** `/health/ready` answers 200 within five minutes (the wait is the app's cold start after the deployment restart), the dev token call returns a token and `GET /api/claims` answers 200 with it. A failure stops the run; there is no automatic rollback (one instance, no slot).
 - Actions are pinned to commit SHAs, workflow permissions are `contents: read` and `actions: read` (plus `id-token: write` on the deploy job), a deployment never cancels another, and a superseded build is cancelled.
 
 ## Bootstrap and teardown
@@ -82,7 +82,7 @@ The template writes every app setting; the README 'Configuration' table lists wh
 
 ## Accepted trade-offs
 
-- The deploy identity administers the database and reads the vault's secrets.
+- The deploy identity administers the database.
 - The web app's database user can change the schema (`db_ddladmin`), still without update or delete on the audit log.
 - SQL, storage and Key Vault accept public connections, protected by identity, keys and the firewall rather than network isolation.
 - The dev sign-in is on and open, as the specification's mock authentication: anyone who can reach the API can sign in as any configured user, on fake data.

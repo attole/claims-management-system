@@ -168,15 +168,6 @@ module roles 'modules/roles.bicep' = {
     principalId: identity.outputs.principalId
   }
 }
-
-module deployRoles 'modules/roles.bicep' = {
-  name: 'roles-deploy'
-  params: {
-    vaultName: keyVault.outputs.name
-    principalId: sqlAdminObjectId
-  }
-}
-
 output resourceGroupName string = resourceGroup().name
 output webAppName string = appService.outputs.name
 output webAppHostName string = appService.outputs.defaultHostName

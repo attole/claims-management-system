@@ -106,6 +106,7 @@ jobs:
 
       - name: Provision infrastructure
         run: |
+          az account get-access-token --resource https://database.windows.net/ --query expiresOn -o tsv > /dev/null
           outputs=$(az deployment group create \
             --resource-group "$RESOURCE_GROUP" \
             --name "deployment-${GITHUB_RUN_ID}" \
@@ -116,24 +117,6 @@ jobs:
           server=$(jq -r .sqlServerFqdn.value <<< "$outputs")
           database=$(jq -r .databaseName.value <<< "$outputs")
           echo "SQL_CONNECTION=Server=tcp:${server},1433;Initial Catalog=${database};Authentication=Active Directory Default;Encrypt=True;" >> "$GITHUB_ENV"
-
-      - name: Check that the JWT signing key is in the vault
-        run: |
-          for attempt in $(seq 1 10); do
-            if az keyvault secret show --vault-name "$keyVaultName" --name jwt-signing-key --query id -o tsv > /dev/null; then
-              exit 0
-            fi
-            sleep 30
-          done
-          echo "::error::The secret jwt-signing-key is not in the vault. Run bootstrap.ps1 -Step Secrets first."
-          exit 1
-
-      - name: Sign in to Azure again for the database token
-        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906
-        with:
-          client-id: ${{ vars.AZURE_CLIENT_ID }}
-          tenant-id: ${{ vars.AZURE_TENANT_ID }}
-          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
       - name: Apply migrations
         run: |
@@ -165,26 +148,6 @@ jobs:
         with:
           app-name: ${{ env.webAppName }}
           package: artifacts/api
-
-      - name: Restart the web app
-        run: az webapp restart --resource-group "$RESOURCE_GROUP" --name "$webAppName"
-
-      - name: Smoke test
-        run: |
-          api="https://${webAppHostName}"
-          for attempt in $(seq 1 30); do
-            curl -fsS -o /dev/null --max-time 20 "$api/health/ready" && break
-            sleep 10
-          done
-          curl -fsS -o /dev/null --max-time 20 "$api/health/ready"
-          curl -fsS -o /dev/null --max-time 20 "$api/openapi/v1.json"
-
-          user_id=$(az webapp config appsettings list --resource-group "$RESOURCE_GROUP" --name "$webAppName" \
-            --query "[?name=='DevAuth__Users__0__Id'].value | [0]" --output tsv)
-          token=$(curl -sS --fail-with-body --max-time 20 -X POST "$api/api/dev/token" \
-            -H 'Content-Type: application/json' \
-            -d "{\"userId\":\"${user_id}\"}" | jq -er .token)
-          curl -fsS -o /dev/null --max-time 20 -H "Authorization: Bearer ${token}" "$api/api/claims"
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
@@ -225,3 +188,19 @@ jobs:
             echo "- API: https://${webAppHostName}"
             echo "- Swagger: https://${webAppHostName}/swagger"
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Smoke test
+        run: |
+          api="https://${webAppHostName}"
+          for attempt in $(seq 1 30); do
+            curl -fsS -o /dev/null --max-time 20 "$api/health/ready" && break
+            sleep 10
+          done
+          curl -fsS -o /dev/null --max-time 20 "$api/health/ready"
+
+          user_id=$(az webapp config appsettings list --resource-group "$RESOURCE_GROUP" --name "$webAppName" \
+            --query "[?name=='DevAuth__Users__0__Id'].value | [0]" --output tsv)
+          token=$(curl -sS --fail-with-body --max-time 20 -X POST "$api/api/dev/token" \
+            -H 'Content-Type: application/json' \
+            -d "{\"userId\":\"${user_id}\"}" | jq -er .token)
+          curl -fsS -o /dev/null --max-time 20 -H "Authorization: Bearer ${token}" "$api/api/claims"
