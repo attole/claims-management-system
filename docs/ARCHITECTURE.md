@@ -1,6 +1,6 @@
 # Architecture
 
-The design of the claims module and the decisions behind it. `.claude/CLAUDE.md` holds the rules, `docs/CODING-STANDARDS.md` the code style and `docs/layers/` one file per layer with its rules and contracts; this file holds the reasons.
+The design of the claims module and the decisions behind it. [`.claude/CLAUDE.md`](../.claude/CLAUDE.md) holds the rules, the standards files (`docs/BACKEND-STANDARDS.md`, `docs/FRONTEND-STANDARDS.md`, `docs/DEPLOYMENT-STANDARDS.md`) the code style and [`docs/layers/`](layers) one file per layer with its rules and contracts; this file holds the reasons.
 
 ## Overview
 
@@ -11,10 +11,10 @@ Clean Architecture with five projects, dependencies pointing inward: `API` -> `A
 - **Persistence:** EF Core mapping, the readers that project straight into DTOs, the Unit of Work, and a save interceptor for the audit columns, soft delete, tenant and claim-row touch.
 - **Infrastructure:** the Hangfire jobs (posting, SLA, the posting sweep, the idempotency cleanup, the orphan blob sweep) and outside adapters such as Blob storage.
 - **API:** controllers, the error mapping, the Idempotency-Key filter and startup.
-- **Deployment:** one Azure environment from Bicep and two GitHub Actions workflows, build and test, and a manual deployment of a tested build (`docs/layers/deployment.md`).
+- **Deployment:** one Azure environment from Bicep and two GitHub Actions workflows, build and test, and a manual deployment of a tested build ([`docs/layers/deployment.md`](layers/deployment.md)).
 - **Frontend:** an Angular client with one page and one store per screen, standalone OnPush components on signals, and every HTTP call in hand-written typed services over types generated from the API's OpenAPI document. It validates shape and shows hints; every business decision is the server's, and a refusal comes back as a 422 mapped onto the form or a banner.
 
-Each layer's rules and contracts are in `docs/layers/`. Key choices:
+Each layer's rules and contracts are in [`docs/layers/`](layers). Key choices:
 
 - **Entities with behavior, steps behind them:** the engine gives every method the same order and error handling, and a refused change can never half-apply. The cost is one more hop and a generic base.
 - **Follow-ups chained on the outcome:** the order stays visible in the method, and a follow-up cannot refuse, so a condition that could is a rule on the step.
@@ -74,7 +74,7 @@ How the documents are read and carried out where they are ambiguous, silent or i
 | Claim numbers | a counter row per organisation and year, incremented atomically in the claim's transaction; the format holds seven digits | S:CLAIMNO-Atomic | mechanism |
 | Unknown policy at intake | the claim is created without a policy and returns a warning; linking an unknown policy to an existing claim is a not found | POLICY_NOT_FOUND | gap |
 | No risk object, no policy | Warning issues; both use the validation table's wording | CLAIM_NO_RISK_OBJECT, S:INTAKE-NoPolicy | reading |
-| History row | a child of its component; the component computes the change sequence and the approved balance; the idempotency key is `Reserve:{component id}:Change:{sequence}`, backed by a unique index | S:BR-R-06 | mechanism |
+| History row | a child of its component; the component computes the change sequence and the approved balance; two writers cannot take the same sequence, because the component's `RowVer` moves with every row | S:BR-R-06 | mechanism |
 | Reject authority | follows the approval tier: the role table wins over the reject route's role requirement; the refusal has its own message | S:BR-R-02 | conflict |
 | Transaction types | Add, Adjust and Reverse are labels; the signed amount alone drives balances, limits and tiers | none | gap |
 | Auto-approval | no reviewer is recorded, so the history never shows the submitter as approver | S:BR-R-03 | mechanism |
@@ -92,7 +92,7 @@ How the documents are read and carried out where they are ambiguous, silent or i
 
 ### Schema departures from the spec
 
-Table names are the spec's (section 9, listed in `docs/layers/persistence.md`); the entity classes keep their Domain names and map to them with `ToTable`.
+Table names are the spec's (section 9, listed in [`docs/layers/persistence.md`](layers/persistence.md)); the entity classes keep their Domain names and map to them with `ToTable`.
 
 | Change | Departure | Why |
 |---|---|---|
@@ -109,7 +109,6 @@ Table names are the spec's (section 9, listed in `docs/layers/persistence.md`); 
 | History row (added columns) | the component type, the submission time and the posting failure reason | approval reads the type from the row; a review is checked against the submission; the tab shows why a posting failed |
 | Reserve review (changed) | who made the latest approval change, when and why, on the row instead of paired approved and rejected columns | a row is approved or rejected, never both |
 | Policy status | no column; the policy reader fills it from `PolicyPeriod.StatusOn(today)` | the specification seeds dates only, and a stored value would go stale at the end date with nothing to refresh it |
-| History idempotency key | not stored and not unique-indexed; the row computes it from the component and the change sequence | EF 9 cannot index a member of a complex property, and the component's `RowVer`, moved by the root touch, already stops two writers using the same sequence |
 | Soft delete on history | the state-change and reserve-history tables have no `IsDeleted` or `DeletedAt` and refuse a delete | history rows are never removed, so the history stays complete |
 | Deletion time | `DeletedAt` is a Persistence column stamped by the save interceptor; the Domain keeps only `IsDeleted` | no rule reads it |
 | Tables outside section 9 (added) | `ClaimIssues`, `ClaimStateChanges`, `PolicyCoverageTypes`, `ClaimNumberCounters`, `IdempotencyKeys` | stored issues, state-change history, a policy's coverage types, the atomic claim number and the Idempotency-Key store have no table in the specification |
@@ -143,6 +142,7 @@ Conditions and constants that no document states and that this repo added. Each 
 | Reserve | Claim limit | a change that does not increase the total passes the limit; one that would pass it is never auto-approved; the override cannot be removed while the total is over | CLAIM_OVERRIDE_STILL_NEEDED |
 | Reserve | Limit override out of scope | the manager-only override is modelled, enforced and audited in the Domain but has no route or screen in this slice, so an approval that would pass the claim limit is refused | S:BR-R-05 |
 | Reserve | Tiers | the auto-approval limit and the approval tiers compare the absolute amount; a handler may submit any amount and the row waits for an approver | S:BR-R-02 |
+| Reserve | Posting idempotency | the posting job is idempotent by the row's posting state, not by a stored key: only a Pending row moves to Posted, and marking a posted row again succeeds without a write; the row has no idempotency key, and the request header of the same name is a separate mechanism | S:BR-R-06, S:JOB-GL-Idempotent |
 | Reserve | Posting moves | posted, failed and retry need a job id; cancel has none | RESERVE_POSTING_JOB_REQUIRED |
 | Reserve | Intake without a policy | an intake with an initial reserve and no linked policy is refused as a whole (the create is one transaction); the intake form blocks it before sending and links back to the policy step | S:BR-C-06 |
 | Document | Content signature | one table in `DocumentContentTypes` lists every allowed type with its signature, so the allowlist and the signature check cannot drift apart; the first 512 bytes must match the declared type: `%PDF` for PDF, the PNG and JPEG headers, a ZIP header for docx and xlsx, no NUL byte for text and CSV; a ZIP header alone does not tell a docx from any other ZIP | DOC_CONTENT_MISMATCH |

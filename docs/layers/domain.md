@@ -62,7 +62,7 @@ Top level: `Core/` (the engine), `Common/` (entity and event base types, capabil
 
 ## Extending the Domain
 
-Names follow `docs/CODING-STANDARDS.md` 'Naming', folders 'Domain folders'.
+Names follow `docs/BACKEND-STANDARDS.md` 'Naming', folders 'Domain folders'.
 
 - **A new entity in an aggregate:** a private parameterless constructor, a `Details` record, private setters and `internal` mutators; an `internal` operation in `Flows/` with its input in `Inputs/`, and a public root method chaining the event and `Settle`; every precondition as a rule; a stored completeness problem as a rule in the entity's `Rules/` that the issue evaluation checks; tests in the mirrored folders and an entry in `EntityConstructionTests`.
 - **A new aggregate:** a top-level folder shaped like `Claims/`, a base input in its `Inputs/` (and a base transition in `Flows/` when it has a lifecycle), a creation operation behind a public static method named by the domain verb that chains its event, the capability interfaces it needs, and other aggregates referenced by id only.

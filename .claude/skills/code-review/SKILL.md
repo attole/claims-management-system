@@ -30,8 +30,9 @@ The review runs in one fresh subagent, so it reads the change without the contex
 Perform a code review. Scope: <uncommitted (default) | branch <name> vs origin/<base> | PR>.
 Areas changed: <backend | frontend | infra | several>. Follow the Procedure subsections Collect, Contract review,
 Per-file review and Confidence filter, and the Output section, of .claude/skills/code-review/SKILL.md.
-Read .claude/CLAUDE.md in full, docs/CODING-STANDARDS.md, and the file of each changed layer: docs/layers/domain.md,
-docs/layers/application.md, docs/layers/persistence.md, docs/layers/infrastructure.md, docs/layers/api.md,
+Read .claude/CLAUDE.md in full, the standards file of each changed area (docs/BACKEND-STANDARDS.md,
+docs/FRONTEND-STANDARDS.md or docs/DEPLOYMENT-STANDARDS.md), and the file of each changed layer:
+docs/layers/domain.md, docs/layers/application.md, docs/layers/persistence.md, docs/layers/infrastructure.md, docs/layers/api.md,
 docs/layers/frontend.md or docs/layers/deployment.md.
 Read-only: no checkout, no git writes, no file edits. Return only findings.
 ```
@@ -67,9 +68,9 @@ Only when backend and frontend both changed. Read the changed files from both si
 
 Get each file's diff for the same scope (`git diff HEAD -- "<file>"`, or `git diff origin/<base>...<tip> -- "<file>"`; a new untracked file is read whole). Flag findings only on added or modified lines, but read past the diff to judge them: the whole method, the handler a controller calls, the configuration an entity maps through, the other paths that write the same field. The deep bugs live in how a change meets code that did not change.
 
-The C# standards apply to the backend. For frontend files apply 'Syntax hygiene', the Frontend checks and the bug classes.
+The C# standards apply to the backend. For frontend files apply `docs/FRONTEND-STANDARDS.md`, 'Syntax hygiene', the Frontend checks and the bug classes.
 
-**Standards** (a checklist; the rules are in CLAUDE.md 'Core rules', `docs/CODING-STANDARDS.md` and the layer file):
+**Standards** (a checklist; the rules are in CLAUDE.md 'Core rules', the standards file of the area and the layer file):
 
 - Newest syntax: older forms where a collection expression, pattern or `required` member fits
 - No null: a null return or null-initialized field in Domain or Application; a boundary null not converted
@@ -85,7 +86,8 @@ The C# standards apply to the backend. For frontend files apply 'Syntax hygiene'
 - Migrations: a hand-edited migration
 - Architecture: a type in the wrong project or a reference pointing outward; a state change that is not a Command or a read that is not a Query; Unit of Work bypassed; no domain event on a significant transition; a command without a validator; storage or audit reached without `IStorageService` or `IAuditLogService`
 - Data conventions: data annotations instead of Fluent API; decimal without `HasPrecision(19, 4)`; missing soft-delete or tenant filter, audit columns or `RowVer`; seed data applied at startup; a hard-coded GUID in logic; command, query, DTO or route names off-pattern
-- Deployment (`docs/layers/deployment.md`): an unpinned action; a secret or connection string in a template, script or workflow; a feature switch on outside the demo; a script that fails silently
+- Frontend (`docs/FRONTEND-STANDARDS.md`): a file or class name off the role convention; a component that is not standalone and OnPush, or whose template reads state that is not a signal; a hex colour in a component style; `any`
+- Deployment (`docs/DEPLOYMENT-STANDARDS.md`, `docs/layers/deployment.md`): an unpinned action; a secret or connection string in a template, script or workflow; a feature switch on outside the demo; a script that fails silently
 
 **Concrete quality bugs** (reasoned, not pattern-matched; flag only when the problem and the fix are both unambiguous):
 

@@ -1,10 +1,10 @@
-# Coding standards
+# Backend standards
 
-Layout, declarations, naming and test shapes for C# code; the frontend applies the same intent in TypeScript and Angular idiom, with no `any`. `.claude/CLAUDE.md` points here; read this file before writing or reviewing code. Domain and Application shapes are in `docs/layers/domain.md` and `docs/layers/application.md`.
+Layout, declarations, naming and test shapes for the C# code in `backend/`. `.claude/CLAUDE.md` points here; read this file before writing or reviewing backend code. The frontend and the deployment have their own: `docs/FRONTEND-STANDARDS.md` and `docs/DEPLOYMENT-STANDARDS.md`. Domain and Application shapes are in `docs/layers/domain.md` and `docs/layers/application.md`.
 
 ## Code style
 
-- **Line length:** 120 characters maximum (backend and frontend code).
+- **Line length:** 120 characters maximum.
 - **LINQ:** method syntax. Two or more calls, or a line over the limit, put each call on its own line starting with `.`, indented one level.
 - **Arguments and parameters:** one line when it fits, else one per line indented one level (constructor injection and initializers too). Never nest a wrapped call inside another: put the inner one in a named variable. Keep long literal text out of a call as a constant.
 - **Records and constructors:** the base list stays on the declaration line when it fits, else on the next line indented. A constructor initializer stays on the signature line when it fits, else on its own line.
@@ -13,7 +13,7 @@ Layout, declarations, naming and test shapes for C# code; the frontend applies t
 - **Usings:** `System` first, then alphabetical, one block above the file-scoped namespace; no unused usings (the build errors).
 - **Declarations:** `var` where the right side shows the type; explicit types only for built-in keyword types, lambdas, collection expressions and a base or interface type chosen on purpose. Never `Type name = new(...)`. Collections are `[]`. Classes are `sealed` unless built for inheritance. Records for commands, queries, DTOs, inputs, events, findings, details. Primary constructors for DI. Constants over `static readonly` for compile-time values.
 - **Member order:** constants, fields, constructors (private EF one first), properties (data, collections, computed, capability and audit last), public methods, internal, protected, private; a static factory first within its group.
-- No `#region`, no commented-out code, no TODO markers. Frontend: Prettier with `printWidth` set to the line length.
+- No `#region`, no commented-out code, no TODO markers.
 
 ## Naming
 

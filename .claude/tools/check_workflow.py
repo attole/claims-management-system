@@ -45,6 +45,7 @@ LAYER_FORBIDS = {
 SKILLS = ["design", "explore", "code-review", "dev-log", "spec-check", "ai-journal"]
 SKELETON = ["Triggers", "Procedure", "Output", "Handoff", "Guardrails"]
 CREATED_ON_REQUEST = {".claude/temp/review-rule-coverage.md"}
+VERBATIM_PREFIX = "docs/ai-transcripts/"
 JOURNAL_KEYS = {
     "PROMPT": (["purpose", "prompt", "outcome", "note"], {"outcome": {"kept", "changed", "dropped"}}),
     "CORRECTION": (["what", "caught-by", "fix", "lesson"],
@@ -102,7 +103,7 @@ def tracked_files():
 
 def check_ascii():
     for rel, path in tracked_files():
-        if "/Migrations/" in rel:
+        if "/Migrations/" in rel or rel.startswith(VERBATIM_PREFIX):
             continue
         if path.suffix in TEXT_SUFFIXES or path.name in {".gitignore", ".editorconfig"}:
             text = path.read_text(encoding="utf-8", errors="replace")
@@ -116,7 +117,7 @@ def check_citations():
     heads = {re.sub(r"`", "", m.group(1)).strip() for m in re.finditer(r"^#{1,4} (.+)$", claude, re.M)}
     labels = {m.group(1).strip().rstrip(":") for m in re.finditer(r"\*\*([^*]+)\*\*", claude)}
     for rel, path in tracked_files():
-        if path.suffix != ".md":
+        if path.suffix != ".md" or rel.startswith(VERBATIM_PREFIX):
             continue
         for m in re.finditer(r"(?:CLAUDE\.md |per |see |\()'([^']{3,80})'", path.read_text(encoding="utf-8")):
             cite = re.sub(r"`", "", m.group(1))
@@ -132,7 +133,7 @@ def check_architecture_citations():
         return fail("citation", "docs/ARCHITECTURE.md is missing")
     heads = {re.sub(r"`", "", m.group(1)).strip() for m in re.finditer(r"^#{1,4} (.+)$", doc, re.M)}
     for rel, path in tracked_files():
-        if path.suffix != ".md":
+        if path.suffix != ".md" or rel.startswith(VERBATIM_PREFIX):
             continue
         text = path.read_text(encoding="utf-8")
         for m in re.finditer(r"ARCHITECTURE\.md`?\s+(?:under\s+)?'([^']{3,80})'", text):
@@ -271,9 +272,19 @@ def check_skills():
         fail("skills", "docs/AI-WORKFLOW.md skill list differs from the skills on disk")
 
 
+def check_reference_links():
+    for rel, path in tracked_files():
+        if path.suffix != ".md" or rel.startswith(VERBATIM_PREFIX) or rel.startswith(".claude/temp/"):
+            continue
+        text = path.read_text(encoding="utf-8")
+        defined = set(re.findall(r"^\[([^\]]+)\]:", text, re.M))
+        for name in sorted(set(re.findall(r"\]\[([^\]]+)\]", text)) - defined):
+            fail("links", f"{rel}: reference link [{name}] has no definition")
+
+
 def check_paths():
     for rel, path in tracked_files():
-        if path.suffix != ".md":
+        if path.suffix != ".md" or rel.startswith(VERBATIM_PREFIX):
             continue
         for m in re.finditer(r"`((?:\.claude|docs|backend)/[^`\s]+)`", path.read_text(encoding="utf-8")):
             target = m.group(1)
@@ -542,13 +553,19 @@ def check_layer_docs():
             fail("layers", f"{rel} is not named in .claude/CLAUDE.md")
         if rel not in skill:
             fail("layers", f"{rel} is not named in the code-review skill")
+    for path in sorted((ROOT / "docs").glob("*-STANDARDS.md")):
+        rel = path.relative_to(ROOT).as_posix()
+        if rel not in claude:
+            fail("layers", f"{rel} is not named in .claude/CLAUDE.md")
+        if rel not in skill:
+            fail("layers", f"{rel} is not named in the code-review skill")
 
 
 def main():
     global ran
     rules = parse_register()
     for run in (check_ascii, check_citations, check_architecture_citations, check_headings, check_settings,
-                lambda: check_register(rules), lambda: check_quoted_counts(rules), check_skills, check_paths,
+                lambda: check_register(rules), lambda: check_quoted_counts(rules), check_skills, check_paths, check_reference_links,
                 check_journal, check_parking_lot, check_code_layout, check_frontend, check_overlap,
                 check_layer_docs):
         ran += 1

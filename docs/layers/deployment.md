@@ -1,6 +1,6 @@
 # Deployment layer
 
-Rules and contracts of the Azure environment and the GitHub Actions pipelines: `infra/` (Bicep, SQL scripts, the bootstrap runbook) and `.github/workflows/`. `.claude/CLAUDE.md` points here; read this file before changing either. Every Azure command and every deployment run asks first (CLAUDE.md 'Permissions model').
+Rules and contracts of the Azure environment and the GitHub Actions pipelines: `infra/` (Bicep, SQL scripts, the bootstrap runbook) and `.github/workflows/`. `.claude/CLAUDE.md` points here; read this file before changing either. How the templates, scripts and workflows are written is in `docs/DEPLOYMENT-STANDARDS.md`. Every Azure command and every deployment run asks first (CLAUDE.md 'Permissions model').
 
 ## Layout
 
@@ -17,8 +17,7 @@ infra/
     deployment.yml        manual only (workflow_dispatch), environment demo
 ```
 
-- One environment, `demo`, in one resource group (`rg-claims-demo`, Poland Central; the static web app in Central US, because West Europe refuses new subscriptions and only its management data lives there). Names are `<kind>-claims-demo-<suffix>` (the storage account, which allows no hyphens, is `stclaimsdemo<suffix>`), the suffix taken from the resource group id; every resource carries the `application` and `environment` tags.
-- Outputs are names and hostnames only; no secret is ever a parameter or an output. The one exception inside the template is the Application Insights connection string passed from the monitoring module to the web app; it is not a root output.
+- One environment, `demo`, in one resource group (`rg-claims-demo`, Poland Central; the static web app in Central US, because West Europe refuses new subscriptions and only its management data lives there).
 
 ## Azure resources
 
@@ -68,7 +67,6 @@ The template writes every app setting; the README 'Configuration' table lists wh
     - Build the frontend against the API's URL and upload it to the static web app.
     - The smoke test, last, so the API's cold start overlaps with the frontend steps.
 - **Smoke test:** `/health/ready` answers 200 within five minutes (the wait is the app's cold start), the dev token call returns a token, and `GET /api/claims` answers 200 with it, tried up to three times because the first query after a cold start failed once. A failure stops the run; there is no automatic rollback (one instance, no slot).
-- Actions are pinned to commit SHAs, workflow permissions are `contents: read` and `actions: read` (plus `id-token: write` on the deploy job), a deployment never cancels another, and a superseded build is cancelled.
 
 ## Bootstrap and teardown
 

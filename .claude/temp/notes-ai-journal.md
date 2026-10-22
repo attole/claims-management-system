@@ -746,3 +746,21 @@ what: the claim detail could lose its screen on a failed reload, and notes were 
 caught-by: code-review
 fix: the page keeps the last loaded claim through a failed reload, and notes count as saved only when a reload returns the same text
 lesson: a value is saved when the server confirms it, not when the button is clicked
+
+## CORRECTION-056 | p4 frontend | 2026-10-22
+what: Dialog helpers assumed Cancel closes with undefined; mat-dialog-close gives an empty string, so Cancel on status change, link policy and the reject prompt sent an empty write (415 or a refused reject)
+caught-by: user
+fix: Friend's 415 found in App Insights; I reproduced it by cancelling the dialog; Claude traced it, fixed three helpers with cancel tests and audited every dialog close and write
+lesson: Types hid the runtime value; test the cancel path of every dialog; production telemetry plus a manual repro found what green tests, lint and review missed
+
+## CORRECTION-057 | p5 review | 2026-10-22
+what: Said the demo had no Application Insights and that a one-off 500 would have left no trace, and advised dropping console logs; Log Analytics already held them and the startup error lives there
+caught-by: user
+fix: User asked if we already had it; code review then flagged the dropped console logs; console category restored, docs say which logs exist for which failure
+lesson: Read what the diagnostic setting captures before advising on logging; a monitoring change must keep the logs that exist when the app fails to start
+
+## CORRECTION-058 | p5 review | 2026-10-22
+what: Copied the Was/Has pair from a bool event onto a Guid event, so Has named an id; also put the event parameters on one line against the event shape
+caught-by: code-review
+fix: Renamed to FromHandlerId and ToHandlerId, one parameter per line, traits and local names fixed, the shared name helper moved next to userName
+lesson: Copying the nearest analogue copies its assumptions; the naming rule for bool members applies to the pair, so name it by its type
