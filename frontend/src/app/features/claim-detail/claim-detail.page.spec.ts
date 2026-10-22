@@ -5,6 +5,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 import { apiUrl } from '../../core/api/api-url';
+import { DEV_USERS } from '../../core/auth/dev-users';
 import { NotifyService } from '../../core/notify/notify.service';
 import {
   CLAIM_ID,
@@ -180,6 +181,18 @@ describe('ClaimDetailPage (S:UI-Detail-Header, S:UI-Detail-Tabs, S:UI-Reserves, 
 
     expect(link.request.body).toEqual({ policyId: 'p9' });
     expect(notify.success).toHaveBeenCalledWith('Policy linked with 1 warning(s).');
+  });
+
+  it('assigns the chosen handler, then reloads', async () => {
+    const { call } = await render();
+
+    call('assignHandler', DEV_USERS[1].id);
+    const assign = http.expectOne(apiUrl(`claims/${CLAIM_ID}/handler`));
+    assign.flush({ data: claimDetail().claim, warnings: [] });
+    await expectReload();
+
+    expect(assign.request.body).toEqual({ handlerId: DEV_USERS[1].id });
+    expect(notify.success).toHaveBeenCalledWith('Handler assigned to Sam Supervisor.');
   });
 
   it('saves the loss details and closes the editor', async () => {

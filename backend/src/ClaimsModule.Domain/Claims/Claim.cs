@@ -133,7 +133,11 @@ public sealed class Claim : AggregateRoot, ISoftDeletable, IStateful<ClaimState>
 
     public Outcome<Claim> AssignHandler(AssignHandlerInput input)
     {
-        return AssignHandlerOperation.Run(this, input).OnSuccess(() => Settle(input));
+        var wasHandlerId = AssignedHandlerId;
+
+        return AssignHandlerOperation.Run(this, input)
+            .OnSuccess(claim => Raise(new ClaimHandlerChangedEvent(Id, wasHandlerId, claim.AssignedHandlerId)))
+            .OnSuccess(() => Settle(input));
     }
 
     public Outcome<Claim> SetSeverity(SetSeverityInput input)

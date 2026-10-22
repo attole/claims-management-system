@@ -15,10 +15,15 @@ export const DEV_USERS: readonly DevUser[] = [
 
 export const SYSTEM_USER_NAME = 'System';
 export const UNKNOWN_USER_NAME = 'Unknown user';
+export const UNASSIGNED_HANDLER = 'Unassigned';
 
 export function userName(userId: string): string {
   const user = DEV_USERS.find((candidate) => candidate.id === userId);
   const fallback = userId === EMPTY_ID ? SYSTEM_USER_NAME : UNKNOWN_USER_NAME;
 
   return user?.name ?? fallback;
+}
+
+export function handlerName(handlerId: string): string {
+  return handlerId === EMPTY_ID ? UNASSIGNED_HANDLER : userName(handlerId);
 }

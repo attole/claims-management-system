@@ -197,6 +197,10 @@ export class ClaimDetailStore {
     return this.save('notes', (key) => this.claims.updateNotes(this.claimId(), notes, key));
   }
 
+  assignHandler(handlerId: string) {
+    return this.save(`handler:${handlerId}`, (key) => this.claims.assignHandler(this.claimId(), handlerId, key));
+  }
+
   linkPolicy(policy: Policy) {
     return this.save('policy', (key) => this.claims.linkPolicy(this.claimId(), policy.id, key));
   }

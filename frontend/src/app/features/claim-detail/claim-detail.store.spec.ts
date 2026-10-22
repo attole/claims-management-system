@@ -190,4 +190,24 @@ describe('ClaimDetailStore (S:UI-Detail-Header, S:UI-Audit, S:API-IdempotencyKey
       .expectOne((call) => call.url === apiUrl(`claims/${CLAIM_ID}/audit`))
       .flush({ items: [], page: 1, pageSize: 10, totalCount: 0, totalPages: 0 });
   });
+
+  it('assigns a handler under a key of its own target, then reloads the claim', async () => {
+    await load();
+
+    store.assignHandler('h2').subscribe({ error: () => undefined });
+    const first = http.expectOne(apiUrl(`claims/${CLAIM_ID}/handler`));
+    first.flush(null, { status: 503, statusText: 'Service Unavailable' });
+    store.assignHandler('h3').subscribe();
+    const other = http.expectOne(apiUrl(`claims/${CLAIM_ID}/handler`));
+    other.flush({ data: claimDetail().claim, warnings: [] });
+    await settle();
+
+    expect(first.request.body).toEqual({ handlerId: 'h2' });
+    expect(other.request.body).toEqual({ handlerId: 'h3' });
+    expect(other.request.headers.get('Idempotency-Key')).not.toBe(first.request.headers.get('Idempotency-Key'));
+    http.expectOne(apiUrl(`claims/${CLAIM_ID}`)).flush(claimDetail());
+    http
+      .expectOne((call) => call.url === apiUrl(`claims/${CLAIM_ID}/audit`))
+      .flush({ items: [], page: 1, pageSize: 10, totalCount: 0, totalPages: 0 });
+  });
 });

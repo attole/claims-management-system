@@ -114,6 +114,14 @@
     }
   </section>
 
+  <app-handler-panel
+    [handlerId]="detail().claim.assignedHandlerId"
+    [handlers]="handlers()"
+    [isSaving]="isSaving()"
+    [isEditable]="isEditable()"
+    (assigned)="handlerAssigned.emit($event)"
+  />
+
   <section class="card pad full" aria-labelledby="risk-title">
     <div class="card-head">
       <h2 id="risk-title">Risk objects</h2>

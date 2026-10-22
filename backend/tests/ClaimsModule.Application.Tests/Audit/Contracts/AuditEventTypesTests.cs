@@ -47,6 +47,7 @@ public sealed class AuditEventTypesTests
             "VALIDATION_ISSUE_WAIVED",
             "LIMIT_OVERRIDE_CHANGED",
             "RESERVE_COMPONENT_STATE_CHANGED",
-            "DOCUMENT_REMOVED");
+            "DOCUMENT_REMOVED",
+            "HANDLER_CHANGED");
     }
 }

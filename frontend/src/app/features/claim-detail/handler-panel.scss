@@ -1,0 +1,34 @@
+:host {
+  display: block;
+}
+
+.card {
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  background: var(--app-surface);
+}
+
+.pad {
+  padding: var(--app-gap) 20px 20px;
+}
+
+h2 {
+  margin: 0 0 var(--app-gap);
+  font: var(--mat-sys-title-medium);
+}
+
+.current {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0 0 var(--app-gap);
+}
+
+.muted {
+  color: var(--app-muted);
+}
+
+.wide {
+  width: 100%;
+  margin-bottom: var(--app-gap-small);
+}

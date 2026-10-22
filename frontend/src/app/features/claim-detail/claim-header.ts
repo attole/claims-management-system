@@ -5,12 +5,11 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { EMPTY_ID } from '../../core/api/api-ids';
 import { ClaimDetail, ClaimStatus } from '../../core/api/api.model';
-import { userName } from '../../core/auth/dev-users';
+import { handlerName } from '../../core/auth/dev-users';
 import { ClaimDatePipe } from '../../shared/pipes/claim-date.pipe';
 import { EnumLabelPipe } from '../../shared/pipes/enum-label.pipe';
 import { StatusBadge } from '../../shared/ui/status-badge';
 
-export const UNASSIGNED_HANDLER = 'Unassigned';
 export const UNKNOWN_POLICY = 'Not linked';
 
 @Component({
@@ -39,9 +38,5 @@ export class ClaimHeader {
     return detail.claim.policyId === EMPTY_ID ? UNKNOWN_POLICY : detail.policyNumber;
   });
 
-  protected readonly handlerName = computed(() => {
-    const handlerId = this.detail().claim.assignedHandlerId;
-
-    return handlerId === EMPTY_ID ? UNASSIGNED_HANDLER : userName(handlerId);
-  });
+  protected readonly handlerName = computed(() => handlerName(this.detail().claim.assignedHandlerId));
 }

@@ -13,12 +13,14 @@ import {
   RiskObject,
   UserRole,
 } from '../../core/api/api.model';
+import { DevUser } from '../../core/auth/dev-users';
 import { RiskObjectValue } from '../../shared/forms/risk-object-form';
 import { ClaimDatePipe } from '../../shared/pipes/claim-date.pipe';
 import { EnumLabelPipe } from '../../shared/pipes/enum-label.pipe';
 import { MoneyPipe } from '../../shared/pipes/money.pipe';
 import { RiskObjectEditor } from '../../shared/ui/risk-object-editor';
 import { canAcknowledge, canWaive } from '../../shared/util/action-gates';
+import { HandlerPanel } from './handler-panel';
 import { LossEditor } from './loss-editor';
 
 const SEVERITY_TONES: Readonly<Record<ClaimSeverity, string>> = {
@@ -43,6 +45,7 @@ const ISSUE_TONES: Readonly<Record<IssueSeverity, string>> = {
     MatInputModule,
     ClaimDatePipe,
     EnumLabelPipe,
+    HandlerPanel,
     LossEditor,
     MoneyPipe,
     RiskObjectEditor,
@@ -56,6 +59,7 @@ export class OverviewTab {
   readonly causeName = input.required<string>();
   readonly causeCodes = input<CauseCode[]>([]);
   readonly role = input<UserRole>('Handler');
+  readonly handlers = input<readonly DevUser[]>([]);
   readonly isSaving = input(false);
   readonly isEditable = input(true);
   readonly isEditingLoss = model(false);
@@ -64,6 +68,7 @@ export class OverviewTab {
   readonly notesSaved = output<string>();
   readonly acknowledged = output<Issue>();
   readonly waived = output<Issue>();
+  readonly handlerAssigned = output<string>();
   readonly lossSaved = output<LossRequest>();
   readonly riskObjectAdded = output<RiskObjectValue>();
   readonly primaryToggled = output<RiskObject>();

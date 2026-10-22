@@ -31,6 +31,7 @@ import {
 } from '../../core/api/api.model';
 import { FIELD_LENGTHS } from '../../core/api/api-limits';
 import { AuthService } from '../../core/auth/auth.service';
+import { DEV_USERS, userName } from '../../core/auth/dev-users';
 import { isRefusal, readErrorBody } from '../../core/http/error-body';
 import { NotifyService } from '../../core/notify/notify.service';
 import { partyName, PartyValue } from '../../shared/forms/party-form';
@@ -80,6 +81,7 @@ export class ClaimDetailPage {
   private readonly documentsTab = viewChild(DocumentsTab);
 
   protected readonly user = inject(AuthService).user;
+  protected readonly handlers = DEV_USERS;
   protected readonly nextStatuses = computed(() => allowedNextStatuses(this.store.nextStatuses(), this.user().role));
 
   protected readonly bannerMessages = signal<string[]>([]);
@@ -149,6 +151,10 @@ export class ClaimDetailPage {
     );
 
     this.run(removal, 'Risk object removed');
+  }
+
+  protected assignHandler(handlerId: string): void {
+    this.run(this.store.assignHandler(handlerId), `Handler assigned to ${userName(handlerId)}`);
   }
 
   protected saveNotes(notes: string): void {

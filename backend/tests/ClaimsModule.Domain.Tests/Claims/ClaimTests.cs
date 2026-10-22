@@ -623,6 +623,19 @@ public sealed class ClaimTests
             .Which.Should().Be(new AggregateLimitOverrideChangedEvent(claim.Id, false, true));
     }
 
+    [Fact]
+    public void AssignHandler_RaisesTheHandlerChangedEvent()
+    {
+        var claim = TestClaims.Empty();
+        claim.PopEvents();
+        var input = new AssignHandlerInput(TestClaims.Actor, TestClaims.Period(), TestClaims.Codes(), TestClaims.Start);
+
+        claim.AssignHandler(input);
+
+        claim.PopEvents().OfType<ClaimHandlerChangedEvent>().Should().ContainSingle()
+            .Which.Should().Be(new ClaimHandlerChangedEvent(claim.Id, Guid.Empty, TestClaims.Actor));
+    }
+
     private static CreateClaimInput CreateInput()
     {
         var input = new CreateClaimInput(

@@ -83,7 +83,7 @@ How the documents are read and carried out where they are ambiguous, silent or i
 | Reversal during payment | allowed; a reserve is independent of the claim state | none | gap |
 | Document aggregate | its own root, frozen with the claim; the size limit, the content-type allowlist and the content signature are Domain rules (the Application reads the first bytes and hands them in on the input); the Application builds the path and talks to storage | S:DOC-MaxSize, S:DOC-MimeAllowlist | mechanism |
 | Blob name | the specification's path with a random upload id before the file name (`{uploadId}_{name}`): a path is unique by construction, so a failed commit or a removed document never blocks a name, and an orphan blob only costs storage | S:BR-D-01 | departure |
-| Audited events | the specification's fixed list, plus five more types (issue acknowledged, issue waived, limit override changed, reserve component state changed, document removed) kept apart in `AuditEventTypes.Additional`, because a waiver or an override is a significant action (S:BR-A-02); other edits leave their trace in the audit columns | S:AUD-Events | gap |
+| Audited events | the specification's fixed list, plus six more types (issue acknowledged, issue waived, limit override changed, reserve component state changed, document removed, handler changed) kept apart in `AuditEventTypes.Additional`, because a waiver, an override or a change of owner is a significant action (S:BR-A-02); the first assignment of a handler belongs to the claim's creation and is not audited again; other edits leave their trace in the audit columns | S:AUD-Events | gap |
 | Guarded times and actors | a missing time or actor, or a business time earlier than the one it follows, throws | none | mechanism |
 | Error body | an error without a field goes under the key `General`, set in the API's one error mapper | S:API-ErrorShape | gap |
 | Claim list date range | filters the loss date of the claim | none | gap |
@@ -216,6 +216,7 @@ The Unit of Work dispatches the events an aggregate raised: before the save for 
 | `ValidationIssueAcknowledgedEvent`, `ValidationIssueWaivedEvent` | audit of the same names (additional types) | none |
 | `ValidationIssueClearedEvent` | none | none |
 | `AggregateLimitOverrideChangedEvent` | audit LIMIT_OVERRIDE_CHANGED | none |
+| `ClaimHandlerChangedEvent` | audit HANDLER_CHANGED (additional type), not for the first assignment | none |
 | `ReserveHistorySubmittedEvent` | audit RESERVE_CREATED | none |
 | `ReserveHistoryApprovalStateChangedEvent` | audit RESERVE_AUTO_APPROVED, RESERVE_APPROVED, RESERVE_REJECTED or RESERVE_RETRACTED | enqueue the posting job when the row is approved |
 | `ReserveHistoryPostingStateChangedEvent` | audit GL_POSTING_SIMULATED or GL_POSTING_FAILED, with the simulated journal | enqueue the posting job again when a failed row returns to pending |

@@ -45,5 +45,7 @@ public static class AuditEventTypes
         public const string ReserveComponentStateChanged = "RESERVE_COMPONENT_STATE_CHANGED";
 
         public const string DocumentRemoved = "DOCUMENT_REMOVED";
+
+        public const string HandlerChanged = "HANDLER_CHANGED";
     }
 }

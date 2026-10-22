@@ -2,7 +2,9 @@ import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { Issue, LossRequest, RiskObject } from '../../core/api/api.model';
 import { provideAppDateAdapter } from '../../core/dates/app-date-adapter';
+import { DEV_USERS } from '../../core/auth/dev-users';
 import { claimDetail, OTHER_RISK_OBJECT, PRIMARY_RISK_OBJECT, RAISED_ISSUE } from './claim-detail.fixtures';
+import { HandlerPanel } from './handler-panel';
 import { LossEditor } from './loss-editor';
 import { OverviewTab } from './overview-tab';
 
@@ -143,5 +145,18 @@ describe('OverviewTab (S:UI-Detail-Tabs)', () => {
     );
 
     expect(makePrimary?.disabled).toBe(true);
+  });
+
+  it('shows the handler panel and passes its assignment on', async () => {
+    const { fixture, element } = await render();
+    const assigned: string[] = [];
+    fixture.componentInstance.handlerAssigned.subscribe((id) => assigned.push(id));
+    fixture.componentRef.setInput('handlers', DEV_USERS);
+    await fixture.whenStable();
+
+    fixture.debugElement.query(By.directive(HandlerPanel)).componentInstance.assigned.emit(DEV_USERS[1].id);
+
+    expect(element.querySelector('[aria-labelledby="handler-title"]')?.textContent).toContain('Hana Handler');
+    expect(assigned).toEqual([DEV_USERS[1].id]);
   });
 });
