@@ -13,10 +13,7 @@ The API's controllers, error body, identity, correlation, Idempotency-Key filter
 - An action maps the request to one command or query, sends it through MediatR and returns the mapped `Result`. It holds no business logic and builds no error JSON.
 - Routes are plural kebab-case nouns under `/api`, except the specification's own names (`/status`, `/reference/...`); the route test allows exactly the routes listed here. The reserve decision routes are the specification's, which name a history row. Three assessment routes are not built: a reserve update, a combined decision route and a policy coverage route (the policy search result carries the coverage types).
 - Routes exist only for the three screens, the specification's route table and the set-up of a draft. The other Application commands (severity, limit override, remove a document) have no route.
-- The routes (S:API-POST-claims, S:API-GET-claims, S:API-GET-claim, S:API-PUT-claims-status, S:API-GET-claims-audit, S:API-POST-claims-parties, S:API-DELETE-claims-parties, S:API-POST-claims-documents, S:API-GET-claims-documents, S:API-POST-reserves, S:API-GET-reserves, S:API-POST-reserve-approve, S:API-POST-reserve-reject, S:API-POST-reserve-retract, S:API-GET-causes, S:API-GET-statuses, S:API-GET-policies-search):
-  - the specification's table, under `/api/claims`, `/api/reference` and `/api/policies`;
-  - beyond the table, each for a screen element or the draft set-up: the notes update (Overview tab), the retry of a failed GL posting (Reserves tab, `RetryReservePostingCommand`), the closure pre-check, and the routes that let a Draft reach Open: assign the handler, link a policy, update the loss details, acknowledge and waive an issue, add, update and remove a risk object (the update sets or unsets the primary from the Overview tab). A claim is created with its creator as handler, so the handler route only changes the handler.
-- Reads reuse the composed queries; the paths are under Wire format, below.
+- The routes are the specification's table (`S:API-*`) under `/api/claims`, `/api/reference` and `/api/policies`, plus routes that serve a screen element or the set-up of a draft: the notes update, the retry of a failed GL posting, the closure pre-check, and the routes that let a Draft reach Open (assign the handler, link a policy, update the loss, acknowledge and waive an issue, add, update and remove a risk object). A claim is created with its creator as handler, so the handler route only changes the handler. The full list with paths is under Wire format, below.
 
 ## Closure pre-check
 
@@ -69,7 +66,6 @@ A key saved with no response means the request is still running or crashed after
 - Document routes under `/api/claims/{claimId}/documents`: `GET /` (links) and `POST /` (201, multipart with `file`, `documentType` and `notes`), plus the anonymous `GET /api/documents/download?token=` (see Documents, below). A file whose first bytes do not match its declared type answers 422 with `DOC_CONTENT_MISMATCH`.
 - Reads: `GET /api/claims`, `GET /api/policies/search?q=`, `GET /api/reference/cause-of-loss-codes` (optional `perilCategory`), `GET /api/reference/claim-statuses` (each status with its allowed next statuses).
 - A body or query string binds to a record in `Controllers/Requests/` that maps itself to its command or query (`ToCommand`); an Application request record with its own validator (the party, loss, risk object and reserve bodies) is used as the body as it is.
-- `POST /api/dev/token` takes `{ userId }` (see Identity and correlation, above).
 
 ## Documents
 

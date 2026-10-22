@@ -9,6 +9,7 @@ It covers claim intake, the claim lifecycle, parties, reserves with tiered appro
 - `docs/ARCHITECTURE.md`: the design overview, the decisions and the reasons.
 - `docs/CODING-STANDARDS.md`: code style, naming and tests.
 - `docs/layers/`: the rules and contracts of each backend layer, `frontend.md` for the Angular client and `deployment.md` for Azure and the pipelines.
+- `infra/`: the Bicep template, SQL scripts, the one-time `bootstrap.ps1` and the demo data script; `.github/workflows/`: build and test, and the manual deployment.
 - `docs/AI-WORKFLOW.md`: how AI is used in this project.
 - `frontend/design/`: static HTML mockups of the three screens, the visual reference (not part of the build).
 
@@ -75,7 +76,7 @@ All routes are under `/api` and need a bearer token, except `POST /api/dev/token
 - A refusal answers `{ "type", "title", "status", "errors" }` with 401, 403, 404, 409 or 422.
 - Enums are sent and read as their names. Every response carries `X-Correlation-Id`.
 - Send `Idempotency-Key: <value>` on any write to make a retry safe: the same key with the same body returns the first successful response, with a different body it answers 422. A refused or failed write is not stored, so the same key can be retried once the cause is fixed.
-- `docs/layers/api.md` has the rules behind all of this.
+- `docs/layers/api.md` has the rules and the full route list.
 
 ## Configuration
 

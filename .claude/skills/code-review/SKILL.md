@@ -70,24 +70,24 @@ Get each file's diff for the same scope (`git diff HEAD -- "<file>"`, or `git di
 
 The structural C# standards apply to the backend. For frontend files apply syntax hygiene, the frontend checks, and the concrete-bug classes.
 
-**CLAUDE.md standards** (a checklist, not a restatement; read the sections there):
+**Standards** (a checklist, not a restatement; the rules are in CLAUDE.md 'Core rules', `docs/CODING-STANDARDS.md` and `docs/layers/domain.md`):
 
-- 'Newest syntax & APIs': collection expressions, pattern matching, `required` members over older forms
-- 'No null': a null return or null-initialized field in Domain/Application (preferred elsewhere); null not converted at a boundary
-- 'Extract logic into `private static` methods': methods reading no instance state and having no side effects but not static
-- 'Cyclomatic complexity <= 4 per method': a method over 4
-- 'API results go through one result abstraction': a controller hand-building error JSON, or Application returning HTTP types
+- Newest syntax: collection expressions, pattern matching, `required` members over older forms
+- No null: a null return or null-initialized field in Domain/Application (preferred elsewhere); null not converted at a boundary
+- Small methods: methods reading no instance state and having no side effects but not static
+- Complexity: a method over 4
+- Result abstraction: a controller hand-building error JSON, or Application returning HTTP types
 - 'Syntax hygiene': missing braces; `==` on strings where `StringComparison` matters; `==` on reference types
-- 'Code style': a line over the line length; a LINQ chain not laid out one call per line; a wrapped call nested in another call; layout, declaration (`var`, explicit empty values, `foreach` with `var`) or member-order rules broken
-- 'Code shapes': a rule, operation, transition, entity, root method, details record, closed set, event, options class or extension class that departs from its shape
-- 'Files and folders': more than one type per file or a file name that differs from its type; a block-scoped namespace; an interface outside Application when Infrastructure or Persistence implements it, or not named `I<Name>`; a file outside the folder 'Domain folders' prescribes
-- 'Naming': a type whose name does not say its role; a bool member without `Is`, `Has`, `Can` or `Should`; a single-letter or type-in-name identifier; a method name that breaks the `Create`, `From`, `As`, `Get` conventions; `Async`, `CancellationToken` or `sealed` conventions broken
-- 'Domain modeling', 'Domain engine' and 'Extending the Domain': a rule not named `Is`/`Has` or without a `Code` constant; a precondition inline in an operation instead of a rule; the Domain reading a clock outside `Ids`; a child entity changed from outside its aggregate; a state change outside a transition; a layer referencing a higher layer
-- 'Tests': a test class not mirroring its source folder; a name that is not `<Subject>_<Condition>_<Result>`; a test with more than one act, an act that is not one statement, the input built inside the act block, a result not named `outcome`, `result` or `act`; a test asserting a message instead of a code; a missing or misplaced `Trait`
-- 'No explanatory comments': comments added (exceptions: user-requested, XML docs on public API)
-- 'Migrations': a hand-edited migration
-- 'Architecture': a type in the wrong project, a project reference pointing outward; state change not a Command, or a read not a Query; Unit of Work bypassed; domain event not raised on a significant transition; missing FluentValidation validator for a command; validation not wired as a MediatR pipeline behavior; AutoMapper profile outside Application; storage or audit reached without `IStorageService` / `IAuditLogService`; audit written straight to the `DbContext` from a handler
-- 'Data & naming conventions': entity configuration via data annotations instead of Fluent API; decimal without `HasPrecision(19, 4)`; missing soft-delete or tenant query filter, audit columns, or `RowVer` on an aggregate root; seed data applied at startup; hard-coded GUID in logic; command, query, DTO, or route names off-pattern
+- Code style: a line over the line length; a LINQ chain not laid out one call per line; a wrapped call nested in another call; layout, declaration (`var`, explicit empty values, `foreach` with `var`) or member-order rules broken
+- Code shapes (`docs/layers/domain.md`): a rule, operation, transition, entity, root method, details record, closed set, event, options class or extension class that departs from its shape
+- Files and folders: more than one type per file or a file name that differs from its type; a block-scoped namespace; an interface outside Application when Infrastructure or Persistence implements it, or not named `I<Name>`; a file outside the folder `docs/layers/domain.md` 'Domain folders' prescribes
+- Naming: a type whose name does not say its role; a bool member without `Is`, `Has`, `Can` or `Should`; a single-letter or type-in-name identifier; a method name that breaks the `Create`, `From`, `As`, `Get` conventions; `Async`, `CancellationToken` or `sealed` conventions broken
+- Domain modeling, engine and extending (`docs/layers/domain.md`): a rule not named `Is`/`Has` or without a `Code` constant; a precondition inline in an operation instead of a rule; the Domain reading a clock outside `Ids`; a child entity changed from outside its aggregate; a state change outside a transition; a layer referencing a higher layer
+- Tests: a test class not mirroring its source folder; a name that is not `<Subject>_<Condition>_<Result>`; a test with more than one act, an act that is not one statement, the input built inside the act block, a result not named `outcome`, `result` or `act`; a test asserting a message instead of a code; a missing or misplaced `Trait`
+- No explanatory comments: comments added (exceptions: user-requested, XML docs on public API)
+- Migrations: a hand-edited migration
+- Architecture: a type in the wrong project, a project reference pointing outward; state change not a Command, or a read not a Query; Unit of Work bypassed; domain event not raised on a significant transition; missing FluentValidation validator for a command; validation not wired as a MediatR pipeline behavior; AutoMapper profile outside Application; storage or audit reached without `IStorageService` / `IAuditLogService`; audit written straight to the `DbContext` from a handler
+- Data conventions: entity configuration via data annotations instead of Fluent API; decimal without `HasPrecision(19, 4)`; missing soft-delete or tenant query filter, audit columns, or `RowVer` on an aggregate root; seed data applied at startup; hard-coded GUID in logic; command, query, DTO, or route names off-pattern
 
 **Concrete quality bugs** (reasoned, not pattern-matched; flag only when the problem and the fix are both unambiguous):
 

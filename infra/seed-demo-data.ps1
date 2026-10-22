@@ -449,8 +449,8 @@ for ($index = 0; $index -lt $Count; $index++) {
             Location            = (Get-OneOf $locations)
             EstimatedLossAmount = (Get-Amount 800 220000)
         }
-        Parties     = (New-Parties)
-        RiskObjects = (New-RiskObjects $cause)
+        Parties     = @(New-Parties)
+        RiskObjects = @(New-RiskObjects $cause)
         Reserves    = @()
     }
     if ($target -eq 'Draft' -and (Get-Chance 0.4)) {

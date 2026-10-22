@@ -37,13 +37,16 @@ My prompts describe structure, behavior and guarantees, not code. Style and conv
 
 ## Instruction layers
 
-Rules are split so that only what is always needed is loaded every session:
+Rules are split so that only what is always needed is loaded every session (`CLAUDE.md` holds the gates and the core rules; the detailed style, naming and test shapes load when Claude reads the file it points to):
 
 - `.claude/CLAUDE.md`: the short project rules (workflow, output, permissions, the main coding rules). Skills cite its sections by name.
 - `docs/CODING-STANDARDS.md` and one file per layer in `docs/layers/`: the detailed rules for code style and naming, and for each layer its rules and its contracts with the neighbouring layers. Claude reads the file of the layer it changes or reviews.
 - `docs/ARCHITECTURE.md`: the reasons and the decisions, updated as they change.
 - `.claude/skills/<name>/SKILL.md`: the procedures for design, review and the other skills.
-- `.claude/temp/`: working notes, the parking lot and the AI journal.
+- `.claude/settings.json`: the deny list (the hard layer in every mode) and allow and ask entries for sessions that are not in bypass mode.
+- `.claude/tools/check_workflow.py`: the consistency check; `CLAUDE.md` 'Workflow check' says when it runs.
+- `.claude/temp/`: committed working notes named `<kind>-<topic>.md`: the parking lot and the AI journal.
+- `*.local.md`: gitignored local-only files: copies of the confidential task documents, the rule register and a note with the assessment context. A clone does not have them, so Claude checks for them at the start of a session.
 
 ## Safeguards
 
@@ -62,15 +65,6 @@ Each of these has one fixed format and procedure, so the result does not depend 
 - **AI journal** (`.claude/temp/notes-ai-journal.md`, written by the ai-journal skill). Append-only: a header `## TYPE-NNN | phase | date` and fixed `key: value` lines. Types are PROMPT, CORRECTION, SPLIT, ASSESSMENT, SESSION and SUMMARY, and counters are never reused. The skill compiles the correction section below from these entries.
 - **Rule register and spec-check** (`docs/rules.local.md`, `.claude/skills/spec-check/SKILL.md`). A trimmed index of the local task documents: 151 one-line rules (122 from the spec, 29 from the assessment) as `ID | area | paraphrase | source | flags`, with a `conflict:` flag (22 rules) where the documents disagree. IDs are source-qualified and stable, and code carries the same ID (`[Trait("Rule", "S:BR-R-03")]`).
 - **Workflow check** (`.claude/tools/check_workflow.py`). A read-only script that verifies these files against each other and against the code: citations, the settings deny rules, the register, the note formats, overlap with the confidential documents, and the code layout the standards describe (line length, comments, namespaces, naming, Domain layering, the test mirror). It prints one line per finding and runs after edits, after each code pack and before commits.
-
-## Claude system
-
-- `.claude/CLAUDE.md`: the project rules.
-- `.claude/skills/<name>/SKILL.md`: project skills: design, explore, code-review, dev-log, spec-check, ai-journal.
-- `.claude/settings.json`: the deny list (the hard layer in every mode) and allow and ask entries for sessions that are not in bypass mode.
-- `.claude/tools/check_workflow.py`: the consistency check; `CLAUDE.md` 'Workflow check' says when it runs.
-- `.claude/temp/`: committed working notes named `<kind>-<topic>.md`: the parking lot and the AI journal.
-- `*.local.md`: gitignored local-only files: copies of the confidential task documents, the rule register and a note with the assessment context. A clone does not have them, so Claude checks for them at the start of a session.
 
 ## AI correction journal
 

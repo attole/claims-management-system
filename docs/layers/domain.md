@@ -16,7 +16,7 @@ Each kind of class has one shape.
 - **Details record:** identifying values positional, optional ones `{ get; init; }` with an explicit empty default.
 - **Closed set:** one file named after the base type holding the marker enum, the abstract record and the sealed variants with `() : Base(Kind.Value)`; a variant with behavior overrides the base member in a body.
 - **Event:** a positional record `<Thing><PastVerb>Event(<ids and facts>) : DomainEvent`, one parameter per line, carrying business facts only; its id, time and actor come from the extended event the Application wraps it in at dispatch.
-- **Options and extension classes** are in `.claude/CLAUDE.md` 'Code shapes'.
+- **Options and extension classes** are in `.claude/CLAUDE.md` 'Core rules'.
 
 ## Domain and Application
 
@@ -67,7 +67,7 @@ Names follow `docs/CODING-STANDARDS.md` 'Naming', folders 'Domain folders'.
 - **A new entity in an aggregate:** a private parameterless constructor, a `Details` record, private setters and `internal` mutators; an `internal` operation in `Flows/` with its input in `Inputs/`, and a public root method chaining the event and `Settle`; every precondition as a rule; a stored completeness problem as a rule in the entity's `Rules/` that the issue evaluation checks; tests in the mirrored folders and an entry in `EntityConstructionTests`.
 - **A new aggregate:** a top-level folder shaped like `Claims/`, a base input in its `Inputs/` (and a base transition in `Flows/` when it has a lifecycle), a creation operation behind a public static method named by the domain verb that chains its event, the capability interfaces it needs, and other aggregates referenced by id only.
 - **A fact from outside the aggregate:** a plain field on the step's input, computed by one Application query; one record only when several fields come together from one aggregate (`ClaimReference`: the claim's id, organisation and state, from `claim.Reference`, to open a reserve component); never a load inside the Domain.
-- **State:** a lifecycle is a closed set in a state property (`State`, `ApprovalState`) with an `internal` setter. A move is a transition ('Code shapes'); a change beyond the move is a separate operation the Application runs in the same Unit of Work. The aggregate method raises the state-changed event in a follow-up. Who may move is a rule on the transition (`HasMinimumRole` with the lowest role needed); `UserRole` variants list the roles whose rights they hold, so the nesting is stated once. `OpenClaimTransition` is the reference.
+- **State:** a lifecycle is a closed set in a state property (`State`, `ApprovalState`) with an `internal` setter. A move is a transition (Code shapes, above); a change beyond the move is a separate operation the Application runs in the same Unit of Work. The aggregate method raises the state-changed event in a follow-up. Who may move is a rule on the transition (`HasMinimumRole` with the lowest role needed); `UserRole` variants list the roles whose rights they hold, so the nesting is stated once. `OpenClaimTransition` is the reference.
 
 ## Provides and expects
 

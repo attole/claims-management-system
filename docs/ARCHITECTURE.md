@@ -11,7 +11,7 @@ Clean Architecture with five projects, dependencies pointing inward: `API` -> `A
 - **Persistence:** EF Core mapping, the readers that project straight into DTOs, the Unit of Work, and a save interceptor for the audit columns, soft delete, tenant and claim-row touch.
 - **Infrastructure:** the Hangfire jobs (posting, SLA, the posting sweep, the idempotency cleanup, the orphan blob sweep) and outside adapters such as Blob storage.
 - **API:** controllers, the error mapping, the Idempotency-Key filter and startup.
-- **Deployment:** one Azure environment from Bicep (App Service for the API with Hangfire in process, Azure SQL with Entra-only access through a managed identity, Blob storage, Key Vault references for every secret, a static web app for the frontend) and two GitHub Actions workflows: build and test on every pull request and push to main, and a manual deployment that provisions, migrates, grants, deploys and smoke-tests.
+- **Deployment:** one Azure environment from Bicep and two GitHub Actions workflows, build and test, and a manual deployment of a tested build (`docs/layers/deployment.md`).
 - **Frontend:** an Angular client with one page and one store per screen, standalone OnPush components on signals, and every HTTP call in hand-written typed services over types generated from the API's OpenAPI document. It validates shape and shows hints; every business decision is the server's, and a refusal comes back as a 422 mapped onto the form or a banner.
 
 Each layer's rules and contracts are in `docs/layers/`. Key choices:
@@ -26,7 +26,7 @@ Each layer's rules and contracts are in `docs/layers/`. Key choices:
 
 ## Configuration
 
-Settings, secrets and feature switches follow `.claude/CLAUDE.md` 'Configuration'; the settings table and setup steps are in the root `README.md`. Two points are specific to this design:
+Settings, secrets and feature switches follow `.claude/CLAUDE.md` 'Configuration'; the settings table is in the root `README.md`. Two points are specific to this design:
 
 - The Hangfire dashboard is open to every request when its switch is on, because a page load carries no bearer token; it stays off outside development.
 - `POST /api/dev/token` is the simulated sign-in the specification asks for (S:UI-General). It is open on purpose: the specification asks for a mock authentication with hardcoded users, so anyone who can reach the route can sign in as any configured user. That is acceptable only on fake data, and an extra access code was tried and removed because it burdened testers and reviewers more than it protected.
@@ -83,8 +83,6 @@ How the documents are read and carried out where they are ambiguous, silent or i
 | Reversal during payment | allowed; a reserve is independent of the claim state | none | gap |
 | Document aggregate | its own root, frozen with the claim; the size limit, the content-type allowlist and the content signature are Domain rules (the Application reads the first bytes and hands them in on the input); the Application builds the path and talks to storage | S:DOC-MaxSize, S:DOC-MimeAllowlist | mechanism |
 | Blob name | the specification's path with a random upload id before the file name (`{uploadId}_{name}`): a path is unique by construction, so a failed commit or a removed document never blocks a name, and an orphan blob only costs storage | S:BR-D-01 | departure |
-| Lazy-loaded feature modules | each screen is a lazily loaded route file of standalone components, without NgModules | S:UI-General | reading |
-| Mock authentication | the header's role switcher signs in through the API's dev token route as one of three configured users, so the interceptor sends a real bearer token | S:UI-General | mechanism |
 | Audited events | the specification's fixed list, plus five more types (issue acknowledged, issue waived, limit override changed, reserve component state changed, document removed) kept apart in `AuditEventTypes.Additional`, because a waiver or an override is a significant action (S:BR-A-02); other edits leave their trace in the audit columns | S:AUD-Events | gap |
 | Guarded times and actors | a missing time or actor, or a business time earlier than the one it follows, throws | none | mechanism |
 | Error body | an error without a field goes under the key `General`, set in the API's one error mapper | S:API-ErrorShape | gap |
@@ -94,7 +92,7 @@ How the documents are read and carried out where they are ambiguous, silent or i
 
 ### Schema departures from the spec
 
-Table names are the spec's (section 9): `Claims`, `LossEvents`, `ClaimParties`, `ClaimRiskObjects`, `ClaimReserveComponents`, `ReserveHistory`, `ClaimDocuments`, `ClaimAuditLog`, `CauseOfLossCodes`, `Policies`. The entity classes keep their Domain names and map to these tables with `ToTable`.
+Table names are the spec's (section 9, listed in `docs/layers/persistence.md`); the entity classes keep their Domain names and map to them with `ToTable`.
 
 | Change | Departure | Why |
 |---|---|---|
@@ -152,30 +150,18 @@ Conditions and constants that no document states and that this repo added. Each 
 | Read | Recent audit entries | the claim detail shows 10 | none |
 | Read | Page size cap | a page holds at most 100 rows | none |
 | UI | Handler filter | the claims list filters the handler with a select of the known users instead of a text search, because the list API filters by handler id and the summary rows carry no handler name | S:UI-List |
-| Audit | Additional event types | acknowledged and waived issues, limit override changes (only when the value changes), reserve component state changes and removed documents are audited besides the specification's fixed list | AuditEventTypes.Additional |
 | Job | Batch caps | one SLA run flags at most 500 claims and one posting sweep re-enqueues at most 500 rows; the rest wait for the next run | none |
 
 ## Backend details
 
 ### Engine
 
-- The engine is generic and lives in `Domain/Core` in two layers, `Core/Rules` and `Core/Flows`; it knows nothing about claims or reserves. A rule reports findings about a subject; a finding has a code, a message, a field, a severity (Critical by default, or Warning) and the evidence (the checked values).
-- A step is an operation, a creation or a transition. It declares its rules once, checks all of them before it changes anything, stops on a Critical finding and otherwise applies its change in one place, returning an `Outcome` (`IsSuccess`, `Value`, `CriticalFindings`, `WarningFindings`). A transition moves a subject between states and returns the `Move`; a move from an undeclared state is one finding.
-- An aggregate method is one step plus its follow-ups chained on the outcome. Follow-ups never change the outcome, and the Application reads only the outcome:
+The engine's shapes and vocabulary are in `docs/layers/domain.md` 'Domain engine'; this is why it is built that way.
 
-```csharp
-public Outcome<ClaimParty> AddParty(AddPartyInput input)
-{
-    return AddPartyOperation.Run(this, input)
-        .OnSuccess(party => Raise(new PartyAddedEvent(Id, party.Id, party.Details.Role.Name)))
-        .OnSuccess(() => Settle(input));
-}
-```
-
-- On the claim, `Settle` re-evaluates the issues: each stored issue is reconciled with its rule by code and evidence (a new finding raises an issue, a fixed problem clears it, a waived or acknowledged one stays resolved while the same finding remains).
-- A change to an existing child is split: the aggregate's step finds the child by id and runs the aggregate's rules; the child's own method runs the child's step with the child's rules and raises the child's events.
+- A step declares its rules once, checks all of them before it changes anything and returns an `Outcome`, so a refused change never half-applies and every method has the same order and error handling.
+- An aggregate method is one step plus follow-ups chained on the outcome (raise the event, `Settle`); a follow-up cannot change the outcome, so a condition that could refuse is a rule on the step.
 - A rule failure is a finding; a broken invariant throws. Not found, forbidden and conflict belong to the Application.
-- A closed set (a state, a role, a type) is a marker enum plus a record per value, found by one reflection helper; a test loops over every value, so a variant without its enum value fails the build.
+- A closed set (a state, a role, a type) is a marker enum plus a record per value; a test loops over every value, so a variant without its enum value fails the build.
 
 ### Inputs
 
@@ -197,11 +183,9 @@ The Domain loads nothing and knows no identity. Everything a change needs that t
 
 ### Rules
 
-- A rule is an internal class with a `Code` (the source-qualified rule ID, or an upper-snake code for a rule that guards the system's own contract), a `Message` and a `Field`. It takes the facts it reads as plain values and maps one true-or-false statement to its finding. A fact lives on its lowest owner, so two rules with different codes share one fact.
-- A combined rule runs other rules over one part of an aggregate (`HasValidLossDetails`) and has no finding of its own.
-- The finding states its severity and the step decides the consequence: a step stops on a Critical finding, while the issue evaluation stores each finding as an issue. A warning that must block is its own rule with its own Critical finding.
-- Reserve authority is a set of rules over the amount: up to 10,000 may be auto-approved, approving up to 100,000 needs a supervisor, anything above needs a manager, nobody approves their own row, and a change that would take the claim over 10 million needs the manager override.
-- The rules are listed by their `Code` in the `Rules/` folders and cited by that code in the tests.
+Rules are classes with a source-qualified or UPPER_SNAKE `Code` (shape in `docs/layers/domain.md` 'Code shapes'). The finding states its severity and the step decides the consequence: a step stops on a Critical finding, while the issue evaluation stores each finding as an issue. A warning that must block is its own rule with its own Critical finding.
+
+Reserve authority: up to 10,000 may be auto-approved, approving up to 100,000 needs a supervisor, anything above needs a manager, nobody approves their own row, and a change that would take the claim over 10 million needs the manager override.
 
 ### Request flow
 
@@ -240,15 +224,7 @@ The Unit of Work dispatches the events an aggregate raised: before the save for 
 
 ### Background jobs
 
-| Job | Trigger | What it does | Idempotency |
-|---|---|---|---|
-| Posting (GL simulation) | enqueued after the commit of an approval, and again on a retry | marks the history row posted, which writes the simulated journal entry to the audit log, or marks it failed after the retries | the row computes the key `Reserve:{component id}:Change:{sequence}`; marking a row that is already posted is a no-op, so a second run writes nothing |
-| SLA detection | recurring, every 15 minutes | writes SLA_BREACH_DETECTED for a Draft or Open claim not updated for 48 hours, at most 500 a run | no entry for a claim flagged in the last 24 hours |
-| Posting sweep | recurring, every 5 minutes | enqueues the posting job again for an approved row still unposted after 10 minutes, at most 500 a run | the posting job is idempotent |
-| Idempotency cleanup | recurring, hourly | deletes stored Idempotency-Key rows older than 24 hours | a delete of expired rows only |
-| Blob sweep | recurring, every 12 hours, off by default | deletes stored blobs no document row refers to | a blob already gone is ignored |
-
-A job holds no business logic: it sends a command through MediatR with its own scope and tenant. The details are in `docs/layers/infrastructure.md`.
+Posting (the GL simulation), SLA detection, the posting sweep, the Idempotency-Key cleanup and the orphan blob sweep are described, with cadence, retries and idempotency, in `docs/layers/infrastructure.md` 'Jobs'. A job holds no business logic: it sends a command through MediatR with its own scope and tenant.
 
 ### Data model
 
