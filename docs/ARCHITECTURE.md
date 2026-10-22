@@ -28,7 +28,7 @@ Each layer's rules and contracts are in `docs/layers/`. Key choices:
 
 Settings, secrets and feature switches follow `.claude/CLAUDE.md` 'Configuration'; the settings table is in the root `README.md`. Two points are specific to this design:
 
-- The Hangfire dashboard is open to every request when its switch is on, because a page load carries no bearer token; it stays off outside development.
+- The Hangfire dashboard is open to every request when its switch is on, because a page load carries no bearer token; it is on only in development and in the fake-data demo.
 - `POST /api/dev/token` is the simulated sign-in the specification asks for (S:UI-General). It is open on purpose: the specification asks for a mock authentication with hardcoded users, so anyone who can reach the route can sign in as any configured user. That is acceptable only on fake data, and an extra access code was tried and removed because it burdened testers and reviewers more than it protected.
 
 ## Task documents

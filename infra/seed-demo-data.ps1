@@ -18,6 +18,14 @@
       - Zero to three reserve components per claim, each with a history of additions, adjustments and
         reversals in mixed states: approved, waiting for approval and rejected.
       - PDF documents and notes on some claims (the documents also exercise the Azure Blob adapter).
+      - Reserves at the limits: three claims reach the 10 million claim limit (approvals that would pass it are
+        refused) and five sit at the edges of the approval tiers (10,000 approves itself, 100,000 needs a
+        supervisor, 100,050 a manager). Rows end approved, auto-approved, rejected, retracted or waiting.
+      - Validation issues in every status: some claims have a policy that does not cover the loss date (the warning
+        is acknowledged before opening, or left raised on a draft), a too short description or a loss date in the
+        future (critical, waived by a supervisor, or left raised on a draft), an unknown cause of loss or no
+        claimant (critical, cannot be waived, so the claim stays a draft) and no risk object (a warning that stays
+        raised).
 
     Every step is attempted on its own: a refusal is counted and shown, and the run goes on. It stops before
     doing anything when claims already exist, unless -Force is given.
@@ -53,6 +61,8 @@ $ErrorActionPreference = 'Stop'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 $script:Failures = New-Object System.Collections.ArrayList
+$script:ExpectedRefusals = New-Object System.Collections.ArrayList
+$script:LimitClaims = 0
 $script:Random = New-Object System.Random($Seed)
 
 # --- Helpers -------------------------------------------------------------------------------------------------
@@ -304,8 +314,8 @@ function New-RiskObjects([string]$Cause) {
     return $objects
 }
 
-# The coverage of a policy is checked on the loss date; one claim in thirty gets a policy that does not cover it,
-# which leaves a draft with a policy-period warning.
+# The coverage of a policy is checked on the loss date; about one claim in twelve gets a policy that does not cover it,
+# which raises a policy-period warning.
 function Select-Policy([datetime]$LossDate, [bool]$IsOutsidePeriod) {
     $covering = @($policies | Where-Object { [datetime]$_.effectiveDate -le $LossDate.Date -and [datetime]$_.expirationDate -ge $LossDate.Date })
     $others = @($policies | Where-Object { $covering -notcontains $_ })
@@ -343,11 +353,16 @@ function Resolve-Row($Claim, $Row, [bool]$MustApprove) {
 
     $approver = Get-Approver $Claim.SubmitterRole $amount
     $fate = if ($MustApprove) { 'Approve' }
-    elseif ($Claim.IsSettled) { Get-Weighted @{ Approve = 85; Reject = 15 } }
-    else { Get-Weighted @{ Approve = 76; Reject = 10; Wait = 14 } }
+    elseif ($Claim.IsSettled) { Get-Weighted @{ Approve = 78; Reject = 14; Retract = 8 } }
+    else { Get-Weighted @{ Approve = 58; Reject = 12; Wait = 18; Retract = 12 } }
+    $path = "/api/claims/$($Claim.Id)/reserves/$($Row.id)"
+    if ($fate -eq 'Retract') {
+        [void](Confirm-Step "$($Claim.Label) retract $amount" (Invoke-Api 'POST' "$path/retract" $Claim.SubmitterToken $null))
+
+        return 0
+    }
     if ($null -eq $approver -or $fate -eq 'Wait') { return 0 }
 
-    $path = "/api/claims/$($Claim.Id)/reserves/$($Row.id)"
     if ($fate -eq 'Approve') {
         $approved = Confirm-Step "$($Claim.Label) approve $amount" (Invoke-Api 'POST' "$path/approve" $tokens[$approver] $null)
 
@@ -395,6 +410,67 @@ function Add-Reserves($Claim) {
     }
 }
 
+# A decision that the rules must refuse (the approval tier or the claim limit); a refusal is the expected result.
+function Test-Refusal($Claim, $Row, [string]$Role) {
+    $result = Invoke-Api 'POST' "/api/claims/$($Claim.Id)/reserves/$($Row.id)/approve" $tokens[$Role] $null
+    $text = "$($Claim.Label) $Role approve $($Row.amount) -> $($result.Status) $($result.Error)"
+    if ($result.Ok) { [void]$script:Failures.Add("$text (a refusal was expected)") } else { [void]$script:ExpectedRefusals.Add($text) }
+}
+
+function Approve-Row($Claim, $Row, [string]$Role) {
+    if ($Row.approvalStatus -in @('AutoApproved', 'Approved')) { return }
+
+    [void](Confirm-Step "$($Claim.Label) $Role approve $($Row.amount)" (Invoke-Api 'POST' "/api/claims/$($Claim.Id)/reserves/$($Row.id)/approve" $tokens[$Role] $null))
+}
+
+function Submit-Row($Claim, [string]$Type, [decimal]$Amount) {
+    $body = @{ TransactionType = 'Add'; Amount = $Amount; ChangeReason = (Get-OneOf $reasons); ComponentType = $Type }
+    $added = Invoke-Api 'POST' "/api/claims/$($Claim.Id)/reserves" $Claim.SubmitterToken $body
+    if (-not (Confirm-Step "$($Claim.Label) add $Type $Amount" $added)) { return $null }
+
+    return $added.Data.data
+}
+
+# Claims that reach the 10 million claim limit: the rows above 100,000 are approved by the manager, and the last rows
+# would take the total over the limit, so their approval is refused and they stay waiting.
+function Add-LimitReserves($Claim) {
+    $variants = @(
+        @{ Approved = @(4000000, 3500000, 2500000); Refused = @(100) },
+        @{ Approved = @(6000000, 3200000, 750000); Refused = @(100000) },
+        @{ Approved = @(2000000, 1500000, 400000, 6000000); Refused = @(200000) }
+    )
+    $variant = $variants[$script:LimitClaims % $variants.Count]
+    $script:LimitClaims++
+
+    foreach ($amount in $variant.Approved) {
+        $row = Submit-Row $Claim 'Indemnity' $amount
+        if ($null -ne $row) { Approve-Row $Claim $row 'Manager' }
+    }
+    foreach ($amount in $variant.Refused) {
+        $row = Submit-Row $Claim 'Indemnity' $amount
+        if ($null -ne $row) { Test-Refusal $Claim $row 'Manager' }
+    }
+}
+
+# Claims at the edges of the approval tiers: up to 10,000 approves itself, up to 100,000 needs a supervisor, above that
+# a manager; a supervisor refused on 100,050 shows the tier, and a row left for a manager shows a waiting one.
+function Add-TierReserves($Claim) {
+    $approver = if ($Claim.SubmitterRole -eq 'Supervisor') { 'Manager' } else { 'Supervisor' }
+
+    $row = Submit-Row $Claim 'Indemnity' 10000
+    if ($null -ne $row) { Approve-Row $Claim $row $approver }
+    $row = Submit-Row $Claim 'Expense' 10050
+    if ($null -ne $row) { Approve-Row $Claim $row $approver }
+    $row = Submit-Row $Claim 'Indemnity' 100000
+    if ($null -ne $row) { Approve-Row $Claim $row $approver }
+    $row = Submit-Row $Claim 'Alae' 100050
+    if ($null -ne $row) {
+        if ($Claim.SubmitterRole -eq 'Handler') { Test-Refusal $Claim $row 'Supervisor' }
+        Approve-Row $Claim $row 'Manager'
+    }
+    [void](Submit-Row $Claim 'SubrogationRecoverable' 100050)
+}
+
 function Send-Documents($Claim) {
     $total = [int](Get-Weighted @{ '1' = 70; '2' = 22; '3' = 8 })
     $types = 'Police report', 'Photos', 'Repair estimate', 'Invoice', 'Expert report'
@@ -403,6 +479,23 @@ function Send-Documents($Claim) {
         $code = & curl.exe -s -o NUL -w '%{http_code}' --max-time 120 -X POST $url -H "Authorization: Bearer $($Claim.SubmitterToken)" `
             -F "file=@$pdfPath;type=application/pdf" -F "documentType=$(Get-OneOf $types)" -F 'notes=Seeded demo document'
         if ($code -ne '201') { [void]$script:Failures.Add("$($Claim.Label) upload -> $code") }
+    }
+}
+
+# A warning on the policy period is acknowledged and a too short description is waived by a supervisor, so the claim can
+# open with those issues resolved. The missing risk object warning is left raised: it never blocks a move.
+function Resolve-Issues($Claim) {
+    $detail = Invoke-Api 'GET' "/api/claims/$($Claim.Id)" $Claim.SubmitterToken $null
+    if (-not (Confirm-Step "$($Claim.Label) read issues" $detail)) { return }
+
+    foreach ($issue in @($detail.Data.issues | Where-Object { $_.state -eq 'Raised' })) {
+        $path = "/api/claims/$($Claim.Id)/issues/$($issue.id)"
+        if ($issue.code -eq 'S:BR-C-02') {
+            [void](Confirm-Step "$($Claim.Label) acknowledge $($issue.code)" (Invoke-Api 'POST' "$path/acknowledge" $Claim.SubmitterToken $null))
+        }
+        elseif ($issue.code -in @('S:BR-C-07', 'S:BR-C-01')) {
+            [void](Confirm-Step "$($Claim.Label) waive $($issue.code)" (Invoke-Api 'POST' "$path/waive" $tokens.Supervisor $null))
+        }
     }
 }
 
@@ -424,6 +517,9 @@ function Move-Claim($Claim, [hashtable]$Body, [string]$Token) {
 $offsets = @(1..$Count | ForEach-Object { Get-Int 2 $WindowDays } | Sort-Object -Descending)
 $roles = @{ Handler = 'Handler'; Supervisor = 'Supervisor'; Manager = 'Manager' }
 $claims = New-Object System.Collections.ArrayList
+$shuffled = @(0..($Count - 1) | Sort-Object { $script:Random.Next() })
+$limitIndexes = if ($Count -ge 20) { @($shuffled[0..2]) } else { @() }
+$tierIndexes = if ($Count -ge 20) { @($shuffled[3..7]) } else { @() }
 
 for ($index = 0; $index -lt $Count; $index++) {
     $daysAgo = $offsets[$index]
@@ -431,26 +527,40 @@ for ($index = 0; $index -lt $Count; $index++) {
     $reportDate = $lossDate.AddDays((Get-Int 0 10))
     if ($reportDate -gt $now.AddHours(-1)) { $reportDate = $now.AddHours(-1) }
 
-    $isOutside = Get-Chance 0.03
-    $target = if ($isOutside) { 'Draft' } else { Get-StatusFor $daysAgo }
-    $policy = Select-Policy $lossDate $isOutside
-    $cause = Get-OneOf $causeCodes
+    $special = if ($limitIndexes -contains $index) { 'Limit' } elseif ($tierIndexes -contains $index) { 'Tier' } else { '' }
+    $flaw = if ($special) { 'None' } else { Get-Weighted @{ None = 64; Outside = 10; Short = 7; FutureLoss = 5; UnknownCause = 4; NoClaimant = 4 } }
+    $isFixable = $flaw -in @('Outside', 'Short', 'FutureLoss')
+    $isStuck = $flaw -in @('UnknownCause', 'NoClaimant')
+    if ($flaw -eq 'FutureLoss') {
+        $lossDate = $now.AddDays((Get-Int 1 5))
+        $reportDate = $now.AddHours(-1)
+    }
+    $target = if ($special) { Get-OneOf @('Open', 'UnderInvestigation') }
+    elseif ($isStuck -or ($isFixable -and (Get-Chance 0.4))) { 'Draft' }
+    else { Get-StatusFor $daysAgo }
+    $policy = Select-Policy $lossDate ($flaw -eq 'Outside')
+    $cause = if ($flaw -eq 'UnknownCause') { 'COL-UNKNOWN' } else { Get-OneOf $causeCodes }
     $info = if ($causeInfo.ContainsKey($cause)) { $causeInfo[$cause] } else { $causeInfo['COL-OTHER'] }
-    $ownerRole = Get-Weighted @{ Handler = 52; Supervisor = 26; Manager = 22 }
+    $ownerRole = if ($special) { Get-OneOf @('Handler', 'Supervisor') } else { Get-Weighted @{ Handler = 52; Supervisor = 26; Manager = 22 } }
     $label = "[$($index + 1)/$Count $target]"
+    $description = if ($flaw -eq 'Short') { Get-OneOf @('Water damage', 'Rear-end collision', 'Stolen laptop', 'Fire in the shed') } else { Get-OneOf $info.Text }
+    $riskObjects = @()
+    if (-not (Get-Chance 0.12)) { $riskObjects = @(New-RiskObjects $cause) }
+    $parties = @(New-Parties)
+    if ($flaw -eq 'NoClaimant') { $parties = @() }
 
     $body = @{
         PolicyId    = $policy.id
         ReportDate  = (Format-Utc $reportDate)
         Loss        = @{
             LossDate            = (Format-Utc $lossDate)
-            Description         = (Get-OneOf $info.Text)
+            Description         = $description
             CauseOfLossCode     = $cause
             Location            = (Get-OneOf $locations)
             EstimatedLossAmount = (Get-Amount 800 220000)
         }
-        Parties     = @(New-Parties)
-        RiskObjects = @(New-RiskObjects $cause)
+        Parties     = $parties
+        RiskObjects = $riskObjects
         Reserves    = @()
     }
     if ($target -eq 'Draft' -and (Get-Chance 0.4)) {
@@ -482,8 +592,11 @@ for ($index = 0; $index -lt $Count; $index++) {
     }
 
     if ($target -ne 'Draft') {
+        if ($isFixable) { Resolve-Issues $claim }
         if (-not (Confirm-Step "$label open" (Invoke-Api 'PUT' "/api/claims/$($claim.Id)/status" $claim.SubmitterToken @{ TargetStatus = 'Open' }))) { continue }
-        Add-Reserves $claim
+        if ($special -eq 'Limit') { Add-LimitReserves $claim }
+        elseif ($special -eq 'Tier') { Add-TierReserves $claim }
+        else { Add-Reserves $claim }
         if (Get-Chance 0.35) { Send-Documents $claim }
     }
 
@@ -546,6 +659,31 @@ foreach ($status in 'Draft', 'Open', 'UnderInvestigation', 'PendingPayment', 'Cl
 foreach ($role in 'Handler', 'Supervisor', 'Manager') {
     "  {0,-20} {1}" -f $role, @($claims | Where-Object { $_.OwnerRole -eq $role }).Count
 }
+
+''
+'Data summary (read back from the API):'
+$issueLines = New-Object System.Collections.ArrayList
+$rowStates = New-Object System.Collections.ArrayList
+$totals = New-Object System.Collections.ArrayList
+foreach ($claim in $claims) {
+    $detail = Invoke-Api 'GET' "/api/claims/$($claim.Id)" $tokens.Handler $null
+    if (-not $detail.Ok) { continue }
+    foreach ($issue in @($detail.Data.issues)) { [void]$issueLines.Add("$($issue.severity) $($issue.code) $($issue.state)") }
+    foreach ($row in @($detail.Data.reserves.history)) { [void]$rowStates.Add("$($row.approvalStatus)") }
+    [void]$totals.Add([decimal]$detail.Data.reserves.approvedTotal)
+}
+'  Issues (severity, code, state):'
+foreach ($group in ($issueLines | Group-Object | Sort-Object Name)) { "    {0,-48} {1}" -f $group.Name, $group.Count }
+'  Reserve rows by approval state:'
+foreach ($group in ($rowStates | Group-Object | Sort-Object Name)) { "    {0,-24} {1}" -f $group.Name, $group.Count }
+$withReserves = @($totals | Where-Object { $_ -gt 0 })
+'  Approved total per claim: {0} claims with a balance, sum {1:N0}, largest {2:N0}, above 100,000: {3}, at least 10,000,000: {4}' -f `
+    $withReserves.Count, ($withReserves | Measure-Object -Sum).Sum, ($withReserves | Measure-Object -Maximum).Maximum, `
+    @($withReserves | Where-Object { $_ -gt 100000 }).Count, @($withReserves | Where-Object { $_ -ge 10000000 }).Count
+
+''
+"Expected refusals (approval tier and claim limit checks): $($script:ExpectedRefusals.Count)"
+foreach ($line in ($script:ExpectedRefusals | Select-Object -First 12)) { "  $line" }
 
 ''
 "Refused or failed steps: $($script:Failures.Count)"

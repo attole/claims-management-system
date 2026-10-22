@@ -9,7 +9,7 @@ param sqlAdminObjectId = readEnvironmentVariable('SQL_ADMIN_OBJECT_ID')
 param sqlAdminLogin = readEnvironmentVariable('SQL_ADMIN_LOGIN')
 
 param isSwaggerEnabled = true
-param isHangfireDashboardEnabled = false
+param isHangfireDashboardEnabled = true
 param isBlobSweepEnabled = false
 param isDevAuthEnabled = true
 

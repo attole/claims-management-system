@@ -42,8 +42,8 @@ The template writes every app setting; the README 'Configuration' table lists wh
 | `ConnectionStrings__ClaimsDb` | the server with `Authentication=Active Directory Managed Identity` and the identity's client id; EF Core and Hangfire share it |
 | `Cors__AllowedOrigins__0` | the static web app's `https://` origin |
 | `StorageProvider` | `AzureBlob` |
-| `Swagger__Enabled`, `DevAuth__Enabled` | `true` |
-| `Hangfire__Dashboard__Enabled`, `Hangfire__BlobSweep__Enabled` | `false` |
+| `Swagger__Enabled`, `DevAuth__Enabled`, `Hangfire__Dashboard__Enabled` | `true` |
+| `Hangfire__BlobSweep__Enabled` | `false` |
 | `DevAuth__OrganisationId`, `DevAuth__Users__N__Id`, `Name`, `Role` | the seeded organisation and the three users of `demo.bicepparam` |
 
 - A Key Vault reference is resolved when the app starts, so a changed secret takes effect after a restart.
@@ -89,6 +89,8 @@ The template writes every app setting; the README 'Configuration' table lists wh
 
 - The data is random but repeatable (`-Seed`; `-Count` claims, default 100). Claims are created in loss-date order, so claim numbers rise with the loss dates; every status appears in a normal split leaning by age; handler, policy, cause, parties, risk objects and amounts are chosen independently.
 - Each claim gets zero to three reserve components with additions, adjustments and reversals in mixed approval states, and some get PDF documents (which exercise the Blob adapter) and notes.
+- Some claims carry validation issues: a policy that does not cover the loss date (acknowledged before opening, or left raised on a draft), a too short description or a loss date in the future (critical, waived by a supervisor, or left raised on a draft), an unknown cause of loss or no claimant (critical, cannot be waived, so the claim stays a draft) and no risk object (a warning that stays raised).
+- Reserves are tested at their limits: three claims reach the 10 million claim limit (an approval that would pass it is refused and the row stays waiting) and five sit at the approval tiers (10,000 approves itself, 100,000 needs a supervisor, 100,050 a manager). Normal claims leave rows approved, rejected, retracted or waiting. The run ends with a summary of issues, row states and totals read back from the API, and lists the refusals it expected.
 - Status moves run in a second phase after a pause, because closing is refused while an approved row is still being posted. A refused step is counted and shown without stopping the run.
 - It stops when claims already exist unless `-Force` is given. To start from nothing, delete the Azure SQL database (soft delete only hides rows) and run the Deployment workflow, which recreates it, migrates it and grants the web app its user.
 
@@ -97,6 +99,7 @@ The template writes every app setting; the README 'Configuration' table lists wh
 - The deploy identity administers the database.
 - The web app's database user can change the schema (`db_ddladmin`), still without update or delete on the audit log.
 - SQL, storage and Key Vault accept public connections, protected by identity, keys and the firewall rather than network isolation.
+- The Hangfire dashboard is on at `/hangfire`, open to every request and able to trigger, requeue and delete jobs, because a browser page cannot send the bearer token. The jobs are idempotent and the posting sweep re-enqueues a deleted posting, so the cost is noise, not data loss; it must not stay on if the environment ever holds real data.
 - The dev sign-in is on and open, as the specification's mock authentication: anyone who can reach the API can sign in as any configured user, on fake data.
 - The API reads the storage account key, which reaches the whole account.
 
