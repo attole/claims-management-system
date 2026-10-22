@@ -35,7 +35,7 @@ The tests in `ClaimsModule.Persistence.SqlServerTests` and `ClaimsModule.API.Tes
     - `dotnet user-secrets set "Jwt:SigningKey" "<32+ character test value>" --project backend/src/ClaimsModule.API`
     - `dotnet user-secrets set "LocalSigningKey" "<32+ character test value>" --project backend/src/ClaimsModule.API`
 3. Run: `dotnet run --project backend/src/ClaimsModule.API` (the `https` profile serves `https://localhost:54694`, the address `LocalBaseUrl` in `appsettings.Development.json` points at)
-4. Get a token for a user: `POST /api/dev/token` with `{ "userId": "<id>" }`, using an id from `DevAuth:Users` in `appsettings.Development.json` (a handler, a supervisor and a manager), and send it as `Authorization: Bearer <token>`. This is a simulation of sign-in, only available while `DevAuth:Enabled` is true; when `DevAuth:Secret` is set, add the header `X-DevAuth-Secret: <secret>`.
+4. Get a token for a user: `POST /api/dev/token` with `{ "userId": "<id>" }`, using an id from `DevAuth:Users` in `appsettings.Development.json` (a handler, a supervisor and a manager), and send it as `Authorization: Bearer <token>`. This is a simulation of sign-in, only available while `DevAuth:Enabled` is true.
 
 With `ASPNETCORE_ENVIRONMENT=Development`, Swagger is at `/swagger` and the Hangfire dashboard at `/hangfire`.
 
@@ -43,7 +43,7 @@ With `ASPNETCORE_ENVIRONMENT=Development`, Swagger is at `/swagger` and the Hang
 
 1. Trust the .NET development certificate once, so the browser accepts the API at `https://localhost:54694`: `dotnet dev-certs https --trust`
 2. Install the packages: `npm --prefix frontend install`
-3. With the API running, start the dev server: `npm --prefix frontend start`, then open `http://localhost:4200`. The app signs in as the handler; the header's role switcher changes the test user. Against an API with `DevAuth:Secret` set, the app asks once for the access code.
+3. With the API running, start the dev server: `npm --prefix frontend start`, then open `http://localhost:4200`. The app signs in as the handler; the header's role switcher changes the test user.
 4. Checks: `npm --prefix frontend run build`, `npm --prefix frontend test`, `npm --prefix frontend run lint`, `npm --prefix frontend run format:check`
 5. After an API contract change, save the API's `/openapi/v1.json` over `frontend/openapi.json` and run `npm --prefix frontend run api:types`.
 
@@ -93,7 +93,6 @@ Required settings are validated at startup; a missing one stops the app and name
 | `Hangfire:PostingSweep:MinimumAge` (optional, default `00:10:00`, must be positive) | `appsettings.json` | app settings |
 | `Hangfire:PostingSweep:IntervalMinutes` (optional, default 5, must divide 60 evenly) | `appsettings.json` | app settings |
 | `DevAuth:OrganisationId`, `DevAuth:Users` (id, name, role), `DevAuth:TokenLifetimeMinutes` (default 480, at most 1440), required while `DevAuth:Enabled` is true; the organisation must be the seeded one | `appsettings.Development.json` | app settings, for a live demo |
-| `DevAuth:Secret` (16+ characters, secret), the access code for `POST /api/dev/token`; required outside Development while `DevAuth:Enabled` is true | optional, user-secrets | Key Vault |
 | `Hangfire:SlaBreach:IntervalMinutes` (optional, default 15, must divide 60 evenly) | `appsettings.json` | app settings |
 | `Hangfire:IdempotencyCleanup:IntervalHours` (optional, default 1; 1, 2, 3, 4, 6, 8 or 12) | `appsettings.json` | app settings |
 | `Hangfire:BlobSweep:MinimumAge` (optional, default `1.00:00:00`, must be positive) | `appsettings.json` | app settings |
@@ -105,9 +104,9 @@ Feature switches are booleans that default to false and do not depend on the env
 |---|---|
 | `Swagger:Enabled` | serves the OpenAPI document and Swagger UI |
 | `Hangfire:Dashboard:Enabled` | mounts the Hangfire dashboard, open to every request |
-| `DevAuth:Enabled` | serves `POST /api/dev/token`, a simulated sign-in that issues a token for a configured user; with `DevAuth:Secret` set, the call must send it as `X-DevAuth-Secret` |
+| `DevAuth:Enabled` | serves `POST /api/dev/token`, a simulated sign-in that issues a token for a configured user |
 | `Hangfire:BlobSweep:Enabled` | schedules the job that deletes stored blobs no document refers to |
 
 ## Deployment
 
-The demo runs on Azure: the API on App Service, the frontend on a static web app, Azure SQL, Blob storage and Key Vault, all from `infra/main.bicep`. `infra/bootstrap.ps1` (Windows PowerShell, one step per call) holds the one-time setup (deploy identity, GitHub environment, the JWT key and the access code in the vault); after it, the `Deployment` workflow (manual) takes the latest green build of `main`, provisions, migrates, deploys the API and the frontend, and smoke-tests the API. Reviewers sign in with the access code from the vault. `docs/layers/deployment.md` has the details.
+The demo runs on Azure: the API on App Service, the frontend on a static web app, Azure SQL, Blob storage and Key Vault, all from `infra/main.bicep`. `infra/bootstrap.ps1` (Windows PowerShell, one step per call) holds the one-time setup (deploy identity, GitHub environment, the JWT key in the vault); after it, the `Deployment` workflow (manual) takes the latest green build of `main`, provisions, migrates, deploys the API and the frontend, and smoke-tests the API. Reviewers open the frontend, which signs in as a demo user, and switch roles in the header. `docs/layers/deployment.md` has the details.

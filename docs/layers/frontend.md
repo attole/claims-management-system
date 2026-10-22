@@ -64,7 +64,6 @@ frontend/
 ## Sign-in
 
 - `AuthService.signInAs(user)` posts `{ userId }` to `/api/dev/token` and keeps the token in memory and the user id in sessionStorage. The user (id, name, role) comes from the token response; a sign-in that finishes after a newer one is ignored. At startup the app signs in as the stored user, or the handler; the header's role switcher signs in as another user.
-- With `DevAuth:Secret` set, the token call needs `X-DevAuth-Secret`. A 403 sets `AuthService.needsAccessCode`; the app root asks for the access code with `promptWith`, `useAccessCode` keeps it in sessionStorage, signs in again and reloads the page. The code is never part of the bundle.
 - The users in `core/auth/dev-users.ts` equal `DevAuth:Users` of the development settings; `userName(id)` names them on screen, with "System" for the empty id.
 
 ## API types
@@ -115,7 +114,7 @@ frontend/
 
 - **Provides:** the three screens of the specification (S:UI-List, S:UI-Intake-Steps, S:UI-Detail-Tabs) and the mock sign-in with the role switcher (S:UI-General).
 - **Provides to the deployment** (`docs/layers/deployment.md`): a production build in `dist/claims-frontend/browser`; `src/environments/environment.ts` holding the literal line `apiBaseUrl: '/api'`, which the pipeline replaces with the API's URL; `public/staticwebapp.config.json`, which rewrites every route to `index.html`.
-- **Expects from the API:** the routes, bodies and error body of `docs/layers/api.md`; enums as names; the `{ data, warnings }` envelope on writes; the Idempotency-Key filter; `status-check` findings with their field; the dev token route with its access code; CORS for `http://localhost:4200` and the deployed origin.
+- **Expects from the API:** the routes, bodies and error body of `docs/layers/api.md`; enums as names; the `{ data, warnings }` envelope on writes; the Idempotency-Key filter; `status-check` findings with their field; the dev token route; CORS for `http://localhost:4200` and the deployed origin.
 
 ## Tests
 

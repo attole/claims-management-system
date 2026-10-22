@@ -11,7 +11,7 @@ public sealed class DevAuthOptionsValidatorTests
         Role = "Handler",
     };
 
-    private readonly DevAuthOptionsValidator _validator = new(isSecretRequired: false);
+    private readonly DevAuthOptionsValidator _validator = new();
 
     [Fact]
     public void Validate_WhenDisabled_SucceedsWithoutAnySetting()
@@ -93,40 +93,10 @@ public sealed class DevAuthOptionsValidatorTests
         result.Failed.Should().BeTrue();
     }
 
-    [Fact]
-    public void Validate_EnabledOutsideDevelopmentWithoutASecret_Fails()
-    {
-        var validator = new DevAuthOptionsValidator(isSecretRequired: true);
-
-        var result = validator.Validate(null, CreateEnabled());
-
-        result.Failed.Should().BeTrue();
-    }
-
-    [Fact]
-    public void Validate_EnabledOutsideDevelopmentWithASecret_Succeeds()
-    {
-        var validator = new DevAuthOptionsValidator(isSecretRequired: true);
-        var secret = new string('s', DevAuthOptionsValidator.MinSecretLength);
-
-        var result = validator.Validate(null, CreateEnabled(secret: secret));
-
-        result.Succeeded.Should().BeTrue();
-    }
-
-    [Fact]
-    public void Validate_EnabledWithAShortSecret_Fails()
-    {
-        var result = _validator.Validate(null, CreateEnabled(secret: "short"));
-
-        result.Failed.Should().BeTrue();
-    }
-
     private static DevAuthOptions CreateEnabled(
         Guid? organisationId = null,
         IReadOnlyList<DevUserOptions>? users = null,
-        int lifetimeMinutes = 60,
-        string secret = "")
+        int lifetimeMinutes = 60)
     {
         return new DevAuthOptions
         {
@@ -134,7 +104,6 @@ public sealed class DevAuthOptionsValidatorTests
             OrganisationId = organisationId ?? Guid.Parse("c5000000-0000-4000-8000-000000000002"),
             Users = users ?? [_user],
             TokenLifetimeMinutes = lifetimeMinutes,
-            Secret = secret,
         };
     }
 }

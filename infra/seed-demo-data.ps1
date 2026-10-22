@@ -25,9 +25,6 @@
 .PARAMETER ResourceGroup
     The resource group of the demo (default rg-claims-demo).
 
-.PARAMETER AccessCode
-    The dev sign-in access code. Read from Key Vault when left out.
-
 .PARAMETER Force
     Create the claims even when claims already exist.
 
@@ -38,7 +35,6 @@
 param(
     [int]$Count = 80,
     [string]$ResourceGroup = 'rg-claims-demo',
-    [string]$AccessCode,
     [switch]$Force
 )
 
@@ -121,8 +117,7 @@ function Confirm-Step([string]$Label, $Result) {
 }
 
 function Get-Token([string]$UserId) {
-    $headers = @{ 'X-DevAuth-Secret' = $script:AccessCode }
-    $response = Invoke-RestMethod -Method Post -Uri "$script:ApiUrl/api/dev/token" -Headers $headers `
+    $response = Invoke-RestMethod -Method Post -Uri "$script:ApiUrl/api/dev/token" `
         -ContentType 'application/json' -Body (ConvertTo-Json -Compress @{ userId = $UserId })
 
     return $response.token
@@ -137,12 +132,6 @@ function Format-Utc([datetime]$Value) {
 $appName = Get-AzureValue 'The web app name' @('webapp', 'list', '--resource-group', $ResourceGroup, '--query', '[0].name', '-o', 'tsv')
 $hostName = Get-AzureValue 'The web app host name' @('webapp', 'list', '--resource-group', $ResourceGroup, '--query', '[0].defaultHostName', '-o', 'tsv')
 $script:ApiUrl = "https://$hostName"
-
-if (-not $AccessCode) {
-    $vault = Get-AzureValue 'The key vault name' @('keyvault', 'list', '--resource-group', $ResourceGroup, '--query', '[0].name', '-o', 'tsv')
-    $AccessCode = Get-AzureValue 'The access code' @('keyvault', 'secret', 'show', '--vault-name', $vault, '--name', 'devauth-secret', '--query', 'value', '-o', 'tsv')
-}
-$script:AccessCode = $AccessCode
 
 # The three demo users come from the web app's own settings, so nothing is repeated here.
 $settings = (Get-AzureValue 'The app settings' @('webapp', 'config', 'appsettings', 'list', '--resource-group', $ResourceGroup, '--name', $appName, '-o', 'json') | Out-String) | ConvertFrom-Json

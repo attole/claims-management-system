@@ -29,7 +29,7 @@ Each layer's rules and contracts are in `docs/layers/`. Key choices:
 Settings, secrets and feature switches follow `.claude/CLAUDE.md` 'Configuration'; the settings table and setup steps are in the root `README.md`. Two points are specific to this design:
 
 - The Hangfire dashboard is open to every request when its switch is on, because a page load carries no bearer token; it stays off outside development.
-- `POST /api/dev/token` is the simulated sign-in the specification asks for (S:UI-General). Outside Development it needs the access code `DevAuth:Secret` (a Key Vault secret) in `X-DevAuth-Secret`, compared as SHA-256 hashes in constant time before any user lookup, so a caller without it learns nothing; the app does not start without the setting, and the deployment stops before releasing when the vault holds no secret for it. The frontend asks for the code once and keeps it in sessionStorage. It guards a live demo, not production: every holder of the code can sign in as any configured user.
+- `POST /api/dev/token` is the simulated sign-in the specification asks for (S:UI-General). It is open on purpose: the specification asks for a mock authentication with hardcoded users, so anyone who can reach the route can sign in as any configured user. That is acceptable only on fake data, and an extra access code was tried and removed because it burdened testers and reviewers more than it protected.
 
 ## Task documents
 

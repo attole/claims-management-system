@@ -117,16 +117,15 @@ jobs:
           database=$(jq -r .databaseName.value <<< "$outputs")
           echo "SQL_CONNECTION=Server=tcp:${server},1433;Initial Catalog=${database};Authentication=Active Directory Default;Encrypt=True;" >> "$GITHUB_ENV"
 
-      - name: Read the dev sign-in access code
+      - name: Check that the JWT signing key is in the vault
         run: |
           for attempt in $(seq 1 10); do
-            if code=$(az keyvault secret show --vault-name "$keyVaultName" --name "$devAuthSecretName" --query value -o tsv); then
-              echo "::add-mask::$code"
-              echo "ACCESS_CODE=$code" >> "$GITHUB_ENV"
+            if az keyvault secret show --vault-name "$keyVaultName" --name jwt-signing-key --query id -o tsv > /dev/null; then
               exit 0
             fi
             sleep 30
           done
+          echo "::error::The secret jwt-signing-key is not in the vault. Run bootstrap.ps1 -Step Secrets first."
           exit 1
 
       - name: Sign in to Azure again for the database token
@@ -183,7 +182,7 @@ jobs:
           user_id=$(az webapp config appsettings list --resource-group "$RESOURCE_GROUP" --name "$webAppName" \
             --query "[?name=='DevAuth__Users__0__Id'].value | [0]" --output tsv)
           token=$(curl -sS --fail-with-body --max-time 20 -X POST "$api/api/dev/token" \
-            -H 'Content-Type: application/json' -H "X-DevAuth-Secret: ${ACCESS_CODE}" \
+            -H 'Content-Type: application/json' \
             -d "{\"userId\":\"${user_id}\"}" | jq -er .token)
           curl -fsS -o /dev/null --max-time 20 -H "Authorization: Bearer ${token}" "$api/api/claims"
 

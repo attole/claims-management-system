@@ -12,8 +12,7 @@ public static class DevAuthServiceExtensions
             .BindConfiguration(DevAuthOptions.SectionName)
             .ValidateOnStart();
 
-        services.AddSingleton<IValidateOptions<DevAuthOptions>>(provider =>
-            new DevAuthOptionsValidator(!provider.GetRequiredService<IHostEnvironment>().IsDevelopment()));
+        services.AddSingleton<IValidateOptions<DevAuthOptions>, DevAuthOptionsValidator>();
         services.AddSingleton<DevTokenIssuer>();
 
         return services;
