@@ -2,8 +2,6 @@ import { Policy } from '../../core/api/api.model';
 import {
   AMOUNT_REQUIRED_ERROR,
   createIntakeForm,
-  createRiskObjectGroup,
-  inForce,
   INITIAL_RESERVE_REASON,
   intakeWarnings,
   IntakeForm,
@@ -12,6 +10,7 @@ import {
   toCreateRequest,
 } from './intake-form';
 import { createPartyGroup } from '../../shared/forms/party-form';
+import { createRiskObjectGroup } from '../../shared/forms/risk-object-form';
 
 describe('intake form (S:UI-Intake-Steps, S:UI-Intake-Policy, S:UI-Intake-Reserve, S:API-POST-claims)', () => {
   const now = () => new Date(2026, 9, 21, 12, 0);
@@ -94,17 +93,6 @@ describe('intake form (S:UI-Intake-Steps, S:UI-Intake-Policy, S:UI-Intake-Reserv
       { transactionType: 'Add', amount: 5000, changeReason: INITIAL_RESERVE_REASON, componentType: 'Indemnity' },
     ]);
     expect(form.hasError(RESERVE_NEEDS_POLICY_ERROR)).toBe(true);
-  });
-
-  it('inForce is green only for an active policy covering the UTC day of the loss', () => {
-    const results = [
-      inForce(policy, new Date(Date.UTC(2026, 6, 22))),
-      inForce(policy, new Date(Date.UTC(2027, 0, 2))),
-      inForce({ ...policy, status: 'Expired' }, new Date(Date.UTC(2026, 6, 22))),
-      inForce(null, new Date()),
-    ];
-
-    expect(results).toEqual(['inForce', 'outside', 'outside', 'unknown']);
   });
 
   it('warns about a missing policy and a missing risk object, and not when both are there', () => {

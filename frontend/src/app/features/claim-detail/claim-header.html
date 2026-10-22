@@ -33,7 +33,20 @@
   <dl class="facts">
     <div>
       <dt>Policy</dt>
-      <dd>{{ policyNumber() }}</dd>
+      <dd>
+        {{ policyNumber() }}
+        @if (!isPolicyLinked()) {
+          <button
+            mat-stroked-button
+            class="pill"
+            type="button"
+            [disabled]="isSaving()"
+            (click)="linkPolicyRequested.emit()"
+          >
+            Link policy
+          </button>
+        }
+      </dd>
     </div>
     <div>
       <dt>Client</dt>

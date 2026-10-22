@@ -1,0 +1,21 @@
+<mat-form-field class="wide">
+  <mat-label>Search policy number or client name</mat-label>
+  <input
+    matInput
+    [formControl]="policySearch"
+    [matAutocomplete]="policyOptions"
+    [readonly]="isReadonly()"
+    (input)="search()"
+  />
+  @if (isSearching()) {
+    <mat-spinner matSuffix diameter="18" aria-label="Searching policies" />
+  }
+  <mat-autocomplete #policyOptions="matAutocomplete" (optionSelected)="choose($event)">
+    @for (result of results(); track result.id) {
+      <mat-option [value]="result">
+        {{ result.policyNumber }} - {{ result.clientName }}
+        <span class="muted">({{ result.effectiveDate }} to {{ result.expirationDate }})</span>
+      </mat-option>
+    }
+  </mat-autocomplete>
+</mat-form-field>

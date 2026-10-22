@@ -1,12 +1,23 @@
-import { ChangeDetectionStrategy, Component, computed, effect, input, output, untracked } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, input, model, output, untracked } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { ClaimDetail, ClaimSeverity, Issue, IssueSeverity } from '../../core/api/api.model';
+import {
+  CauseCode,
+  ClaimDetail,
+  ClaimSeverity,
+  Issue,
+  IssueSeverity,
+  LossRequest,
+  RiskObject,
+} from '../../core/api/api.model';
+import { RiskObjectValue } from '../../shared/forms/risk-object-form';
 import { ClaimDatePipe } from '../../shared/pipes/claim-date.pipe';
 import { EnumLabelPipe } from '../../shared/pipes/enum-label.pipe';
 import { MoneyPipe } from '../../shared/pipes/money.pipe';
+import { RiskObjectEditor } from '../../shared/ui/risk-object-editor';
+import { LossEditor } from './loss-editor';
 
 const SEVERITY_TONES: Readonly<Record<ClaimSeverity, string>> = {
   Unspecified: '',
@@ -30,7 +41,9 @@ const ISSUE_TONES: Readonly<Record<IssueSeverity, string>> = {
     MatInputModule,
     ClaimDatePipe,
     EnumLabelPipe,
+    LossEditor,
     MoneyPipe,
+    RiskObjectEditor,
   ],
   templateUrl: './overview-tab.html',
   styleUrl: './overview-tab.scss',
@@ -39,17 +52,28 @@ const ISSUE_TONES: Readonly<Record<IssueSeverity, string>> = {
 export class OverviewTab {
   readonly detail = input.required<ClaimDetail>();
   readonly causeName = input.required<string>();
+  readonly causeCodes = input<CauseCode[]>([]);
   readonly isSaving = input(false);
+  readonly isEditingLoss = model(false);
+  readonly isAddingRiskObject = model(false);
 
   readonly notesSaved = output<string>();
   readonly acknowledged = output<Issue>();
   readonly waived = output<Issue>();
+  readonly lossSaved = output<LossRequest>();
+  readonly riskObjectAdded = output<RiskObjectValue>();
+  readonly primaryToggled = output<RiskObject>();
+  readonly riskObjectRemoved = output<RiskObject>();
 
   protected readonly notes = new FormControl('', { nonNullable: true });
   protected readonly severityTone = computed(() => SEVERITY_TONES[this.detail().claim.severity]);
   protected readonly openIssues = computed(() => this.detail().issues.filter((issue) => issue.state === 'Raised'));
   protected readonly resolvedCount = computed(() => this.detail().issues.length - this.openIssues().length);
   protected readonly riskObjects = computed(() => this.detail().riskObjects.filter((item) => !item.isDeleted));
+  protected readonly hasPrimary = computed(() => this.riskObjects().some((item) => item.isPrimary));
+  protected readonly primaryName = computed(
+    () => this.riskObjects().find((item) => item.isPrimary)?.assetDescription ?? '',
+  );
   protected readonly issueTones = ISSUE_TONES;
 
   constructor() {
@@ -69,5 +93,9 @@ export class OverviewTab {
 
   protected saveNotes(): void {
     this.notesSaved.emit(this.notes.value.trim());
+  }
+
+  protected canMakePrimary(item: RiskObject): boolean {
+    return item.isPrimary || !this.hasPrimary();
   }
 }

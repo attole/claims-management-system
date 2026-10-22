@@ -34,24 +34,6 @@ h2 {
   gap: 4px 12px;
 }
 
-.inline-form {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--app-gap-small) var(--app-gap);
-  padding: var(--app-gap);
-  border: 1px solid var(--app-border);
-  border-radius: var(--app-radius);
-}
-
-.full {
-  grid-column: 1 / -1;
-}
-
-.actions {
-  display: flex;
-  gap: var(--app-gap-small);
-}
-
 .add-row {
   margin-top: 4px;
 }
@@ -63,10 +45,4 @@ h2 {
 .error {
   margin: 0;
   color: var(--app-danger);
-}
-
-@media (max-width: 720px) {
-  .inline-form {
-    grid-template-columns: 1fr;
-  }
 }

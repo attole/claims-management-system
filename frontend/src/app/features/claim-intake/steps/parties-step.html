@@ -53,6 +53,9 @@
           <strong>{{ added.controls.assetDescription.value }}</strong>
           <span class="muted">{{ added.controls.damageDescription.value }}</span>
         </div>
+        @if (added.controls.isPrimary.value) {
+          <span class="badge badge--info">Primary</span>
+        }
         <button
           mat-icon-button
           type="button"
@@ -66,34 +69,12 @@
   </ul>
 
   @if (isAddingRiskObject()) {
-    <form class="inline-form" [formGroup]="riskObject" (ngSubmit)="addRiskObject()" aria-label="New risk object">
-      <mat-form-field>
-        <mat-label>Asset type</mat-label>
-        <mat-select formControlName="assetType">
-          @for (assetType of assetTypes; track assetType) {
-            <mat-option [value]="assetType">{{ assetType }}</mat-option>
-          }
-        </mat-select>
-      </mat-form-field>
-      <mat-form-field>
-        <mat-label>Asset description</mat-label>
-        <input matInput formControlName="assetDescription" />
-        <mat-error>{{ riskObject.controls.assetDescription.errors | errorMessage }}</mat-error>
-      </mat-form-field>
-      <mat-form-field>
-        <mat-label>Damage description</mat-label>
-        <input matInput formControlName="damageDescription" />
-      </mat-form-field>
-      <mat-form-field>
-        <mat-label>Reference number (optional)</mat-label>
-        <input matInput formControlName="assetReference" />
-        <mat-error>{{ riskObject.controls.assetReference.errors | errorMessage }}</mat-error>
-      </mat-form-field>
-      <div class="actions full">
-        <button mat-flat-button type="submit">Add</button>
-        <button mat-button type="button" (click)="isAddingRiskObject.set(false)">Cancel</button>
-      </div>
-    </form>
+    <app-risk-object-editor
+      [hasPrimary]="hasPrimary()"
+      [primaryName]="primaryName()"
+      (submitted)="addRiskObject($event)"
+      (cancelled)="isAddingRiskObject.set(false)"
+    />
   } @else {
     <div class="add-row">
       <button mat-stroked-button type="button" (click)="isAddingRiskObject.set(true)">Add risk object</button>

@@ -5,6 +5,8 @@ import { PagedResult, Policy } from './api.model';
 import { apiUrl } from './api-url';
 
 export const POLICY_SEARCH_PAGE_SIZE = 10;
+export const POLICY_SEARCH_DELAY_MS = 300;
+export const POLICY_SEARCH_MIN_LENGTH = 2;
 
 @Injectable({ providedIn: 'root' })
 export class PoliciesService {

@@ -1,8 +1,10 @@
 import { HttpEventType, provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import { Policy } from '../../core/api/api.model';
 import { apiUrl } from '../../core/api/api-url';
-import { CLAIM_ID, CLAIMANT, claimDetail } from './claim-detail.fixtures';
+import { POLICY_SEARCH_DELAY_MS } from '../../core/api/policies.service';
+import { CLAIM_ID, CLAIMANT, claimDetail, PRIMARY_RISK_OBJECT } from './claim-detail.fixtures';
 import { ClaimDetailStore } from './claim-detail.store';
 
 describe('ClaimDetailStore (S:UI-Detail-Header, S:UI-Audit, S:API-IdempotencyKey)', () => {
@@ -15,7 +17,10 @@ describe('ClaimDetailStore (S:UI-Detail-Header, S:UI-Audit, S:API-IdempotencyKey
     http = TestBed.inject(HttpTestingController);
   });
 
-  afterEach(() => http.verify());
+  afterEach(() => {
+    http.verify();
+    vi.useRealTimers();
+  });
 
   async function load(): Promise<void> {
     store.claimId.set(CLAIM_ID);
@@ -118,5 +123,70 @@ describe('ClaimDetailStore (S:UI-Detail-Header, S:UI-Audit, S:API-IdempotencyKey
 
     expect(store.hasError()).toBe(true);
     expect(store.hasLoaded()).toBe(true);
+  });
+
+  it('searches policies to link only from two characters on, after a short pause', () => {
+    vi.useFakeTimers();
+    store.policyQuery.set('h');
+    TestBed.tick();
+    vi.advanceTimersByTime(POLICY_SEARCH_DELAY_MS);
+    http.match(apiUrl('reference/claim-statuses')).forEach((call) => call.flush([]));
+    http.match(apiUrl('reference/cause-of-loss-codes')).forEach((call) => call.flush([]));
+    http.expectNone((call) => call.url === apiUrl('policies/search'));
+
+    store.policyQuery.set('harbor');
+    TestBed.tick();
+    vi.advanceTimersByTime(POLICY_SEARCH_DELAY_MS);
+
+    const search = http.expectOne((call) => call.url === apiUrl('policies/search'));
+    expect(search.request.params.get('q')).toBe('harbor');
+    search.flush({ items: [], page: 1, pageSize: 10, totalCount: 0, totalPages: 0 });
+  });
+
+  it('setting the primary sends the whole risk object, with its own key apart from a removal', async () => {
+    await load();
+    store.setPrimaryRiskObject(PRIMARY_RISK_OBJECT, false).subscribe({ error: () => undefined });
+    const update = http.expectOne(apiUrl(`claims/${CLAIM_ID}/risk-objects/${PRIMARY_RISK_OBJECT.id}`));
+    update.flush(null, { status: 503, statusText: 'Service Unavailable' });
+
+    store.removeRiskObject(PRIMARY_RISK_OBJECT).subscribe({ error: () => undefined });
+    const removal = http.expectOne(apiUrl(`claims/${CLAIM_ID}/risk-objects/${PRIMARY_RISK_OBJECT.id}`));
+    removal.flush(null, { status: 503, statusText: 'Service Unavailable' });
+
+    expect(update.request.method).toBe('PUT');
+    expect(update.request.body).toEqual({
+      assetType: 'Property',
+      assetDescription: 'Warehouse office',
+      damageDescription: 'Flooded floor',
+      assetReference: '',
+      isPrimary: false,
+    });
+    expect(removal.request.method).toBe('DELETE');
+    expect(removal.request.headers.get('Idempotency-Key')).not.toBe(update.request.headers.get('Idempotency-Key'));
+  });
+
+  it('links the chosen policy and reloads the claim', async () => {
+    await load();
+
+    const policy: Policy = {
+      id: 'p9',
+      policyNumber: 'POL-48230',
+      clientName: 'Northwind Foods',
+      effectiveDate: '2026-03-01',
+      expirationDate: '2027-02-28',
+      status: 'Active',
+      coverageTypes: [],
+    };
+
+    store.linkPolicy(policy).subscribe();
+    const link = http.expectOne(apiUrl(`claims/${CLAIM_ID}/policy`));
+    link.flush({ data: claimDetail().claim, warnings: [] });
+    await settle();
+
+    expect(link.request.body).toEqual({ policyId: 'p9' });
+    http.expectOne(apiUrl(`claims/${CLAIM_ID}`)).flush(claimDetail());
+    http
+      .expectOne((call) => call.url === apiUrl(`claims/${CLAIM_ID}/audit`))
+      .flush({ items: [], page: 1, pageSize: 10, totalCount: 0, totalPages: 0 });
   });
 });

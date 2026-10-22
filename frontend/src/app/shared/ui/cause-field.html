@@ -1,0 +1,16 @@
+@let cause = control();
+
+<mat-form-field class="wide">
+  <mat-label>Cause of loss</mat-label>
+  <input matInput [formControl]="causeSearch" [matAutocomplete]="causeOptions" (blur)="typeCause()" />
+  <mat-autocomplete #causeOptions="matAutocomplete" (optionSelected)="chooseCause($event)">
+    @for (option of matchingCauses(); track option.code) {
+      <mat-option [value]="option"
+        >{{ option.name }} <span class="muted">({{ option.code }})</span></mat-option
+      >
+    }
+  </mat-autocomplete>
+  @if (cause.invalid && cause.touched) {
+    <mat-hint class="error">{{ cause.errors | errorMessage }}</mat-hint>
+  }
+</mat-form-field>

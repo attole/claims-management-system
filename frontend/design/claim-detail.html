@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Claim detail</title>
-<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="theme.css?v=2">
 <style>
   .head { padding: 16px 20px; margin-bottom: 16px; }
   .head-top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
@@ -20,7 +20,7 @@
   .card.pad .field { margin-bottom: 14px; }
   .add-row { margin-top: 14px; }
   .inline-form { padding: 16px 16px 20px; }
-  .head-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px 24px; margin-top: 14px; }
+  .head-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px 24px; margin-top: 14px; }
   .kv span { display: block; font-size: 12px; color: var(--muted); }
   .kv strong { font-weight: 500; }
   .spacer { flex: 1; }
@@ -53,7 +53,26 @@
   .pager button { border: 0; background: transparent; font-size: 18px; cursor: pointer; color: var(--text); padding: 2px 8px; }
   .pager button:disabled { color: var(--disabled); cursor: default; }
   .actions { white-space: nowrap; }
-  @media (max-width: 1100px) { .head-grid, .cards { grid-template-columns: 1fr 1fr; } .grid2, .inline-form { grid-template-columns: 1fr; } }
+  .card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+  .card.pad .card-head h2 { margin: 0; }
+  .policy-kv strong { margin-right: 8px; }
+  .edit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
+  .edit-grid .wide { grid-column: 1 / -1; }
+  .btn-row { display: flex; gap: 8px; }
+  .span2 { grid-column: 1 / -1; }
+  .ro { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .ro:last-child { border-bottom: 0; }
+  .ro .who { flex: 1; }
+  .ro-form { padding-bottom: 14px; margin-bottom: 4px; border-bottom: 1px solid var(--border); }
+  .ro .btn { white-space: nowrap; }
+  .ro .btn[data-p] { min-width: 132px; }
+  .toggle { display: flex; align-items: center; gap: 8px; }
+  .hits { display: grid; gap: 6px; margin: 4px 0 8px; max-height: 240px; overflow-y: auto; }
+  .hit { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--input-bg); color: var(--text); font: inherit; cursor: pointer; }
+  .hit:hover { background: var(--hover); }
+  .hit.on { border-color: var(--primary); }
+  .hit .grow { flex: 1; }
+  @media (max-width: 1100px) { .head-grid, .cards { grid-template-columns: 1fr 1fr; } .grid2, .inline-form, .edit-grid, .form-row { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
@@ -70,8 +89,8 @@
       </div>
     </div>
     <div class="head-grid">
-      <div class="kv"><span>Policy</span><strong>POL-48111</strong></div>
-      <div class="kv"><span>Client</span><strong>Harbor Logistics</strong></div>
+      <div class="kv policy-kv"><span>Policy</span><strong id="policyNo">Not linked</strong><button class="copy" id="linkPolicy" type="button">Link policy</button></div>
+      <div class="kv"><span>Client</span><strong id="clientName">-</strong></div>
       <div class="kv"><span>Loss date</span><strong>2026-07-22</strong></div>
       <div class="kv"><span>Cause of loss</span><strong>Water damage</strong></div>
       <div class="kv"><span>Assigned handler</span><strong>Hana Handler</strong></div>
@@ -89,20 +108,48 @@
   <section id="overview">
     <div class="grid2">
       <div class="card pad">
-        <h2>Loss event</h2>
-        <div class="rows">
-          <div class="kv"><span>Date</span><strong>2026-07-22 09:40</strong></div>
-          <div class="kv"><span>Description</span><strong>Pipe burst under the kitchen floor flooded the ground-floor warehouse office.</strong></div>
-          <div class="kv"><span>Location</span><strong>14 Dockside Road, Unit 3</strong></div>
-          <div class="kv"><span>Cause</span><strong>Water damage</strong></div>
+        <div class="card-head"><h2>Loss event</h2><button class="btn small outline" id="editLoss" type="button">Edit</button></div>
+        <div class="rows" id="lossView">
+          <div class="kv"><span>Date</span><strong id="vDate">2026-07-22 09:40</strong></div>
+          <div class="kv"><span>Reported</span><strong>2026-07-23 08:15</strong></div>
+          <div class="kv"><span>Description</span><strong id="vDesc">Pipe burst under the kitchen floor flooded the ground-floor warehouse office.</strong></div>
+          <div class="kv"><span>Location</span><strong id="vLoc">14 Dockside Road, Unit 3</strong></div>
+          <div class="kv"><span>Cause</span><strong id="vCause">Water damage</strong></div>
           <div class="kv"><span>Severity</span><span class="badge warn" style="display:inline-block;width:fit-content">Moderate</span></div>
-          <div class="kv"><span>Estimated loss amount</span><strong>$62,500.00</strong></div>
+          <div class="kv"><span>Estimated loss amount</span><strong id="vEst">$62,500.00</strong></div>
+          <div class="kv"><span>Police report number</span><strong id="vPolice">-</strong></div>
+        </div>
+        <div class="hidden" id="lossEdit">
+          <div class="edit-grid">
+            <div class="field"><label for="eDate">Loss date and time</label><input id="eDate" type="datetime-local"><div class="hint" id="eDateHint"></div></div>
+            <div class="field"><label for="eCause">Cause of loss</label><input id="eCause" list="causes"><datalist id="causes"></datalist><div class="hint" id="eCauseHint"></div></div>
+            <div class="field wide"><label for="eDesc">Loss description</label><textarea id="eDesc" rows="3"></textarea><div class="hint" id="eDescHint"></div></div>
+            <div class="field"><label for="eLoc">Loss location</label><input id="eLoc"></div>
+            <div class="field"><label for="eEst">Estimated loss amount (optional)</label><input id="eEst" type="number" min="0" placeholder="0.00"></div>
+            <div class="field"><label for="ePolice">Police report number (optional)</label><input id="ePolice"></div>
+          </div>
+          <div class="banner bad hidden" id="lossError" style="margin-bottom:14px"></div>
+          <div class="btn-row"><button class="btn" id="lossSave" type="button">Save loss details</button><button class="btn ghost" id="lossCancel" type="button">Cancel</button></div>
         </div>
       </div>
       <div class="card pad">
         <h2>Claim notes</h2>
         <div class="field"><textarea id="notes" rows="8">Insured called on the 23rd; plumber report requested.</textarea></div>
         <button class="btn" id="saveNotes" type="button">Save notes</button>
+      </div>
+      <div class="card pad span2">
+        <div class="card-head"><h2>Risk objects</h2><button class="btn small outline" id="roAdd" type="button">Add risk object</button></div>
+        <div class="ro-form hidden" id="roForm">
+          <div class="form-row">
+            <div class="field"><label>Asset type</label><select id="roType"><option>Property</option><option>Vehicle</option><option>Equipment</option><option>Person</option><option>Other</option></select></div>
+            <div class="field"><label>Asset description</label><input id="roDesc"></div>
+            <div class="field"><label>Damage description (optional)</label><input id="roDamage"></div>
+            <div class="field"><label>Reference number (optional)</label><input id="roRef"></div>
+            <div class="field"><label>Primary</label><button class="btn outline" id="roPrimary" type="button" aria-pressed="false">Mark as primary</button><div class="hint" id="roPrimaryHint"></div></div>
+          </div>
+          <div class="form-actions"><button class="btn" id="roSave" type="button">Add</button><button class="btn ghost" id="roCancel" type="button">Cancel</button></div>
+        </div>
+        <div id="roList"></div>
       </div>
     </div>
   </section>
@@ -126,7 +173,7 @@
     <div class="cards" id="reserveCards"></div>
     <div class="title-row"><h2 style="margin:0">Transaction history</h2><button class="btn" id="addReserve" type="button">Add reserve</button></div>
     <div class="card"><div class="table-scroll"><table>
-      <thead><tr><th>Date</th><th>Type</th><th>Component</th><th class="num">Amount</th><th>Status</th><th>GL posting</th><th>Submitted by</th><th>Approved by</th><th></th></tr></thead>
+      <thead><tr><th>Date</th><th>Type</th><th>Component</th><th class="num">Amount</th><th>Status</th><th>GL posting</th><th>Submitted by</th><th>Approved by</th><th>Actions</th></tr></thead>
       <tbody id="history"></tbody>
     </table></div></div>
   </section>
@@ -134,7 +181,7 @@
   <section id="documents" class="hidden">
     <div class="title-row"><h2 style="margin:0">Documents</h2><div><input type="file" id="file" class="hidden"><button class="btn" id="upload" type="button">Upload document</button></div></div>
     <div class="card"><div class="table-scroll"><table>
-      <thead><tr><th>Name</th><th>Type</th><th>Uploaded</th><th>Uploaded by</th><th class="num">Size</th><th></th></tr></thead>
+      <thead><tr><th>Name</th><th>Type</th><th>Uploaded</th><th>Uploaded by</th><th class="num">Size</th><th>Actions</th></tr></thead>
       <tbody id="docs"></tbody>
     </table></div><div id="progressWrap" class="hidden" style="padding:12px 16px"><span class="muted" id="progressName"></span><div class="progress"><div id="bar"></div></div></div></div>
   </section>
@@ -166,6 +213,18 @@
   <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
     <button class="btn ghost" id="dlgCancel" type="button">Cancel</button>
     <button class="btn" id="dlgOk" type="button">Confirm</button>
+  </div>
+</dialog>
+
+<dialog class="dialog-wrap" id="policyDlg" style="width:min(560px,92vw)">
+  <h2>Link policy</h2>
+  <div class="field"><label for="pq">Policy (number or client name)</label><input id="pq" autocomplete="off" placeholder="Start typing, for example POL-48 or Harbor"></div>
+  <div class="hits" id="hits"></div>
+  <div class="muted hidden" id="noHits">No policy matches.</div>
+  <div class="banner warn hidden" id="periodWarn" style="margin-top:8px"></div>
+  <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+    <button class="btn ghost" id="policyCancel" type="button">Cancel</button>
+    <button class="btn" id="policyOk" type="button" disabled>Link</button>
   </div>
 </dialog>
 
@@ -208,6 +267,7 @@
         ["Closure condition 1", "Closure condition 2", "Closure condition 3"].map((c) => "<div class='check'><span class='badge ok'>Pass</span>" + c + "</div>").join("") +
         "<div class='check'><span class='badge warn'>Note</span>Closure condition 4: add a justification note</div>"
       : "";
+    $("dlgOk").textContent = "Confirm";
     $("dlgOk").onclick = () => { status = to; $("dlg").close(); renderMoves(); toast("Status changed to " + label(to)); };
     $("dlg").showModal();
   }
@@ -305,7 +365,122 @@
   $("logPrev").onclick = () => { logPage--; renderLog(); };
   $("logNext").onclick = () => { logPage++; renderLog(); };
 
-  renderMoves(); renderParties(); renderReserves(); renderLog();
+  // link policy
+  const POLICIES = [
+    { no: "POL-48111", client: "Harbor Logistics", from: "2026-01-01", to: "2026-12-31", status: "Active" },
+    { no: "POL-48112", client: "Harbor Logistics", from: "2025-01-01", to: "2025-12-31", status: "Expired" },
+    { no: "POL-48230", client: "Northwind Foods", from: "2026-03-01", to: "2027-02-28", status: "Active" }
+  ];
+  let chosen = null;
+  const lossDay = () => $("vDate").textContent.slice(0, 10);
+  const isInForce = (p) => p.status === "Active" && lossDay() >= p.from && lossDay() <= p.to;
+  function renderHits() {
+    const q = $("pq").value.trim().toLowerCase();
+    const hits = q ? POLICIES.filter((p) => p.no.toLowerCase().includes(q) || p.client.toLowerCase().includes(q)) : [];
+    $("noHits").classList.toggle("hidden", !q || hits.length > 0);
+    $("hits").innerHTML = hits.map((p) =>
+      "<button class='hit" + (chosen === p ? " on" : "") + "' type='button' data-no='" + p.no + "'><strong>" + p.no + "</strong><span class='grow'>" + p.client +
+      "<span class='muted'> (" + p.from + " to " + p.to + ")</span></span><span class='badge " + (isInForce(p) ? "ok" : "warn") + "'>" +
+      (isInForce(p) ? "In force on the loss date" : "Outside the period or not active") + "</span></button>").join("");
+    $("hits").querySelectorAll("button").forEach((b) => b.onclick = () => { chosen = POLICIES.find((p) => p.no === b.dataset.no); renderHits(); });
+    $("policyOk").disabled = !chosen;
+    $("periodWarn").classList.toggle("hidden", !chosen || isInForce(chosen));
+    $("periodWarn").textContent = "The loss date is outside this policy's period, or the policy is not active. The link is saved with a warning.";
+  }
+  $("linkPolicy").onclick = () => { chosen = null; $("pq").value = ""; renderHits(); $("policyDlg").showModal(); $("pq").focus(); };
+  $("pq").oninput = renderHits;
+  $("policyCancel").onclick = () => $("policyDlg").close();
+  $("policyOk").onclick = () => {
+    $("policyNo").textContent = chosen.no; $("clientName").textContent = chosen.client;
+    $("linkPolicy").classList.add("hidden"); $("policyDlg").close();
+    toast("Policy linked" + (isInForce(chosen) ? "" : " with 1 warning(s)"));
+  };
+
+  // loss details
+  const CAUSES = ["Collision", "Fire", "Theft", "Water damage", "Windstorm", "Liability"];
+  CAUSES.forEach((c) => { const o = document.createElement("option"); o.value = c; $("causes").appendChild(o); });
+  const setEditing = (on) => { $("lossView").classList.toggle("hidden", on); $("lossEdit").classList.toggle("hidden", !on); $("editLoss").classList.toggle("hidden", on); };
+  function checkLoss() {
+    const date = $("eDate").value;
+    const future = date && new Date(date) > new Date();
+    const cause = CAUSES.includes($("eCause").value);
+    const len = $("eDesc").value.trim().length;
+    $("eDateHint").textContent = !date ? "Loss date is required." : future ? "The loss date cannot be in the future." : "";
+    $("eDateHint").className = "hint" + (!date || future ? " bad" : "");
+    $("eCauseHint").textContent = cause ? "" : "Pick a cause from the list.";
+    $("eCauseHint").className = "hint" + (cause ? "" : " bad");
+    $("eDescHint").textContent = len + " / 20 characters minimum";
+    $("eDescHint").className = "hint" + (len < 20 ? " bad" : "");
+    return date && !future && cause && len >= 20;
+  }
+  $("editLoss").onclick = () => {
+    $("eDate").value = $("vDate").textContent.replace(" ", "T");
+    $("eCause").value = $("vCause").textContent;
+    $("eDesc").value = $("vDesc").textContent;
+    $("eLoc").value = $("vLoc").textContent;
+    $("eEst").value = $("vEst").textContent === "-" ? "" : $("vEst").textContent.replace(/[$,]/g, "");
+    $("ePolice").value = $("vPolice").textContent === "-" ? "" : $("vPolice").textContent;
+    $("lossError").classList.add("hidden");
+    checkLoss(); setEditing(true);
+  };
+  ["eDate", "eCause", "eDesc"].forEach((id) => $(id).addEventListener("input", checkLoss));
+  $("lossCancel").onclick = () => setEditing(false);
+  $("lossSave").onclick = () => {
+    if (!checkLoss()) { $("lossError").textContent = "Correct the highlighted fields."; $("lossError").classList.remove("hidden"); return; }
+    $("vDate").textContent = $("eDate").value.replace("T", " ");
+    $("vCause").textContent = $("eCause").value;
+    $("vDesc").textContent = $("eDesc").value.trim();
+    $("vLoc").textContent = $("eLoc").value.trim() || "-";
+    $("vEst").textContent = $("eEst").value === "" ? "-" : money(Number($("eEst").value));
+    $("vPolice").textContent = $("ePolice").value.trim() || "-";
+    setEditing(false); toast("Loss details saved");
+  };
+
+  // risk objects
+  const risks = [
+    { type: "Property", desc: "Warehouse office, ground floor", damage: "Flooded floor and drywall", primary: true },
+    { type: "Equipment", desc: "Server rack R-2", damage: "Water ingress, not powered on since", primary: false }
+  ];
+  const hasOtherPrimary = (i) => risks.some((r, j) => r.primary && j !== i);
+  function renderRisks() {
+    $("roList").innerHTML = risks.length === 0 ? "<p class='muted'>No risk objects.</p>" : risks.map((r, i) =>
+      "<div class='ro'><span class='badge neutral'>" + r.type + "</span><div class='who'><strong>" + r.desc + "</strong><div class='muted'>" + (r.damage || "") + "</div></div>" +
+      (r.primary ? "<span class='badge info'>Primary</span>" : "") +
+      (r.primary
+        ? "<button class='btn small outline' type='button' data-p='" + i + "'>Unset primary</button>"
+        : "<button class='btn small outline' type='button' data-p='" + i + "'" + (hasOtherPrimary(i) ? " disabled title='Unset the current primary first'" : "") + ">Make primary</button>") +
+      "<button class='btn small danger' type='button' data-i='" + i + "'>Remove</button></div>").join("");
+    $("roList").querySelectorAll("button[data-i]").forEach((b) => b.onclick = () => confirmRemoveRisk(Number(b.dataset.i)));
+    $("roList").querySelectorAll("button[data-p]").forEach((b) => b.onclick = () => {
+      const r = risks[Number(b.dataset.p)];
+      r.primary = !r.primary; renderRisks(); toast(r.primary ? "Primary risk object set" : "Primary risk object unset");
+    });
+    const primary = risks.find((r) => r.primary);
+    setPrimary($("roPrimary"), false);
+    $("roPrimary").disabled = Boolean(primary);
+    $("roPrimaryHint").textContent = primary ? primary.desc + " is already the primary risk object." : "";
+  }
+  function confirmRemoveRisk(i) {
+    $("dlgTitle").textContent = "Remove risk object?";
+    $("dlgText").textContent = risks[i].desc + " stays in the history but is no longer active on the claim.";
+    $("checklist").classList.add("hidden");
+    $("dlgOk").textContent = "Remove";
+    $("dlgOk").onclick = () => { risks.splice(i, 1); $("dlg").close(); $("dlgOk").textContent = "Confirm"; renderRisks(); toast("Risk object removed"); };
+    $("dlg").showModal();
+  }
+  const isPrimary = (b) => b.getAttribute("aria-pressed") === "true";
+  function setPrimary(b, on) { b.setAttribute("aria-pressed", String(on)); b.textContent = on ? "Primary" : "Mark as primary"; }
+  $("roPrimary").onclick = () => setPrimary($("roPrimary"), !isPrimary($("roPrimary")));
+  $("roAdd").onclick = () => { $("roForm").classList.remove("hidden"); $("roAdd").classList.add("hidden"); };
+  const closeRiskForm = () => { $("roForm").classList.add("hidden"); $("roAdd").classList.remove("hidden"); ["roDesc", "roDamage", "roRef"].forEach((id) => $(id).value = ""); };
+  $("roCancel").onclick = closeRiskForm;
+  $("roSave").onclick = () => {
+    if (!$("roDesc").value.trim()) { $("roDesc").focus(); return; }
+    risks.push({ type: $("roType").value, desc: $("roDesc").value.trim(), damage: $("roDamage").value.trim(), primary: isPrimary($("roPrimary")) });
+    closeRiskForm(); renderRisks(); toast("Risk object added");
+  };
+
+  renderMoves(); renderParties(); renderReserves(); renderLog(); renderRisks();
 </script>
 </body>
 </html>

@@ -1,10 +1,14 @@
 import { TestBed } from '@angular/core/testing';
-import { Issue } from '../../core/api/api.model';
-import { claimDetail, RAISED_ISSUE } from './claim-detail.fixtures';
+import { By } from '@angular/platform-browser';
+import { Issue, LossRequest, RiskObject } from '../../core/api/api.model';
+import { provideAppDateAdapter } from '../../core/dates/app-date-adapter';
+import { claimDetail, OTHER_RISK_OBJECT, PRIMARY_RISK_OBJECT, RAISED_ISSUE } from './claim-detail.fixtures';
+import { LossEditor } from './loss-editor';
 import { OverviewTab } from './overview-tab';
 
 describe('OverviewTab (S:UI-Detail-Tabs)', () => {
   async function render() {
+    TestBed.configureTestingModule({ providers: [...provideAppDateAdapter()] });
     const fixture = TestBed.createComponent(OverviewTab);
     fixture.componentRef.setInput('detail', claimDetail());
     fixture.componentRef.setInput('causeName', 'Water damage');
@@ -74,5 +78,62 @@ describe('OverviewTab (S:UI-Detail-Tabs)', () => {
       ['acknowledge', RAISED_ISSUE],
       ['waive', RAISED_ISSUE],
     ]);
+  });
+
+  it('Edit opens the loss editor, and a save emits the loss request', async () => {
+    const { fixture, element, button } = await render();
+    const saved: LossRequest[] = [];
+    fixture.componentInstance.lossSaved.subscribe((loss) => saved.push(loss));
+
+    button('Edit')?.click();
+    await fixture.whenStable();
+    const editor = fixture.debugElement.query(By.directive(LossEditor)).componentInstance as LossEditor;
+    const request = { ...claimDetail().loss, estimatedLossAmount: 1 };
+    editor.submitted.emit(request);
+
+    expect(element.querySelector('app-loss-editor')).not.toBeNull();
+    expect(saved).toEqual([request]);
+  });
+
+  it('lets the primary be unset, and blocks a second primary until then', async () => {
+    const { fixture, element } = await render();
+    const toggled: RiskObject[] = [];
+    fixture.componentInstance.primaryToggled.subscribe((item) => toggled.push(item));
+    const rows = [...element.querySelectorAll('[aria-labelledby="risk-title"] li')];
+    const rowButton = (row: Element, text: string) =>
+      [...row.querySelectorAll('button')].find((candidate) => candidate.textContent?.trim() === text);
+
+    rowButton(rows[0], 'Unset primary')?.click();
+
+    expect(rowButton(rows[1], 'Make primary')?.disabled).toBe(true);
+    expect(toggled).toEqual([PRIMARY_RISK_OBJECT]);
+  });
+
+  it('removes a risk object', async () => {
+    const { fixture, element } = await render();
+    const removed: RiskObject[] = [];
+    fixture.componentInstance.riskObjectRemoved.subscribe((item) => removed.push(item));
+    const rows = [...element.querySelectorAll('[aria-labelledby="risk-title"] li')];
+
+    [...rows[1].querySelectorAll('button')].find((candidate) => candidate.textContent?.trim() === 'Remove')?.click();
+
+    expect(removed).toEqual([OTHER_RISK_OBJECT]);
+  });
+
+  it('keeps Make primary off when the primary has no description', async () => {
+    const { fixture, element } = await render();
+    const detail = claimDetail();
+    fixture.componentRef.setInput('detail', {
+      ...detail,
+      riskObjects: [{ ...PRIMARY_RISK_OBJECT, assetDescription: '' }, OTHER_RISK_OBJECT],
+    });
+    await fixture.whenStable();
+    const rows = [...element.querySelectorAll('[aria-labelledby="risk-title"] li')];
+
+    const makePrimary = [...rows[1].querySelectorAll('button')].find(
+      (candidate) => candidate.textContent?.trim() === 'Make primary',
+    );
+
+    expect(makePrimary?.disabled).toBe(true);
   });
 });

@@ -51,7 +51,7 @@ The screens:
 
 - **Claims list** (`/claims`): filters (status, loss date range, cause, handler, search) kept in the URL, paging, status badges.
 - **Log new claim** (`/claims/new`): a three-step form (policy and loss, parties and risk objects, optional initial reserve with the approval tier and a review), with warnings confirmed before creating.
-- **Claim detail** (`/claims/{id}`): the header with the status change and its checklist, and the Overview, Parties, Reserves, Documents and Audit Log tabs. Approve and Reject show to a supervisor or manager only.
+- **Claim detail** (`/claims/{id}`): the header with the status change, its checklist and Link policy for a claim without one, and the Overview (loss details edit, notes, issues, risk objects), Parties, Reserves, Documents and Audit Log tabs. Approve and Reject show to a supervisor or manager only.
 
 ## API
 
@@ -65,7 +65,7 @@ All routes are under `/api` and need a bearer token, except `POST /api/dev/token
 | `PUT /claims/{id}/handler`, `PUT /claims/{id}/policy`, `PUT /claims/{id}/loss` | assign the handler (the creator by default); link a policy; update the loss details |
 | `POST /claims/{id}/issues/{issueId}/acknowledge`, `waive` | acknowledge a warning; waive a critical issue (supervisor or manager) |
 | `POST /claims/{id}/parties`, `DELETE /claims/{id}/parties/{partyId}` | add and remove a party |
-| `POST /claims/{id}/risk-objects`, `DELETE /claims/{id}/risk-objects/{riskObjectId}` | add and remove a risk object |
+| `POST /claims/{id}/risk-objects`, `PUT` and `DELETE /claims/{id}/risk-objects/{riskObjectId}` | add, update and remove a risk object |
 | `GET /claims/{id}/reserves`, `POST /claims/{id}/reserves` | balances and history; open or adjust a reserve (201) |
 | `POST /claims/{id}/reserves/{historyId}/approve`, `reject`, `retract`, `retry-posting` | decide on a pending reserve; retry a failed posting |
 | `GET /claims/{id}/documents`, `POST /claims/{id}/documents` | list with download links; multipart upload up to 50 MB (201) |

@@ -2,45 +2,58 @@
 
 <div class="grid">
   <section class="card pad" aria-labelledby="loss-title">
-    <h2 id="loss-title">Loss event</h2>
-    <dl class="rows">
-      <div>
-        <dt>Date</dt>
-        <dd>{{ loss.lossDate | claimDate: 'dateTime' }}</dd>
-      </div>
-      <div>
-        <dt>Reported</dt>
-        <dd>{{ loss.reportDate | claimDate: 'dateTime' }}</dd>
-      </div>
-      <div>
-        <dt>Description</dt>
-        <dd>{{ loss.description || '-' }}</dd>
-      </div>
-      <div>
-        <dt>Location</dt>
-        <dd>{{ loss.location || '-' }}</dd>
-      </div>
-      <div>
-        <dt>Cause</dt>
-        <dd>{{ causeName() || '-' }}</dd>
-      </div>
-      <div>
-        <dt>Severity</dt>
-        <dd>
-          <span class="badge" [class]="severityTone()">{{ detail().claim.severity | enumLabel }}</span>
-        </dd>
-      </div>
-      <div>
-        <dt>Estimated loss amount</dt>
-        <dd>{{ loss.hasEstimatedLossAmount ? (loss.estimatedLossAmount | money) : '-' }}</dd>
-      </div>
-      @if (loss.policeReportNumber) {
+    <div class="card-head">
+      <h2 id="loss-title">Loss event</h2>
+      @if (!isEditingLoss()) {
+        <button mat-stroked-button type="button" [disabled]="isSaving()" (click)="isEditingLoss.set(true)">Edit</button>
+      }
+    </div>
+    @if (isEditingLoss()) {
+      <app-loss-editor
+        [loss]="loss"
+        [causeCodes]="causeCodes()"
+        [isSaving]="isSaving()"
+        (submitted)="lossSaved.emit($event)"
+        (cancelled)="isEditingLoss.set(false)"
+      />
+    } @else {
+      <dl class="rows">
+        <div>
+          <dt>Date</dt>
+          <dd>{{ loss.lossDate | claimDate: 'dateTime' }}</dd>
+        </div>
+        <div>
+          <dt>Reported</dt>
+          <dd>{{ loss.reportDate | claimDate: 'dateTime' }}</dd>
+        </div>
+        <div>
+          <dt>Description</dt>
+          <dd>{{ loss.description || '-' }}</dd>
+        </div>
+        <div>
+          <dt>Location</dt>
+          <dd>{{ loss.location || '-' }}</dd>
+        </div>
+        <div>
+          <dt>Cause</dt>
+          <dd>{{ causeName() || '-' }}</dd>
+        </div>
+        <div>
+          <dt>Severity</dt>
+          <dd>
+            <span class="badge" [class]="severityTone()">{{ detail().claim.severity | enumLabel }}</span>
+          </dd>
+        </div>
+        <div>
+          <dt>Estimated loss amount</dt>
+          <dd>{{ loss.hasEstimatedLossAmount ? (loss.estimatedLossAmount | money) : '-' }}</dd>
+        </div>
         <div>
           <dt>Police report number</dt>
-          <dd>{{ loss.policeReportNumber }}</dd>
+          <dd>{{ loss.policeReportNumber || '-' }}</dd>
         </div>
-      }
-    </dl>
+      </dl>
+    }
   </section>
 
   <section class="card pad" aria-labelledby="notes-title">
@@ -76,8 +89,25 @@
     }
   </section>
 
-  <section class="card pad" aria-labelledby="risk-title">
-    <h2 id="risk-title">Risk objects</h2>
+  <section class="card pad full" aria-labelledby="risk-title">
+    <div class="card-head">
+      <h2 id="risk-title">Risk objects</h2>
+      @if (!isAddingRiskObject()) {
+        <button mat-stroked-button type="button" [disabled]="isSaving()" (click)="isAddingRiskObject.set(true)">
+          Add risk object
+        </button>
+      }
+    </div>
+    @if (isAddingRiskObject()) {
+      <app-risk-object-editor
+        class="editor"
+        [isSaving]="isSaving()"
+        [hasPrimary]="hasPrimary()"
+        [primaryName]="primaryName()"
+        (submitted)="riskObjectAdded.emit($event)"
+        (cancelled)="isAddingRiskObject.set(false)"
+      />
+    }
     @if (riskObjects().length === 0) {
       <p class="muted">No risk objects.</p>
     }
@@ -92,6 +122,18 @@
           @if (item.isPrimary) {
             <span class="badge badge--info">Primary</span>
           }
+          <button
+            mat-stroked-button
+            type="button"
+            [disabled]="isSaving() || !canMakePrimary(item)"
+            [attr.title]="canMakePrimary(item) ? null : 'Unset the current primary first'"
+            (click)="primaryToggled.emit(item)"
+          >
+            {{ item.isPrimary ? 'Unset primary' : 'Make primary' }}
+          </button>
+          <button mat-stroked-button type="button" [disabled]="isSaving()" (click)="riskObjectRemoved.emit(item)">
+            Remove
+          </button>
         </li>
       }
     </ul>

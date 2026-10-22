@@ -23,27 +23,13 @@
       <button mat-button type="button" (click)="clearPolicy()">Change</button>
     </div>
   } @else {
-    <mat-form-field class="wide">
-      <mat-label>Search policy number or client name</mat-label>
-      <input
-        matInput
-        [formControl]="policySearch"
-        [matAutocomplete]="policyOptions"
-        [readonly]="policy.controls.isUnknown.value"
-        (input)="searchPolicies()"
-      />
-      @if (isSearching()) {
-        <mat-spinner matSuffix diameter="18" aria-label="Searching policies" />
-      }
-      <mat-autocomplete #policyOptions="matAutocomplete" (optionSelected)="choosePolicy($event)">
-        @for (result of policyResults(); track result.id) {
-          <mat-option [value]="result">
-            {{ result.policyNumber }} - {{ result.clientName }}
-            <span class="muted">({{ result.effectiveDate }} to {{ result.expirationDate }})</span>
-          </mat-option>
-        }
-      </mat-autocomplete>
-    </mat-form-field>
+    <app-policy-picker
+      [results]="policyResults()"
+      [isSearching]="isSearching()"
+      [isReadonly]="policy.controls.isUnknown.value"
+      (query)="policyQuery.emit($event)"
+      (chosen)="choosePolicy($event)"
+    />
   }
 
   <mat-slide-toggle formControlName="isUnknown" (change)="toggleUnknown($event.checked)">
@@ -76,20 +62,7 @@
     </mat-form-field>
   </div>
 
-  <mat-form-field class="wide">
-    <mat-label>Cause of loss</mat-label>
-    <input matInput [formControl]="causeSearch" [matAutocomplete]="causeOptions" (blur)="typeCause()" />
-    <mat-autocomplete #causeOptions="matAutocomplete" (optionSelected)="chooseCause($event)">
-      @for (cause of matchingCauses(); track cause.code) {
-        <mat-option [value]="cause"
-          >{{ cause.name }} <span class="muted">({{ cause.code }})</span></mat-option
-        >
-      }
-    </mat-autocomplete>
-    @if (loss.controls.causeOfLossCode.invalid && loss.controls.causeOfLossCode.touched) {
-      <mat-hint class="error">{{ loss.controls.causeOfLossCode.errors | errorMessage }}</mat-hint>
-    }
-  </mat-form-field>
+  <app-cause-field [control]="loss.controls.causeOfLossCode" [causeCodes]="causeCodes()" />
 
   <mat-form-field class="wide">
     <mat-label>Loss description</mat-label>

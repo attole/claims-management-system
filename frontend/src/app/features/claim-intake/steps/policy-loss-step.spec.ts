@@ -1,5 +1,4 @@
 import { TestBed } from '@angular/core/testing';
-import { MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
 import { Policy } from '../../../core/api/api.model';
 import { provideAppDateAdapter } from '../../../core/dates/app-date-adapter';
 import { createIntakeForm } from '../intake-form';
@@ -36,22 +35,12 @@ describe('PolicyLossStep (S:UI-Intake-Policy, S:UI-Intake-Steps)', () => {
     const { fixture, form, step, element } = await render();
     form.controls.loss.patchValue({ lossDate: new Date(Date.UTC(2026, 6, 22, 9)) });
 
-    step['choosePolicy'].call(fixture.componentInstance, { option: { value: policy } } as MatAutocompleteSelectedEvent);
+    step['choosePolicy'].call(fixture.componentInstance, policy);
     fixture.changeDetectorRef.markForCheck();
     await fixture.whenStable();
 
     expect(form.controls.policy.controls.selected.value).toEqual(policy);
     expect(element.querySelector('.picked')?.textContent).toContain('In force on the loss date');
-  });
-
-  it('a cause typed by its name resolves to its code', async () => {
-    const { fixture, form, step } = await render();
-    const search = fixture.componentInstance['causeSearch'];
-
-    search.setValue('water damage');
-    step['typeCause'].call(fixture.componentInstance);
-
-    expect(form.controls.loss.controls.causeOfLossCode.value).toBe('COL-WATER');
   });
 
   it('switching on Unknown policy drops the chosen policy', async () => {

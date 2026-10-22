@@ -4,13 +4,14 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
 import { createPartyGroup, PartyGroup, partyName, PartyValue } from '../../../shared/forms/party-form';
 import { EnumLabelPipe } from '../../../shared/pipes/enum-label.pipe';
+import { createRiskObjectGroup, RiskObjectValue } from '../../../shared/forms/risk-object-form';
 import { PartyEditor } from '../../../shared/ui/party-editor';
+import { RiskObjectEditor } from '../../../shared/ui/risk-object-editor';
 import { CLAIMANT_REQUIRED_ERROR } from '../../../shared/validators/claim-validators';
 import { ErrorMessagePipe } from '../../../shared/validators/error-message.pipe';
-import { ASSET_TYPES, createRiskObjectGroup, IntakeForm, IntakeValue } from '../intake-form';
+import { IntakeForm, IntakeValue } from '../intake-form';
 
 @Component({
   selector: 'app-parties-step',
@@ -20,10 +21,10 @@ import { ASSET_TYPES, createRiskObjectGroup, IntakeForm, IntakeValue } from '../
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
-    MatSelectModule,
     EnumLabelPipe,
     ErrorMessagePipe,
     PartyEditor,
+    RiskObjectEditor,
   ],
   templateUrl: './parties-step.html',
   styleUrl: './parties-step.scss',
@@ -33,12 +34,15 @@ export class PartiesStep {
   readonly form = input.required<IntakeForm>();
   readonly value = input.required<IntakeValue>();
 
-  protected readonly assetTypes = ASSET_TYPES;
   protected readonly claimantRequired = CLAIMANT_REQUIRED_ERROR;
 
-  protected readonly riskObject = createRiskObjectGroup();
   protected readonly isAddingParty = signal(false);
   protected readonly isAddingRiskObject = signal(false);
+
+  protected readonly hasPrimary = computed(() => this.value().riskObjects.some((riskObject) => riskObject.isPrimary));
+  protected readonly primaryName = computed(
+    () => this.value().riskObjects.find((riskObject) => riskObject.isPrimary)?.assetDescription ?? '',
+  );
 
   protected readonly partyCards = computed(() => {
     this.value();
@@ -57,17 +61,10 @@ export class PartiesStep {
     this.isAddingParty.set(false);
   }
 
-  protected addRiskObject(): void {
-    this.riskObject.markAllAsTouched();
-
-    if (this.riskObject.invalid) {
-      return;
-    }
-
+  protected addRiskObject(riskObject: RiskObjectValue): void {
     const added = createRiskObjectGroup();
-    added.setValue(this.riskObject.getRawValue());
+    added.setValue(riskObject);
     this.form().controls.riskObjects.push(added);
-    this.riskObject.reset();
     this.isAddingRiskObject.set(false);
   }
 

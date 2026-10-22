@@ -43,7 +43,7 @@ frontend/
 - A page (`*.page.ts`) is routed, provides its store and composes presentational components. A presentational component gets data through inputs, reports through outputs and injects no service.
 - A child that shows data owned elsewhere receives it as an input, because an OnPush child does not see changes made in a sibling: the intake steps get the form value as an input next to the form.
 - Route parameters bind to inputs (`withComponentInputBinding`): `claimId = input.required<string>()`.
-- Dialogs: `confirmWith` (confirm with details), `promptWith` (one required text answer) in `shared/ui/`, and the status-change dialog in the claim detail; each returns an Observable of the answer only.
+- Dialogs: `confirmWith` (confirm with details), `promptWith` (one required text answer) in `shared/ui/`, and the status-change and link-policy dialogs in the claim detail; each returns an Observable of the answer only. The link-policy dialog gets the store's search signals and its `query` callback as data.
 
 ## State
 
@@ -59,7 +59,7 @@ frontend/
 - The list filter is a `ClaimsFilter`: empty values stay out of the query string and each status repeats as `status`.
 - Interceptors, in this order: `loadingInterceptor` (the progress bar), `errorInterceptor` (a snackbar for every failure except 422; a body that is not the API's error body is named by its status code), `authInterceptor` (the bearer token on API calls except the dev token call; on a 401 one shared `AuthService.refresh()` and a retry).
 - A 422 is a refusal (`isRefusal` in `core/http/error-body.ts`). `applyServerErrors(form, body)` sets a `server` error on each control its key names (dotted and indexed paths, any casing) and returns the other messages, `General` included, for a banner.
-- Idempotency (S:API-IdempotencyKey): every write method takes an optional key and sends it with `idempotencyHeaders(key)`. A user action creates its key when it starts and reuses it for every retry; the key is kept after a failure without an answer and replaced after a refusal or a success. The claim detail store keeps one key per action (per row for row actions); an upload's key belongs to the file (name, size, last change). Keys are never made in an interceptor.
+- Idempotency (S:API-IdempotencyKey): every write method takes an optional key and sends it with `idempotencyHeaders(key)`. A user action creates its key when it starts and reuses it for every retry; the key is kept after a failure without an answer and replaced after a refusal or a success. The claim detail store keeps one key per action (per row for row actions, with setting the primary apart from removing the same risk object); an upload's key belongs to the file (name, size, last change). Keys are never made in an interceptor.
 
 ## Sign-in
 
@@ -77,7 +77,8 @@ frontend/
 - The client checks shape only: required fields, the backend field lengths (`FIELD_LENGTHS` in `core/api/api-limits.ts`), email, a loss date not in the future, a description of at least 20 characters, a non-zero amount, at least one claimant, a name for a party of its type. Validators are in `shared/validators/`; every message comes from the `errorMessage` pipe.
 - Business rules are the server's. The UI shows hints only: the in-force badge, the approval tier (`shared/util/reserve-authority.ts`), the closure checklist from `status-check`, and the upload type and size check (`ALLOWED_UPLOAD_TYPES`, `MAX_UPLOAD_BYTES`). These constants mirror the backend and change with it.
 - A form clears what it hides: the party editor keeps only the name fields of the chosen type and trims every value before it emits.
-- Shared form pieces: `shared/forms/party-form.ts` (the party group, roles, types, `partyName`, `trimmedParty`) and `shared/forms/reserve-form.ts` (component and transaction lists); `shared/ui/party-editor` is the inline party form of the intake and the claim detail.
+- Shared form pieces: `shared/forms/party-form.ts` (the party group, roles, types, `partyName`, `trimmedParty`), `shared/forms/loss-form.ts` (the loss group with its validators, `toLossRequest`, `lossValueOf` for a saved loss), `shared/forms/risk-object-form.ts` (the risk object group with `isPrimary`, asset types, `trimmedRiskObject`, `withPrimary`) and `shared/forms/reserve-form.ts` (component and transaction lists). `shared/ui/` holds the inline `party-editor` and `risk-object-editor`, the `cause-field` autocomplete and the `policy-picker` search, each used by the intake and the claim detail; `shared/util/in-force.ts` gives the in-force badge.
+- `PUT /loss` replaces the whole loss, so the loss editor fills every field from the saved loss (the police report number and an unset estimate included) and sends them all back.
 
 ## Formats
 
@@ -98,12 +99,12 @@ frontend/
 - **Claims list** (`features/claims-list/`, S:UI-List, S:UI-Badges): `ClaimsListStore` keeps the `ClaimsFilter` in a signal and in the query string (`replaceUrl`), so a reload or a link shows the same list; values read from the URL are checked (statuses, `yyyy-MM-dd` dates, GUIDs, page sizes) and a page past the end moves to the last page. `ClaimsFilterBar` emits a valid, changed filter after 300 ms. The handler filter is a select of the known users, because the API filters by handler id. A row opens the claim detail.
 - **Intake** (`features/claim-intake/`, S:UI-Intake-Steps, S:UI-Intake-Policy, S:UI-Intake-Parties, S:UI-Intake-Reserve, S:UI-Intake-Submit): one typed form (`intake-form.ts`) drives a linear three-step `mat-stepper`; Next advances only when the step is valid.
     - Policy and loss: a policy search (two characters, 300 ms), the picked policy with its in-force badge or the Unknown policy switch; loss date and time on one control; the cause of loss matched against the reference list.
-    - Parties and risk objects: inline forms and cards; a missing claimant blocks creation, a missing risk object is advised.
+    - Parties and risk objects: inline forms and cards; a missing claimant blocks creation, a missing risk object is advised; one risk object may be marked primary.
     - Reserve and review: an optional initial reserve with the approval tier, which needs a linked policy; the review of every value.
     - Create: warnings are confirmed in a dialog first; a success opens the claim with its number in a snackbar; a 422 marks the fields, lists the rest and returns to the first invalid step.
 - **Claim detail** (`features/claim-detail/`, S:UI-Detail-Header, S:UI-Detail-Tabs, S:UI-Reserves, S:UI-Documents, S:UI-Audit, A:UI-Reserves-Roles): `ClaimDetailStore` loads the claim, then its audit page; an id that is not a GUID is the error state.
-    - Header: number with a copy button, status badge, policy, client, loss day, cause, handler, and a Change status menu with the allowed next statuses. Changing status asks `status-check` and shows its findings in a dialog: a finding on another field blocks, a finding on `Reason`, `Note` or `IsLiabilityConfirmed` makes that input required, warnings are notes; the server decides again on submit.
-    - Overview: loss event, severity, notes (saved with a button and kept through reloads while edited), open validation issues with Acknowledge and Waive, risk objects.
+    - Header: number with a copy button, status badge, policy (Not linked with a Link policy button while none is linked; the dialog searches, shows the in-force badge for the loss date and warns before linking a policy outside it), client, loss day, cause, handler, and a Change status menu with the allowed next statuses. Changing status asks `status-check` and shows its findings in a dialog: a finding on another field blocks, a finding on `Reason`, `Note` or `IsLiabilityConfirmed` makes that input required, warnings are notes; the server decides again on submit.
+    - Overview: loss event with Edit (the loss editor in place), severity, notes (saved with a button and kept through reloads while edited), open validation issues with Acknowledge and Waive, risk objects with Add, Make or Unset primary (Make is off while another is primary) and Remove after confirmation.
     - Parties: cards with their state, Remove after a confirmation, the shared party editor.
     - Reserves: a balance card per component with its pending sum, the approved total, the history newest first by submit time, and an inline editor that adjusts an open component or opens a new type with an Add. Approve and Reject show to a supervisor or manager on pending rows (Reject asks for a reason), Retract to the submitter, Retry posting on a failed posting.
     - Documents: the list with a Download link opening in a new tab, and an upload with progress (indeterminate until the size is known).

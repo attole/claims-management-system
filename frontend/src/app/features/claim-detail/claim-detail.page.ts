@@ -20,9 +20,11 @@ import {
   ClaimStatus,
   DocumentUpload,
   Issue,
+  LossRequest,
   Party,
   ReserveHistory,
   ReserveRequest,
+  RiskObject,
   Warning,
   WriteResult,
 } from '../../core/api/api.model';
@@ -31,6 +33,7 @@ import { AuthService } from '../../core/auth/auth.service';
 import { isRefusal, readErrorBody } from '../../core/http/error-body';
 import { NotifyService } from '../../core/notify/notify.service';
 import { partyName, PartyValue } from '../../shared/forms/party-form';
+import { RiskObjectValue } from '../../shared/forms/risk-object-form';
 import { enumLabel } from '../../shared/pipes/enum-label.pipe';
 import { formatMoney } from '../../shared/pipes/money.pipe';
 import { confirmWith } from '../../shared/ui/confirm-dialog';
@@ -39,6 +42,7 @@ import { AuditTab } from './audit-tab';
 import { ClaimDetailStore } from './claim-detail.store';
 import { ClaimHeader } from './claim-header';
 import { DocumentsTab, NO_UPLOAD } from './documents-tab';
+import { askPolicyToLink } from './link-policy-dialog';
 import { OverviewTab } from './overview-tab';
 import { PartiesTab } from './parties-tab';
 import { ReservesTab } from './reserves-tab';
@@ -76,6 +80,8 @@ export class ClaimDetailPage {
 
   protected readonly bannerMessages = signal<string[]>([]);
   protected readonly isAddingParty = signal(false);
+  protected readonly isEditingLoss = signal(false);
+  protected readonly isAddingRiskObject = signal(false);
   protected readonly isAddingReserve = signal(false);
   protected readonly uploadPercent = signal(NO_UPLOAD);
 
@@ -94,6 +100,51 @@ export class ClaimDetailPage {
     );
 
     this.run(change, `Status changed to ${enumLabel(to)}`);
+  }
+
+  protected linkPolicy(): void {
+    const search = {
+      lossDate: this.store.detail().loss.lossDate,
+      results: this.store.policyResults,
+      isSearching: this.store.isSearchingPolicies,
+      query: (text: string) => this.store.policyQuery.set(text),
+    };
+    const link = askPolicyToLink(this.dialog, search).pipe(
+      finalize(() => this.store.policyQuery.set('')),
+      switchMap((policy) => this.store.linkPolicy(policy)),
+    );
+
+    this.run(link, 'Policy linked');
+  }
+
+  protected saveLoss(loss: LossRequest): void {
+    this.run(this.store.updateLoss(loss), 'Loss details saved', () => this.isEditingLoss.set(false));
+  }
+
+  protected addRiskObject(riskObject: RiskObjectValue): void {
+    this.run(this.store.addRiskObject(riskObject), 'Risk object added', () => this.isAddingRiskObject.set(false));
+  }
+
+  protected togglePrimary(riskObject: RiskObject): void {
+    const isPrimary = !riskObject.isPrimary;
+    const message = isPrimary ? 'Primary risk object set' : 'Primary risk object unset';
+
+    this.run(this.store.setPrimaryRiskObject(riskObject, isPrimary), message);
+  }
+
+  protected removeRiskObject(riskObject: RiskObject): void {
+    const confirmation = {
+      title: 'Remove risk object?',
+      message: `${riskObject.assetDescription} stays in the history but is no longer active on the claim.`,
+      details: [],
+      confirmLabel: 'Remove',
+    };
+    const removal = confirmWith(this.dialog, confirmation).pipe(
+      filter((isConfirmed) => isConfirmed),
+      switchMap(() => this.store.removeRiskObject(riskObject)),
+    );
+
+    this.run(removal, 'Risk object removed');
   }
 
   protected saveNotes(notes: string): void {

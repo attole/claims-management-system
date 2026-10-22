@@ -30,8 +30,22 @@ describe('ClaimHeader (S:UI-Detail-Header)', () => {
   it('names a missing policy and handler', async () => {
     const { element } = await render([], { policyId: EMPTY_ID, assignedHandlerId: EMPTY_ID });
 
-    expect(element.textContent).toContain('Unknown policy');
+    expect(element.textContent).toContain('Not linked');
     expect(element.textContent).toContain('Unassigned');
+  });
+
+  it('offers Link policy only while no policy is linked', async () => {
+    const linked = await render([]);
+    const { fixture, element } = await render([], { policyId: EMPTY_ID });
+    let requests = 0;
+    fixture.componentInstance.linkPolicyRequested.subscribe(() => requests++);
+    const button = () =>
+      [...element.querySelectorAll('button')].find((candidate) => candidate.textContent?.trim() === 'Link policy');
+
+    button()?.click();
+
+    expect(linked.element.textContent).not.toContain('Link policy');
+    expect(requests).toBe(1);
   });
 
   it('offers only the statuses the claim can move to, and none when there are none', async () => {

@@ -6,7 +6,15 @@ import { provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 import { apiUrl } from '../../core/api/api-url';
 import { NotifyService } from '../../core/notify/notify.service';
-import { CLAIM_ID, CLAIMANT, claimDetail, RAISED_ISSUE, reserveHistory } from './claim-detail.fixtures';
+import {
+  CLAIM_ID,
+  CLAIMANT,
+  claimDetail,
+  OTHER_RISK_OBJECT,
+  PRIMARY_RISK_OBJECT,
+  RAISED_ISSUE,
+  reserveHistory,
+} from './claim-detail.fixtures';
 import { ClaimDetailPage } from './claim-detail.page';
 
 describe('ClaimDetailPage (S:UI-Detail-Header, S:UI-Detail-Tabs, S:UI-Reserves, S:UI-Documents)', () => {
@@ -158,5 +166,58 @@ describe('ClaimDetailPage (S:UI-Detail-Header, S:UI-Detail-Tabs, S:UI-Reserves, 
 
     expect((upload.request.body as FormData).get('documentType')).toBe('Photo');
     expect(notify.success).toHaveBeenCalledWith('Document photo.png uploaded.');
+  });
+
+  it('links the policy chosen in the dialog, then reloads', async () => {
+    const { call } = await render();
+    const policy = { ...claimDetail(), id: 'p9' };
+    vi.spyOn(TestBed.inject(MatDialog), 'open').mockReturnValue({ afterClosed: () => of(policy) } as never);
+
+    call('linkPolicy');
+    const link = http.expectOne(apiUrl(`claims/${CLAIM_ID}/policy`));
+    link.flush({ data: claimDetail().claim, warnings: [{ code: 'S:BR-C-02', message: 'Outside.', field: '' }] });
+    await expectReload();
+
+    expect(link.request.body).toEqual({ policyId: 'p9' });
+    expect(notify.success).toHaveBeenCalledWith('Policy linked with 1 warning(s).');
+  });
+
+  it('saves the loss details and closes the editor', async () => {
+    const { fixture, call } = await render();
+    const loss = { lossDate: '2026-07-22T09:40:00.000Z', description: 'Pipe burst', causeOfLossCode: 'COL-WATER' };
+    const page = fixture.componentInstance as unknown as { isEditingLoss: { set: (value: boolean) => void } };
+    page.isEditingLoss.set(true);
+
+    call('saveLoss', loss);
+    http.expectOne(apiUrl(`claims/${CLAIM_ID}/loss`)).flush({ data: claimDetail().loss, warnings: [] });
+    await expectReload();
+
+    expect(notify.success).toHaveBeenCalledWith('Loss details saved.');
+    expect((fixture.componentInstance as unknown as { isEditingLoss: () => boolean }).isEditingLoss()).toBe(false);
+  });
+
+  it('unsets the primary risk object', async () => {
+    const { call } = await render();
+
+    call('togglePrimary', PRIMARY_RISK_OBJECT);
+    const update = http.expectOne(apiUrl(`claims/${CLAIM_ID}/risk-objects/${PRIMARY_RISK_OBJECT.id}`));
+    update.flush({ data: { ...PRIMARY_RISK_OBJECT, isPrimary: false }, warnings: [] });
+    await expectReload();
+
+    expect(update.request.body).toEqual(expect.objectContaining({ isPrimary: false }));
+    expect(notify.success).toHaveBeenCalledWith('Primary risk object unset.');
+  });
+
+  it('removes a risk object only after confirmation', async () => {
+    const { call } = await render();
+    vi.spyOn(TestBed.inject(MatDialog), 'open').mockReturnValue({ afterClosed: () => of(true) } as never);
+
+    call('removeRiskObject', OTHER_RISK_OBJECT);
+    http
+      .expectOne(apiUrl(`claims/${CLAIM_ID}/risk-objects/${OTHER_RISK_OBJECT.id}`))
+      .flush({ data: OTHER_RISK_OBJECT, warnings: [] });
+    await expectReload();
+
+    expect(notify.success).toHaveBeenCalledWith('Risk object removed.');
   });
 });

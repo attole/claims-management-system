@@ -15,6 +15,17 @@ export class RiskObjectsService {
     return this.http.post<WriteResult<RiskObject>>(url, riskObject, { headers: idempotencyHeaders(key) });
   }
 
+  update(
+    claimId: string,
+    riskObjectId: string,
+    riskObject: RiskObjectRequest,
+    key = newIdempotencyKey(),
+  ): Observable<WriteResult<RiskObject>> {
+    const url = apiUrl(`claims/${claimId}/risk-objects/${riskObjectId}`);
+
+    return this.http.put<WriteResult<RiskObject>>(url, riskObject, { headers: idempotencyHeaders(key) });
+  }
+
   remove(claimId: string, riskObjectId: string, key = newIdempotencyKey()): Observable<WriteResult<RiskObject>> {
     const url = apiUrl(`claims/${claimId}/risk-objects/${riskObjectId}`);
 

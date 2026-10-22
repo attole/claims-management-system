@@ -3,7 +3,8 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { CreateClaimRequest } from '../../core/api/api.model';
 import { apiUrl } from '../../core/api/api-url';
-import { IntakeStore, POLICY_SEARCH_DELAY_MS } from './intake.store';
+import { POLICY_SEARCH_DELAY_MS } from '../../core/api/policies.service';
+import { IntakeStore } from './intake.store';
 
 describe('IntakeStore (S:UI-Intake-Policy, S:API-IdempotencyKey)', () => {
   let store: IntakeStore;
