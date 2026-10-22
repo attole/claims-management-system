@@ -38,6 +38,17 @@ describe('ClaimsFilterBar (S:UI-List)', () => {
     expect(changes[0]).toEqual(expect.objectContaining({ search: 'CLM', dateFrom: '2026-01-05', dateTo: '' }));
   });
 
+  it('does not send a search longer than the API accepts', async () => {
+    const { form, changes } = await render();
+    vi.useFakeTimers();
+
+    form.controls.search.setValue('x'.repeat(256));
+    vi.advanceTimersByTime(FILTER_DEBOUNCE_MS);
+
+    expect(form.controls.search.invalid).toBe(true);
+    expect(changes).toEqual([]);
+  });
+
   it('after a clear, choosing the same status again emits again', async () => {
     const { fixture, form, changes } = await render();
     vi.useFakeTimers();

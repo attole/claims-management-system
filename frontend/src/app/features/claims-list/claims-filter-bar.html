@@ -48,6 +48,7 @@
   <mat-form-field class="search">
     <mat-label>Search</mat-label>
     <input matInput type="search" formControlName="search" placeholder="Claim number or client" />
+    <mat-error>{{ form.controls.search.errors | errorMessage }}</mat-error>
   </mat-form-field>
 
   <button mat-button type="button" class="clear" (click)="cleared.emit()">Clear</button>

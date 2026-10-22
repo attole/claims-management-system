@@ -4,6 +4,7 @@ import {
   DestroyRef,
   effect,
   inject,
+  computed,
   input,
   signal,
   untracked,
@@ -34,10 +35,11 @@ import { isRefusal, readErrorBody } from '../../core/http/error-body';
 import { NotifyService } from '../../core/notify/notify.service';
 import { partyName, PartyValue } from '../../shared/forms/party-form';
 import { RiskObjectValue } from '../../shared/forms/risk-object-form';
-import { enumLabel } from '../../shared/pipes/enum-label.pipe';
+import { enumLabel, EnumLabelPipe } from '../../shared/pipes/enum-label.pipe';
 import { formatMoney } from '../../shared/pipes/money.pipe';
 import { confirmWith } from '../../shared/ui/confirm-dialog';
 import { promptWith } from '../../shared/ui/prompt-dialog';
+import { allowedNextStatuses } from '../../shared/util/action-gates';
 import { AuditTab } from './audit-tab';
 import { ClaimDetailStore } from './claim-detail.store';
 import { ClaimHeader } from './claim-header';
@@ -55,6 +57,7 @@ import { askStatusChange } from './status-change-dialog';
     MatButtonModule,
     MatProgressSpinnerModule,
     MatTabsModule,
+    EnumLabelPipe,
     ClaimHeader,
     OverviewTab,
     PartiesTab,
@@ -77,6 +80,7 @@ export class ClaimDetailPage {
   private readonly documentsTab = viewChild(DocumentsTab);
 
   protected readonly user = inject(AuthService).user;
+  protected readonly nextStatuses = computed(() => allowedNextStatuses(this.store.nextStatuses(), this.user().role));
 
   protected readonly bannerMessages = signal<string[]>([]);
   protected readonly isAddingParty = signal(false);

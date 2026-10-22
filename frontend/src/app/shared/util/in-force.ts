@@ -9,7 +9,7 @@ export function inForce(policy: Policy | null, lossDate: Date | null): InForce {
   }
 
   const day = calendarDateOf(toIsoDateTime(lossDate));
-  const isInsidePeriod = day >= policy.effectiveDate && day <= policy.expirationDate;
+  const isInsidePeriod = day >= policy.effectiveDate && day <= policy.effectiveEndDate;
 
-  return policy.status === 'Active' && isInsidePeriod ? 'inForce' : 'outside';
+  return isInsidePeriod ? 'inForce' : 'outside';
 }

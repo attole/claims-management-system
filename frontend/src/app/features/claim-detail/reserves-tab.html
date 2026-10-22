@@ -19,7 +19,12 @@
   <span class="muted">Approved total {{ reserves().approvedTotal | money }}</span>
   <span class="spacer"></span>
   @if (!isAdding()) {
-    <button mat-flat-button type="button" (click)="isAdding.set(true)">Add reserve</button>
+    @if (isEditable() && !hasPolicy()) {
+      <span class="muted">Link a policy to add reserves.</span>
+    }
+    <button mat-flat-button type="button" [disabled]="!isEditable() || !hasPolicy()" (click)="isAdding.set(true)">
+      Add reserve
+    </button>
   }
 </div>
 
@@ -83,10 +88,12 @@
           <th mat-header-cell *matHeaderCellDef>Actions</th>
           <td mat-cell *matCellDef="let row" class="actions-cell">
             <div class="actions">
-              @if (row.canDecide) {
+              @if (row.canApprove) {
                 <button mat-flat-button type="button" [disabled]="isSaving()" (click)="approved.emit(row.entry)">
                   Approve
                 </button>
+              }
+              @if (row.canReject) {
                 <button mat-stroked-button type="button" [disabled]="isSaving()" (click)="rejected.emit(row.entry)">
                   Reject
                 </button>

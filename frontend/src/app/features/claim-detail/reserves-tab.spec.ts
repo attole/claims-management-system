@@ -4,7 +4,7 @@ import { DEV_USERS } from '../../core/auth/dev-users';
 import { INDEMNITY, reserveHistory } from './claim-detail.fixtures';
 import { ReservesTab } from './reserves-tab';
 
-describe('ReservesTab (S:UI-Reserves, A:UI-Reserves-Roles)', () => {
+describe('ReservesTab (S:UI-Reserves, A:UI-Reserves-Roles, S:BR-R-02, S:BR-R-03, S:BR-C-06)', () => {
   const pending = reserveHistory({});
   const failed = reserveHistory({
     id: 'h2',
@@ -82,5 +82,32 @@ describe('ReservesTab (S:UI-Reserves, A:UI-Reserves-Roles)', () => {
 
     expect(buttons()).toEqual(['Approve', 'Reject', 'Retry posting']);
     expect(approved).toEqual([pending]);
+  });
+
+  it('hides Approve on your own reserve, and both decisions above the supervisor limit', async () => {
+    const own = await render('Supervisor', DEV_USERS[0].id);
+    const { fixture, buttons } = await render('Supervisor', DEV_USERS[1].id);
+    fixture.componentRef.setInput('reserves', {
+      approvedTotal: 45000,
+      components: [INDEMNITY],
+      history: [reserveHistory({ amount: 150_000 })],
+    });
+    await fixture.whenStable();
+
+    const aboveLimit = buttons();
+
+    expect(own.buttons()).toEqual(['Reject', 'Retract', 'Retry posting']);
+    expect(aboveLimit).toEqual([]);
+  });
+
+  it('turns Add reserve off without a policy, and says why', async () => {
+    const { fixture, element } = await render('Handler', DEV_USERS[0].id);
+    fixture.componentRef.setInput('hasPolicy', false);
+    await fixture.whenStable();
+
+    const add = [...element.querySelectorAll('button')].find((button) => button.textContent?.trim() === 'Add reserve');
+
+    expect(add?.disabled).toBe(true);
+    expect(element.textContent).toContain('Link a policy to add reserves.');
   });
 });

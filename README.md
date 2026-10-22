@@ -51,7 +51,7 @@ The screens:
 
 - **Claims list** (`/claims`): filters (status, loss date range, cause, handler, search) kept in the URL, paging, status badges.
 - **Log new claim** (`/claims/new`): a three-step form (policy and loss, parties and risk objects, optional initial reserve with the approval tier and a review), with warnings confirmed before creating.
-- **Claim detail** (`/claims/{id}`): the header with the status change, its checklist and Link policy for a claim without one, and the Overview (loss details edit, notes, issues, risk objects), Parties, Reserves, Documents and Audit Log tabs. Approve and Reject show to a supervisor or manager only.
+- **Claim detail** (`/claims/{id}`): the header with the status change, its checklist and Link policy for a claim without one, and the Overview (loss details edit, notes, issues, risk objects), Parties, Reserves, Documents and Audit Log tabs. Actions the user cannot take are hidden (Approve and Reject outside the user's authority, Approve on their own reserve) or disabled with a reason (a closed claim, the last claimant, no linked policy).
 
 ## API
 

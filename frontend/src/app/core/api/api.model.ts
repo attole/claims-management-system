@@ -86,10 +86,11 @@ export type ClaimStatusChange = Omit<NonNullable<Schemas['ClaimStatusDto']>, 'pr
   previousStatus: ClaimStatus;
   newStatus: ClaimStatus;
 };
-export type Policy = Omit<Schemas['PolicyDto'], 'status' | 'effectiveDate' | 'expirationDate'> & {
+export type Policy = Omit<Schemas['PolicyDto'], 'status' | 'effectiveDate' | 'expirationDate' | 'effectiveEndDate'> & {
   status: PolicyStatus;
   effectiveDate: CalendarDate;
   expirationDate: CalendarDate;
+  effectiveEndDate: CalendarDate;
 };
 export type CauseCode = Schemas['CauseCodeDto'];
 export interface ClaimStatusInfo {

@@ -1,3 +1,5 @@
+import { UserRole } from '../../core/api/api.model';
+
 export const AUTO_APPROVAL_LIMIT = 10_000;
 export const SUPERVISOR_APPROVAL_LIMIT = 100_000;
 
@@ -15,4 +17,10 @@ export function authorityFor(amount: number): ReserveAuthority {
   }
 
   return size <= SUPERVISOR_APPROVAL_LIMIT ? 'supervisor' : 'manager';
+}
+
+export function canDecideReserve(role: UserRole, amount: number): boolean {
+  const isWithinSupervisorLimit = authorityFor(amount) !== 'manager';
+
+  return role === 'Manager' || (role === 'Supervisor' && isWithinSupervisorLimit);
 }

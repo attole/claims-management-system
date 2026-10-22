@@ -5,7 +5,14 @@
     <div class="card-head">
       <h2 id="loss-title">Loss event</h2>
       @if (!isEditingLoss()) {
-        <button mat-stroked-button type="button" [disabled]="isSaving()" (click)="isEditingLoss.set(true)">Edit</button>
+        <button
+          mat-stroked-button
+          type="button"
+          [disabled]="isSaving() || !isEditable()"
+          (click)="isEditingLoss.set(true)"
+        >
+          Edit
+        </button>
       }
     </div>
     @if (isEditingLoss()) {
@@ -73,14 +80,25 @@
       <p class="muted">No open issues.</p>
     }
     <ul class="list">
-      @for (issue of openIssues(); track issue.id) {
+      @for (open of openIssues(); track open.issue.id) {
         <li>
-          <span class="badge" [class]="issueTones[issue.severity]">{{ issue.severity }}</span>
-          <span class="grow">{{ issue.message }}</span>
-          <button mat-button type="button" [disabled]="isSaving()" (click)="acknowledged.emit(issue)">
-            Acknowledge
-          </button>
-          <button mat-button type="button" [disabled]="isSaving()" (click)="waived.emit(issue)">Waive</button>
+          <span class="badge" [class]="issueTones[open.issue.severity]">{{ open.issue.severity }}</span>
+          <span class="grow">{{ open.issue.message }}</span>
+          @if (open.canAcknowledge) {
+            <button
+              mat-button
+              type="button"
+              [disabled]="isSaving() || !isEditable()"
+              (click)="acknowledged.emit(open.issue)"
+            >
+              Acknowledge
+            </button>
+          }
+          @if (open.canWaive) {
+            <button mat-button type="button" [disabled]="isSaving() || !isEditable()" (click)="waived.emit(open.issue)">
+              Waive
+            </button>
+          }
         </li>
       }
     </ul>
@@ -93,7 +111,12 @@
     <div class="card-head">
       <h2 id="risk-title">Risk objects</h2>
       @if (!isAddingRiskObject()) {
-        <button mat-stroked-button type="button" [disabled]="isSaving()" (click)="isAddingRiskObject.set(true)">
+        <button
+          mat-stroked-button
+          type="button"
+          [disabled]="isSaving() || !isEditable()"
+          (click)="isAddingRiskObject.set(true)"
+        >
           Add risk object
         </button>
       }
@@ -124,14 +147,21 @@
           }
           <button
             mat-stroked-button
+            class="row-action"
             type="button"
-            [disabled]="isSaving() || !canMakePrimary(item)"
+            [disabled]="isSaving() || !isEditable() || !canMakePrimary(item)"
             [attr.title]="canMakePrimary(item) ? null : 'Unset the current primary first'"
             (click)="primaryToggled.emit(item)"
           >
             {{ item.isPrimary ? 'Unset primary' : 'Make primary' }}
           </button>
-          <button mat-stroked-button type="button" [disabled]="isSaving()" (click)="riskObjectRemoved.emit(item)">
+          <button
+            mat-stroked-button
+            class="row-action"
+            type="button"
+            [disabled]="isSaving() || !isEditable()"
+            (click)="riskObjectRemoved.emit(item)"
+          >
             Remove
           </button>
         </li>

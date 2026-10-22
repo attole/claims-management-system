@@ -15,20 +15,23 @@
       <div>
         <strong>{{ policy.policyNumber }}</strong>
         <span>{{ policy.clientName }}</span>
-        <span class="muted">{{ policy.effectiveDate }} to {{ policy.expirationDate }}</span>
+        <span class="muted">{{ policy.effectiveDate }} to {{ policy.effectiveEndDate }}</span>
+        @if (policy.coverageTypes.length > 0) {
+          <span class="muted">Covers {{ policy.coverageTypes.join(', ') }}</span>
+        }
       </div>
       @switch (inForce()) {
         @case ('inForce') {
           <span class="badge badge--ok">In force on the loss date</span>
         }
         @case ('outside') {
-          <span class="badge badge--warn">Expired or outside the policy period</span>
+          <span class="badge badge--warn">Outside the policy period</span>
         }
       }
     </div>
     @if (inForce() === 'outside') {
       <p class="banner banner--warn" role="status">
-        The loss date is outside this policy's period, or the policy is not active. The link is saved with a warning.
+        The loss date is outside this policy's period. The link is saved with a warning.
       </p>
     }
   }

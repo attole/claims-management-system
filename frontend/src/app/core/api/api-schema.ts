@@ -1899,8 +1899,8 @@ export interface paths {
         };
         get: {
             parameters: {
-                query?: {
-                    targetStatus?: components["schemas"]["ClaimStateKind"];
+                query: {
+                    targetStatus: components["schemas"]["ClaimStateKind"];
                 };
                 header?: never;
                 path: {
@@ -3254,6 +3254,8 @@ export interface components {
             effectiveDate: string;
             /** Format: date */
             expirationDate: string;
+            /** Format: date */
+            effectiveEndDate: string;
             status: string;
             coverageTypes: string[];
         };

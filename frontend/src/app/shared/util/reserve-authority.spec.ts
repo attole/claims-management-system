@@ -1,4 +1,4 @@
-import { authorityFor } from './reserve-authority';
+import { authorityFor, canDecideReserve } from './reserve-authority';
 
 describe('authorityFor (S:BR-R-02, S:UI-Intake-Reserve)', () => {
   it.each([
@@ -13,5 +13,18 @@ describe('authorityFor (S:BR-R-02, S:UI-Intake-Reserve)', () => {
     const result = authorityFor(amount);
 
     expect(result).toBe(authority);
+  });
+});
+
+describe('canDecideReserve (S:BR-R-02)', () => {
+  it.each([
+    ['Handler', 5_000, false],
+    ['Supervisor', 100_000, true],
+    ['Supervisor', -100_000.01, false],
+    ['Manager', 5_000_000, true],
+  ] as const)('a %s deciding %s is %s', (role, amount, expected) => {
+    const result = canDecideReserve(role, amount);
+
+    expect(result).toBe(expected);
   });
 });

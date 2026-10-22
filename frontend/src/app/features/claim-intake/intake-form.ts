@@ -45,7 +45,7 @@ export function intakeWarnings(value: IntakeValue): string[] {
   const warnings = [
     value.policy.selected ? '' : 'No policy is linked to the claim.',
     inForce(value.policy.selected, value.loss.lossDate) === 'outside'
-      ? 'The loss date is outside the policy period, or the policy is not active.'
+      ? 'The loss date is outside the policy period.'
       : '',
     value.riskObjects.length > 0 ? '' : 'No risk object was added.',
   ];

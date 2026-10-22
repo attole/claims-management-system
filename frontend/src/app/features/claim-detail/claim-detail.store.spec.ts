@@ -174,6 +174,7 @@ describe('ClaimDetailStore (S:UI-Detail-Header, S:UI-Audit, S:API-IdempotencyKey
       clientName: 'Northwind Foods',
       effectiveDate: '2026-03-01',
       expirationDate: '2027-02-28',
+      effectiveEndDate: '2027-02-28',
       status: 'Active',
       coverageTypes: [],
     };

@@ -3134,6 +3134,7 @@
           {
             "name": "targetStatus",
             "in": "query",
+            "required": true,
             "schema": {
               "$ref": "#/components/schemas/ClaimStateKind"
             }
@@ -5821,6 +5822,10 @@
             "format": "date"
           },
           "expirationDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "effectiveEndDate": {
             "type": "string",
             "format": "date"
           },

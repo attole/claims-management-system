@@ -405,6 +405,19 @@ public sealed class ClaimsControllerTests(ApiFixture database) : IDisposable
     }
 
     [ApiFact]
+    [Trait("Rule", "S:API-ErrorShape")]
+    public async Task CheckStatus_WithoutATargetStatus_Answers422()
+    {
+        var organisationId = await _factory.CreateOrganisationAsync();
+        var (claimId, _) = await _factory.SeedClaimAsync(organisationId);
+        using var client = CreateClient(organisationId);
+
+        var response = await client.GetAsync($"/api/claims/{claimId}/status-check");
+
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+    }
+
+    [ApiFact]
     [Trait("Rule", "S:BR-ST-03")]
     public async Task CheckStatus_IncompleteDraftToOpen_LeavesTheClaimInDraft()
     {

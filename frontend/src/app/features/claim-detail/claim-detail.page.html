@@ -17,12 +17,19 @@
   <app-claim-header
     [detail]="detail"
     [causeName]="store.causeName()"
-    [nextStatuses]="store.nextStatuses()"
+    [nextStatuses]="nextStatuses()"
     [isSaving]="store.isSaving()"
+    [isEditable]="store.isEditable()"
     (statusChosen)="changeStatus($event)"
     (copied)="copied($event)"
     (linkPolicyRequested)="linkPolicy()"
   />
+
+  @if (!store.isEditable()) {
+    <p class="banner banner--info" role="status">
+      This claim is {{ store.status() | enumLabel }}, so only its notes can change.
+    </p>
+  }
 
   @if (bannerMessages().length > 0) {
     <div class="banner banner--bad" role="alert">
@@ -35,14 +42,21 @@
     </div>
   }
 
-  <mat-tab-group class="tabs" animationDuration="0ms" mat-stretch-tabs="false">
+  <mat-tab-group
+    class="tabs"
+    animationDuration="0ms"
+    mat-stretch-tabs="false"
+    (selectedIndexChange)="bannerMessages.set([])"
+  >
     <mat-tab label="Overview">
       <div class="tab-body">
         <app-overview-tab
           [detail]="detail"
           [causeName]="store.causeName()"
           [causeCodes]="store.causeCodes()"
+          [role]="user().role"
           [isSaving]="store.isSaving()"
+          [isEditable]="store.isEditable()"
           [(isEditingLoss)]="isEditingLoss"
           [(isAddingRiskObject)]="isAddingRiskObject"
           (notesSaved)="saveNotes($event)"
@@ -60,6 +74,7 @@
         <app-parties-tab
           [parties]="detail.parties"
           [isSaving]="store.isSaving()"
+          [isEditable]="store.isEditable()"
           [(isAdding)]="isAddingParty"
           (added)="addParty($event)"
           (removed)="removeParty($event)"
@@ -73,6 +88,8 @@
           [userId]="user().id"
           [role]="user().role"
           [isSaving]="store.isSaving()"
+          [isEditable]="store.isEditable()"
+          [hasPolicy]="store.hasPolicy()"
           [(isAdding)]="isAddingReserve"
           (submitted)="submitReserve($event)"
           (approved)="approveReserve($event)"
@@ -87,6 +104,7 @@
         <app-documents-tab
           [documents]="detail.documents"
           [uploadPercent]="uploadPercent()"
+          [isEditable]="store.isEditable()"
           (uploadRequested)="uploadDocument($event)"
         />
       </div>

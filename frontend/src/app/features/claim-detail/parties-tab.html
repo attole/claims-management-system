@@ -17,7 +17,8 @@
       <button
         mat-stroked-button
         type="button"
-        [disabled]="!card.party.isActive || isSaving()"
+        [disabled]="!card.party.isActive || card.isLastClaimant || !isEditable() || isSaving()"
+        [attr.title]="card.isLastClaimant ? 'The last claimant cannot be removed' : null"
         [attr.aria-label]="'Remove ' + card.name"
         (click)="removed.emit(card.party)"
       >
@@ -31,6 +32,6 @@
 
 @if (!isAdding()) {
   <div class="add-row">
-    <button mat-stroked-button type="button" (click)="isAdding.set(true)">Add party</button>
+    <button mat-stroked-button type="button" [disabled]="!isEditable()" (click)="isAdding.set(true)">Add party</button>
   </div>
 }

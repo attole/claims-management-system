@@ -90,6 +90,7 @@ public sealed class PolicyReaderTests
             ClientName = "Acme Ltd",
             EffectiveDate = new DateOnly(2026, 1, 1),
             ExpirationDate = new DateOnly(2026, 12, 31),
+            EffectiveEndDate = new DateOnly(2026, 12, 31),
             Status = "Active",
             CoverageTypes = new[] { "Fire", "Theft" },
         });
@@ -110,7 +111,7 @@ public sealed class PolicyReaderTests
     }
 
     [Fact]
-    public async Task SearchAsync_PolicyEndedByCancellation_IsCancelled()
+    public async Task SearchAsync_PolicyEndedByCancellation_IsCancelledAndEndsOnTheCancellation()
     {
         using var database = new TestDatabase();
         Seed(database, "POL-1", new DateOnly(2026, 2, 1));
@@ -119,7 +120,8 @@ public sealed class PolicyReaderTests
 
         var result = await reader.SearchAsync("POL", _firstPage, CancellationToken.None);
 
-        result.Items.Should().ContainSingle(item => item.Status == "Cancelled");
+        result.Items.Should().ContainSingle(item => item.Status == "Cancelled"
+            && item.EffectiveEndDate == new DateOnly(2026, 2, 1));
     }
 
     private static Policy Seed(TestDatabase database, string policyNumber, DateOnly? cancelledDate)

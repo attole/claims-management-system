@@ -43,6 +43,7 @@ export const NO_UPLOAD = -1;
 export class DocumentsTab {
   readonly documents = input.required<ClaimDocumentLink[]>();
   readonly uploadPercent = input(NO_UPLOAD);
+  readonly isEditable = input(true);
 
   readonly uploadRequested = output<DocumentUpload>();
 

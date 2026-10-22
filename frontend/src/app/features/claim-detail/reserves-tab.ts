@@ -16,9 +16,8 @@ import { userName } from '../../core/auth/dev-users';
 import { ClaimDatePipe } from '../../shared/pipes/claim-date.pipe';
 import { EnumLabelPipe } from '../../shared/pipes/enum-label.pipe';
 import { MoneyPipe } from '../../shared/pipes/money.pipe';
+import { canDecideReserve } from '../../shared/util/reserve-authority';
 import { ReserveEditor } from './reserve-editor';
-
-const DECIDING_ROLES: readonly UserRole[] = ['Supervisor', 'Manager'];
 
 const APPROVAL_TONES: Readonly<Record<ReserveApprovalStatus, string>> = {
   AutoApproved: 'badge--ok',
@@ -47,6 +46,8 @@ export class ReservesTab {
   readonly userId = input.required<string>();
   readonly role = input.required<UserRole>();
   readonly isSaving = input(false);
+  readonly isEditable = input(true);
+  readonly hasPolicy = input(true);
   readonly isAdding = model(false);
 
   readonly submitted = output<ReserveRequest>();
@@ -80,19 +81,20 @@ export class ReservesTab {
   });
 
   protected readonly rows = computed(() => {
-    const canDecide = DECIDING_ROLES.includes(this.role());
-
     return [...this.reserves().history]
       .sort((first, second) => newestFirst(first, second))
       .map((entry) => {
         const isPending = entry.approvalStatus === 'PendingApproval';
+        const isOwn = entry.submittedByUserId === this.userId();
+        const canDecide = isPending && canDecideReserve(this.role(), entry.amount);
 
         return {
           entry,
           submittedBy: userName(entry.submittedByUserId),
           reviewedBy: entry.reviewedBy === EMPTY_ID ? '-' : userName(entry.reviewedBy),
-          canDecide: isPending && canDecide,
-          canRetract: isPending && entry.submittedByUserId === this.userId(),
+          canApprove: canDecide && !isOwn,
+          canReject: canDecide,
+          canRetract: isPending && isOwn,
           canRetry: entry.postingStatus === 'Failed',
           approvalTone: APPROVAL_TONES[entry.approvalStatus],
           postingTone: POSTING_TONES[entry.postingStatus],

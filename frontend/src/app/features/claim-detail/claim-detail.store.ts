@@ -32,6 +32,7 @@ import { RiskObjectsService } from '../../core/api/risk-objects.service';
 import { isRefusal } from '../../core/http/error-body';
 import { newIdempotencyKey } from '../../core/http/idempotency';
 import { withPrimary } from '../../shared/forms/risk-object-form';
+import { isClaimEditable } from '../../shared/util/action-gates';
 
 export const AUDIT_PAGE_SIZES: readonly number[] = [10, 25, 50];
 
@@ -139,6 +140,8 @@ export class ClaimDetailStore {
   });
   readonly hasLoaded = computed(() => this.detail().claim.id !== EMPTY_ID);
   readonly status = computed(() => this.detail().claim.state);
+  readonly isEditable = computed(() => isClaimEditable(this.status()));
+  readonly hasPolicy = computed(() => this.detail().claim.policyId !== EMPTY_ID);
   readonly nextStatuses = computed(() => {
     const statuses = this.statusList.hasValue() ? this.statusList.value() : [];
 

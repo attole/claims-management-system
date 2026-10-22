@@ -12,6 +12,8 @@ public sealed record PolicyDto
 
     public DateOnly ExpirationDate { get; init; } = DateOnly.MinValue;
 
+    public DateOnly EffectiveEndDate { get; init; } = DateOnly.MinValue;
+
     public string Status { get; init; } = string.Empty;
 
     public IReadOnlyList<string> CoverageTypes { get; init; } = [];

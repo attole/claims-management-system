@@ -40,7 +40,7 @@
             mat-stroked-button
             class="pill"
             type="button"
-            [disabled]="isSaving()"
+            [disabled]="isSaving() || !isEditable()"
             (click)="linkPolicyRequested.emit()"
           >
             Link policy

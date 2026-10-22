@@ -15,6 +15,7 @@ export const FIELD_LENGTHS = {
   rejectionReason: 500,
   documentType: 100,
   documentNotes: 500,
+  search: 255,
 } as const;
 
 export const MINIMUM_DESCRIPTION_LENGTH = 20;

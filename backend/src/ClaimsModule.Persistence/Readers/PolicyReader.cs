@@ -82,6 +82,7 @@ internal sealed class PolicyReader(ClaimsDbContext context, IClock clock) : IPol
 
     private static PolicyDto ToDto(PolicyRow row, ILookup<Guid, string> coverageTypes, DateOnly today)
     {
+        var period = ToPeriod(row);
         var dto = new PolicyDto
         {
             Id = row.Id,
@@ -89,7 +90,8 @@ internal sealed class PolicyReader(ClaimsDbContext context, IClock clock) : IPol
             ClientName = row.ClientName,
             EffectiveDate = row.EffectiveDate,
             ExpirationDate = row.ExpirationDate,
-            Status = ToPeriod(row).StatusOn(today).ToString(),
+            EffectiveEndDate = period.EffectiveEndDate,
+            Status = period.StatusOn(today).ToString(),
             CoverageTypes = coverageTypes[row.Id].ToList(),
         };
 

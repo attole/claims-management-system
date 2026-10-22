@@ -46,6 +46,7 @@ public sealed class PartyRequestValidator : AbstractValidator<PartyRequest>
         RuleFor(request => request.LastName).MaximumLength(ClaimFieldLengths.LastName);
         RuleFor(request => request.CompanyName).MaximumLength(ClaimFieldLengths.CompanyName);
         RuleFor(request => request.Email).MaximumLength(ClaimFieldLengths.Email);
+        RuleFor(request => request.Email).EmailAddress().When(request => !string.IsNullOrEmpty(request.Email));
         RuleFor(request => request.Phone).MaximumLength(ClaimFieldLengths.Phone);
     }
 

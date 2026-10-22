@@ -22,6 +22,7 @@ describe('IntakePage (S:UI-Intake-Steps, S:UI-Intake-Submit)', () => {
     clientName: 'Harbor Logistics',
     effectiveDate: '2026-01-01',
     expirationDate: '2026-12-31',
+    effectiveEndDate: '2026-12-31',
     status: 'Active',
     coverageTypes: [],
   };

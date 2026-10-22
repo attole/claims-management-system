@@ -2,11 +2,13 @@
   <div class="fields">
     <div class="file">
       <input #picker class="hidden" type="file" [accept]="accept" (change)="choose($event)" />
-      <button mat-stroked-button type="button" [disabled]="isUploading()" (click)="picker.click()">Choose file</button>
+      <button mat-stroked-button type="button" [disabled]="isUploading() || !isEditable()" (click)="picker.click()">
+        Choose file
+      </button>
       <span class="muted">{{ file()?.name ?? 'No file chosen' }}</span>
     </div>
     <mat-form-field>
-      <mat-label>Document type</mat-label>
+      <mat-label>Document type (optional)</mat-label>
       <input matInput formControlName="documentType" />
       <mat-error>{{ form.controls.documentType.errors | errorMessage }}</mat-error>
     </mat-form-field>
@@ -15,7 +17,9 @@
       <input matInput formControlName="notes" />
       <mat-error>{{ form.controls.notes.errors | errorMessage }}</mat-error>
     </mat-form-field>
-    <button mat-flat-button type="submit" [disabled]="!file() || isUploading()">Upload document</button>
+    <button mat-flat-button type="submit" [disabled]="!file() || isUploading() || !isEditable()">
+      Upload document
+    </button>
   </div>
   @if (fileError()) {
     <p class="error" role="alert">{{ fileError() }}</p>

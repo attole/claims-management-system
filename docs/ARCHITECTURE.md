@@ -137,11 +137,13 @@ Conditions and constants that no document states and that this repo added. Each 
 | Claim | Waivers | supervisor or manager only; a missing loss date, an inactive cause code and a missing claimant can never be waived | ISSUE_MUST_BE_FIXED |
 | Claim | Primary risk object | only one active risk object is primary | RISK_OBJECT_PRIMARY_EXISTS |
 | Claim | Party names | shape validation in the Application: a first or last name for a person, a company name for a company | none |
+| Claim | Party email | an email, when given, must be a well-formed address; the Application validator and the party form both check it | none |
 | Claim | Policy cancellation | the coverage window ends at the cancellation date when earlier; a period names its policy and throws when used for another | none |
 | Reserve | Components follow the claim | closing or withdrawing closes every component, reopening reopens them, in the same Unit of Work; a closed component refuses a new row | RESERVE_COMPONENT_NOT_ACTIVE |
 | Reserve | Withdraw | refused while a row awaits approval or an approved row is unposted; with an open balance it needs a note and warns | CLAIM_WITHDRAW_PENDING_RESERVE, CLAIM_WITHDRAW_NOTE_REQUIRED, CLAIM_WITHDRAWN_WITH_OPEN_BALANCE |
 | Reserve | Close | refused while an approved row is unposted (Pending or Failed); this makes the posting re-enqueue sweep a requirement | RESERVE_HISTORY_NOT_POSTED |
 | Reserve | Claim limit | a change that does not increase the total passes the limit; one that would pass it is never auto-approved; the override cannot be removed while the total is over | CLAIM_OVERRIDE_STILL_NEEDED |
+| Reserve | Limit override out of scope | the manager-only override is modelled, enforced and audited in the Domain but has no route or screen in this slice, so an approval that would pass the claim limit is refused | S:BR-R-05 |
 | Reserve | Tiers | the auto-approval limit and the approval tiers compare the absolute amount; a handler may submit any amount and the row waits for an approver | S:BR-R-02 |
 | Reserve | Posting moves | posted, failed and retry need a job id; cancel has none | RESERVE_POSTING_JOB_REQUIRED |
 | Reserve | Intake without a policy | an intake with an initial reserve and no linked policy is refused as a whole (the create is one transaction); the intake form blocks it before sending and links back to the policy step | S:BR-C-06 |

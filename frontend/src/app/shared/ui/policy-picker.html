@@ -14,7 +14,10 @@
     @for (result of results(); track result.id) {
       <mat-option [value]="result">
         {{ result.policyNumber }} - {{ result.clientName }}
-        <span class="muted">({{ result.effectiveDate }} to {{ result.expirationDate }})</span>
+        <span class="muted">({{ result.effectiveDate }} to {{ result.effectiveEndDate }})</span>
+        @if (result.coverageTypes.length > 0) {
+          <span class="muted">- {{ result.coverageTypes.join(', ') }}</span>
+        }
       </mat-option>
     }
   </mat-autocomplete>

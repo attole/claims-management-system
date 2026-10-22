@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, input, model, output } fr
 import { MatButtonModule } from '@angular/material/button';
 import { Party } from '../../core/api/api.model';
 import { partyName, PartyValue } from '../../shared/forms/party-form';
+import { isLastActiveClaimant } from '../../shared/util/action-gates';
 import { EnumLabelPipe } from '../../shared/pipes/enum-label.pipe';
 import { PartyEditor } from '../../shared/ui/party-editor';
 
@@ -15,6 +16,7 @@ import { PartyEditor } from '../../shared/ui/party-editor';
 export class PartiesTab {
   readonly parties = input.required<Party[]>();
   readonly isSaving = input(false);
+  readonly isEditable = input(true);
   readonly isAdding = model(false);
 
   readonly added = output<PartyValue>();
@@ -25,6 +27,7 @@ export class PartiesTab {
       party,
       name: partyName(party),
       contact: [party.email, party.phone].filter((value) => value.length > 0).join(', '),
+      isLastClaimant: isLastActiveClaimant(party, this.parties()),
     })),
   );
 }

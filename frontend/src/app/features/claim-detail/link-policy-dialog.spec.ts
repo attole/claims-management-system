@@ -6,15 +6,16 @@ import { Policy } from '../../core/api/api.model';
 import { PolicyPicker } from '../../shared/ui/policy-picker';
 import { LinkPolicyData, LinkPolicyDialog } from './link-policy-dialog';
 
-describe('LinkPolicyDialog (S:API-PUT-claims-policy)', () => {
+describe('LinkPolicyDialog (S:API-PUT-claims-policy, A:API-GET-policies-coverage)', () => {
   const expired: Policy = {
     id: 'p2',
     policyNumber: 'POL-48112',
     clientName: 'Harbor Logistics',
     effectiveDate: '2025-01-01',
     expirationDate: '2025-12-31',
+    effectiveEndDate: '2025-12-31',
     status: 'Expired',
-    coverageTypes: [],
+    coverageTypes: ['Fire', 'Theft'],
   };
 
   async function render() {
@@ -55,6 +56,7 @@ describe('LinkPolicyDialog (S:API-PUT-claims-policy)', () => {
     link()?.click();
 
     expect(element.textContent).toContain('The link is saved with a warning.');
+    expect(element.querySelector('.picked')?.textContent).toContain('Covers Fire, Theft');
     expect(close).toHaveBeenCalledWith(expired);
   });
 

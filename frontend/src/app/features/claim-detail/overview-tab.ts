@@ -11,12 +11,14 @@ import {
   IssueSeverity,
   LossRequest,
   RiskObject,
+  UserRole,
 } from '../../core/api/api.model';
 import { RiskObjectValue } from '../../shared/forms/risk-object-form';
 import { ClaimDatePipe } from '../../shared/pipes/claim-date.pipe';
 import { EnumLabelPipe } from '../../shared/pipes/enum-label.pipe';
 import { MoneyPipe } from '../../shared/pipes/money.pipe';
 import { RiskObjectEditor } from '../../shared/ui/risk-object-editor';
+import { canAcknowledge, canWaive } from '../../shared/util/action-gates';
 import { LossEditor } from './loss-editor';
 
 const SEVERITY_TONES: Readonly<Record<ClaimSeverity, string>> = {
@@ -53,7 +55,9 @@ export class OverviewTab {
   readonly detail = input.required<ClaimDetail>();
   readonly causeName = input.required<string>();
   readonly causeCodes = input<CauseCode[]>([]);
+  readonly role = input<UserRole>('Handler');
   readonly isSaving = input(false);
+  readonly isEditable = input(true);
   readonly isEditingLoss = model(false);
   readonly isAddingRiskObject = model(false);
 
@@ -67,7 +71,11 @@ export class OverviewTab {
 
   protected readonly notes = new FormControl('', { nonNullable: true });
   protected readonly severityTone = computed(() => SEVERITY_TONES[this.detail().claim.severity]);
-  protected readonly openIssues = computed(() => this.detail().issues.filter((issue) => issue.state === 'Raised'));
+  protected readonly openIssues = computed(() =>
+    this.detail()
+      .issues.filter((issue) => issue.state === 'Raised')
+      .map((issue) => ({ issue, canAcknowledge: canAcknowledge(issue), canWaive: canWaive(issue, this.role()) })),
+  );
   protected readonly resolvedCount = computed(() => this.detail().issues.length - this.openIssues().length);
   protected readonly riskObjects = computed(() => this.detail().riskObjects.filter((item) => !item.isDeleted));
   protected readonly hasPrimary = computed(() => this.riskObjects().some((item) => item.isPrimary));

@@ -128,6 +128,28 @@ public sealed class PartyRequestTests
     }
 
     [Fact]
+    public void Validate_WithAMalformedEmail_FailsOnTheField()
+    {
+        var validator = new PartyRequestValidator();
+        var request = ApplicationRequests.Claimant() with { Email = "ada.example.com" };
+
+        var result = validator.TestValidate(request);
+
+        result.ShouldHaveValidationErrorFor(party => party.Email);
+    }
+
+    [Fact]
+    public void Validate_WithoutAnEmail_HasNoEmailError()
+    {
+        var validator = new PartyRequestValidator();
+        var request = ApplicationRequests.Claimant() with { Email = string.Empty };
+
+        var result = validator.TestValidate(request);
+
+        result.ShouldNotHaveValidationErrorFor(party => party.Email);
+    }
+
+    [Fact]
     public void Validate_WithATooLongPhone_FailsOnTheField()
     {
         var validator = new PartyRequestValidator();

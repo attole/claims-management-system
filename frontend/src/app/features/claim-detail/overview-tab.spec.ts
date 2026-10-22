@@ -65,18 +65,26 @@ describe('OverviewTab (S:UI-Detail-Tabs)', () => {
     expect(button('Save notes')?.disabled).toBe(true);
   });
 
-  it('acknowledges or waives an open issue', async () => {
-    const { fixture, button } = await render();
+  it('offers Acknowledge on a warning and Waive on a critical issue to a supervisor only', async () => {
+    const { fixture, element, button } = await render();
+    const critical = { ...RAISED_ISSUE, id: 'i2', severity: 'Critical' as const, code: 'S:BR-ST-02' };
     const actions: [string, Issue][] = [];
     fixture.componentInstance.acknowledged.subscribe((issue) => actions.push(['acknowledge', issue]));
     fixture.componentInstance.waived.subscribe((issue) => actions.push(['waive', issue]));
+    fixture.componentRef.setInput('detail', { ...claimDetail(), issues: [RAISED_ISSUE, critical] });
+    await fixture.whenStable();
+    const waiveForHandler = button('Waive');
+    fixture.componentRef.setInput('role', 'Supervisor');
+    await fixture.whenStable();
 
     button('Acknowledge')?.click();
     button('Waive')?.click();
 
+    expect(waiveForHandler).toBeUndefined();
+    expect(element.querySelectorAll('[aria-labelledby="issues-title"] li button').length).toBe(2);
     expect(actions).toEqual([
       ['acknowledge', RAISED_ISSUE],
-      ['waive', RAISED_ISSUE],
+      ['waive', critical],
     ]);
   });
 

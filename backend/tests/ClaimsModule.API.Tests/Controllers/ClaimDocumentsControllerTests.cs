@@ -43,6 +43,21 @@ public sealed class ClaimDocumentsControllerTests(ApiFixture database) : IDispos
     }
 
     [ApiFact]
+    [Trait("Rule", "S:API-POST-claims-documents")]
+    public async Task Upload_WithEmptyNotes_Answers201()
+    {
+        var organisationId = Guid.NewGuid();
+        var (claimId, _) = await _factory.SeedClaimAsync(organisationId);
+        using var client = CreateClient(organisationId);
+        var form = Form(2048, "report.pdf");
+        form.Add(new StringContent(string.Empty), "notes");
+
+        var response = await client.PostAsync($"/api/claims/{claimId}/documents", form);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+    }
+
+    [ApiFact]
     [Trait("Rule", "S:API-ErrorShape")]
     public async Task Upload_WithoutAFile_Answers422()
     {

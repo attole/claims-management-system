@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, effect, input, output, untracked } from '@angular/core';
 import { outputFromObservable } from '@angular/core/rxjs-interop';
-import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDatepickerModule } from '@angular/material/datepicker';
@@ -9,10 +9,12 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { debounceTime, filter, map } from 'rxjs';
 import { NO_DATE, parseCalendarDate, toCalendarDate } from '../../core/api/api-dates';
+import { FIELD_LENGTHS } from '../../core/api/api-limits';
 import { CauseCode, ClaimsFilter, ClaimStatus } from '../../core/api/api.model';
 import { DevUser } from '../../core/auth/dev-users';
 import { EnumLabelPipe } from '../../shared/pipes/enum-label.pipe';
 import { DATE_RANGE_ERROR, dateRangeValidator } from '../../shared/validators/date-range';
+import { ErrorMessagePipe } from '../../shared/validators/error-message.pipe';
 import { CLAIM_STATUSES, FilterChange } from './claims-list.store';
 
 export const FILTER_DEBOUNCE_MS = 300;
@@ -28,6 +30,7 @@ export const FILTER_DEBOUNCE_MS = 300;
     MatInputModule,
     MatSelectModule,
     EnumLabelPipe,
+    ErrorMessagePipe,
   ],
   templateUrl: './claims-filter-bar.html',
   styleUrl: './claims-filter-bar.scss',
@@ -48,7 +51,7 @@ export class ClaimsFilterBar {
       dateTo: new FormControl<Date | null>(null),
       causeOfLossCode: new FormControl('', { nonNullable: true }),
       assignedHandlerId: new FormControl('', { nonNullable: true }),
-      search: new FormControl('', { nonNullable: true }),
+      search: new FormControl('', { nonNullable: true, validators: Validators.maxLength(FIELD_LENGTHS.search) }),
     },
     { validators: dateRangeValidator('dateFrom', 'dateTo') },
   );

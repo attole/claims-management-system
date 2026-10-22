@@ -8,6 +8,7 @@ using ClaimsModule.Application.Paging;
 using ClaimsModule.Domain.Claims;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 namespace ClaimsModule.API.Controllers;
 
@@ -50,7 +51,7 @@ public sealed class ClaimsController(ISender sender) : ApiControllerBase(sender)
     [ProducesResponseType<ClaimStatusCheckDto>(StatusCodes.Status200OK)]
     public Task<IActionResult> CheckStatus(
         Guid claimId,
-        [FromQuery] ClaimStateKind targetStatus,
+        [FromQuery, BindRequired] ClaimStateKind targetStatus,
         CancellationToken cancellationToken)
     {
         return QueryAsync(new CheckClaimStatusQuery(claimId, targetStatus), cancellationToken);

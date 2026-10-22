@@ -25,6 +25,7 @@ export class ClaimHeader {
   readonly causeName = input.required<string>();
   readonly nextStatuses = input.required<ClaimStatus[]>();
   readonly isSaving = input(false);
+  readonly isEditable = input(true);
 
   readonly statusChosen = output<ClaimStatus>();
   readonly copied = output<boolean>();

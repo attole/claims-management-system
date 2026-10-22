@@ -4,15 +4,16 @@ import { provideAppDateAdapter } from '../../../core/dates/app-date-adapter';
 import { createIntakeForm } from '../intake-form';
 import { PolicyLossStep } from './policy-loss-step';
 
-describe('PolicyLossStep (S:UI-Intake-Policy, S:UI-Intake-Steps)', () => {
+describe('PolicyLossStep (S:UI-Intake-Policy, S:UI-Intake-Steps, A:API-GET-policies-coverage)', () => {
   const policy: Policy = {
     id: 'p1',
     policyNumber: 'POL-48111',
     clientName: 'Harbor Logistics',
     effectiveDate: '2026-01-01',
     expirationDate: '2026-12-31',
+    effectiveEndDate: '2026-12-31',
     status: 'Active',
-    coverageTypes: [],
+    coverageTypes: ['Property', 'Liability'],
   };
 
   async function render() {
@@ -41,6 +42,7 @@ describe('PolicyLossStep (S:UI-Intake-Policy, S:UI-Intake-Steps)', () => {
 
     expect(form.controls.policy.controls.selected.value).toEqual(policy);
     expect(element.querySelector('.picked')?.textContent).toContain('In force on the loss date');
+    expect(element.querySelector('.picked')?.textContent).toContain('Covers Property, Liability');
   });
 
   it('switching on Unknown policy drops the chosen policy', async () => {
