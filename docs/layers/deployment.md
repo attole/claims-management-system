@@ -37,6 +37,7 @@ The template writes every app setting; the README 'Configuration' table lists wh
 | Setting | Value |
 |---|---|
 | `ASPNETCORE_ENVIRONMENT`, `ASPNETCORE_FORWARDEDHEADERS_ENABLED` | `Production`, `true` |
+| `WEBSITE_RUN_FROM_PACKAGE` | `1`: the zip deploy is mounted read-only and the app switches to it on restart, so the running files are never overwritten in place; the app writes nothing under its folder (documents go to Blob storage, Hangfire state to SQL) |
 | `Jwt__SigningKey`, `AzureConnectionString` | Key Vault references, resolved by the web app identity at start |
 | `ConnectionStrings__ClaimsDb` | the server with `Authentication=Active Directory Managed Identity` and the identity's client id; EF Core and Hangfire share it |
 | `Cors__AllowedOrigins__0` | the static web app's `https://` origin |

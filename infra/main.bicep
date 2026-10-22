@@ -113,6 +113,7 @@ module staticWebApp 'modules/staticwebapp.bicep' = {
 var platformSettings = [
   { name: 'ASPNETCORE_ENVIRONMENT', value: 'Production' }
   { name: 'ASPNETCORE_FORWARDEDHEADERS_ENABLED', value: 'true' }
+  { name: 'WEBSITE_RUN_FROM_PACKAGE', value: '1' }
 ]
 
 var wiringSettings = [
