@@ -18,17 +18,17 @@ infra/
 ```
 
 - One environment, `demo`, in one resource group (`rg-claims-demo`, Poland Central; the static web app in Central US, because West Europe refuses new subscriptions and only its management data lives there). Names are `<kind>-claims-demo-<suffix>` (the storage account, which allows no hyphens, is `stclaimsdemo<suffix>`), the suffix taken from the resource group id; every resource carries the `application` and `environment` tags.
-- Outputs are names and hostnames only; no secret is ever a parameter or an output.
+- Outputs are names and hostnames only; no secret is ever a parameter or an output. The one exception inside the template is the Application Insights connection string passed from the monitoring module to the web app; it is not a root output.
 
 ## Azure resources
 
-- **API:** App Service plan Linux B1 and one web app (`DOTNETCORE|9.0`): Always On (Hangfire runs in the process), HTTPS only, TLS 1.2, FTP off, no ARR affinity, health check on `/health/ready`, diagnostics to Log Analytics.
+- **API:** App Service plan Linux B1 and one web app (`DOTNETCORE|9.0`): Always On (Hangfire runs in the process), HTTPS only, TLS 1.2, FTP off, no ARR affinity, health check on `/health/ready`, platform logs to Log Analytics.
 - **Identity:** a user-assigned managed identity for the web app. It is the database user and reads Key Vault; its client id is an ARM property, so the pipeline creates the database user without Microsoft Graph.
 - **Database:** Azure SQL logical server with Entra-only authentication (no SQL password exists) and one Basic database; the deploy identity is the Entra administrator. The firewall rule that allows Azure services is what admits the GitHub-hosted runner; there is no per-run rule.
 - **Storage:** StorageV2 Standard LRS, TLS 1.2, no public blob access, the private container `claim-documents`. Downloads are SAS links straight from the blob (S:BR-D-02).
 - **Key Vault:** RBAC mode, soft-delete retention 7 days. Secrets: `jwt-signing-key` (set by the bootstrap script), `storage-connection-string` (written by the template from the account key). The web app identity holds Key Vault Secrets User.
 - **Frontend:** a Free static web app serving the Angular build; `staticwebapp.config.json` rewrites every route to `index.html`.
-- **Monitoring:** a Log Analytics workspace (30 days) receiving the web app's logs.
+- **Monitoring:** a Log Analytics workspace (30 days) and an Application Insights component stored in it. The app sends requests, exceptions, dependencies and logs through `Telemetry__ConnectionString` (`Pipeline/Telemetry/` in the API). The console and platform logs also go to the workspace as a diagnostic setting, because they exist when the app does not start and so cannot send telemetry: the console shows the startup error that names a missing setting, the platform log shows a container crash. HTTP logs are not sent, since requests are traced.
 
 ## Settings and secrets
 
@@ -41,6 +41,7 @@ The template writes every app setting; the README 'Configuration' table lists wh
 | `Jwt__SigningKey`, `AzureConnectionString` | Key Vault references, resolved by the web app identity at start |
 | `ConnectionStrings__ClaimsDb` | the server with `Authentication=Active Directory Managed Identity` and the identity's client id; EF Core and Hangfire share it |
 | `Cors__AllowedOrigins__0` | the static web app's `https://` origin |
+| `Telemetry__ConnectionString` | the Application Insights connection string (an ingestion address, not a credential), from the monitoring module's output |
 | `StorageProvider` | `AzureBlob` |
 | `Swagger__Enabled`, `DevAuth__Enabled`, `Hangfire__Dashboard__Enabled` | `true` |
 | `Hangfire__BlobSweep__Enabled` | `false` |

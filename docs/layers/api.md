@@ -45,6 +45,11 @@ The API's controllers, error body, identity, correlation, Idempotency-Key filter
 - **Correlation** (S:AUD-Correlation): a scoped `CorrelationContext` holds a new GUID per request (a job scope gets its own), read by every audit entry of the request, and a middleware at the start of the pipeline returns it in the `X-Correlation-Id` response header when the response starts, error responses included. An incoming `X-Correlation-Id` is ignored, because it is untrusted input and the audit column is a GUID.
 - The Hangfire dashboard cannot use the bearer token (a browser page cannot send the header), so it stays behind its switch (default off), is open to every request when on, and may be on only where the data is fake (the demo has it on). The fallback policy covers every request after authorization, so the dashboard and Swagger come before `UseAuthentication` and the OpenAPI document is mapped with `AllowAnonymous()`. The order in `ApiPipelineServiceExtensions.UseApiPipeline`: correlation, exception handler, HTTPS redirection, CORS, dashboard, Swagger, authentication, current user, authorization, health, controllers.
 
+## Telemetry
+
+- `Pipeline/Telemetry/` holds `TelemetryOptions` (section `Telemetry`) and `AddTelemetry`, the first call of `AddApiPipeline(configuration)`. It reads the connection string from configuration and calls `UseAzureMonitor` only when it is set, so local runs and tests send nothing and never fail on a missing string.
+- Requests, exceptions, dependency calls (SQL, Blob) and `ILogger` output are exported at the levels `Logging` allows. Hangfire jobs are not traced as operations; their logs and exceptions arrive like any other.
+
 ## Idempotency-Key
 
 A write with an `Idempotency-Key` header is idempotent (S:API-IdempotencyKey); the header is optional and applies to every write action, uploads included. It is a global resource filter, not a MediatR behavior, because only the API knows the header, route, final status and body, and a resource filter runs before model binding, where the raw body can still be read. An action's request size and form limit attributes are authorization-stage filters, so their limits are raised before this filter reads the form.

@@ -22,7 +22,7 @@ param healthCheckPath string = '/health/ready'
 @description('Resource id of the user-assigned managed identity the web app runs as.')
 param identityId string
 
-@description('Log Analytics workspace that receives the web app logs.')
+@description('Log Analytics workspace that receives the console and platform logs.')
 param workspaceId string
 
 @description('App settings as name and value objects.')
@@ -77,10 +77,6 @@ resource diagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' 
     logs: [
       {
         category: 'AppServiceConsoleLogs'
-        enabled: true
-      }
-      {
-        category: 'AppServiceHTTPLogs'
         enabled: true
       }
       {

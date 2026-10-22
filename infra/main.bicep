@@ -64,6 +64,7 @@ module monitoring 'modules/monitoring.bicep' = {
   name: 'monitoring'
   params: {
     name: 'log-${baseName}-${suffix}'
+    appInsightsName: 'appi-${baseName}-${suffix}'
     location: location
     tags: tags
   }
@@ -123,6 +124,7 @@ var wiringSettings = [
     value: 'Server=tcp:${sql.outputs.fullyQualifiedDomainName},1433;Database=${sql.outputs.databaseName};Authentication=Active Directory Managed Identity;User Id=${identity.outputs.clientId};Encrypt=True;'
   }
   { name: 'Cors__AllowedOrigins__0', value: 'https://${staticWebApp.outputs.defaultHostname}' }
+  { name: 'Telemetry__ConnectionString', value: monitoring.outputs.appInsightsConnectionString }
   { name: 'StorageProvider', value: 'AzureBlob' }
   { name: 'AzureConnectionString', value: '@Microsoft.KeyVault(SecretUri=${keyVault.outputs.uri}secrets/${storageSecretName}/)' }
 ]

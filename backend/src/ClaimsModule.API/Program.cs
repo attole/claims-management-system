@@ -9,7 +9,7 @@ builder.Services
     .AddApplication()
     .AddPersistence()
     .AddInfrastructure()
-    .AddApiPipeline();
+    .AddApiPipeline(builder.Configuration);
 
 var app = builder.Build();
 

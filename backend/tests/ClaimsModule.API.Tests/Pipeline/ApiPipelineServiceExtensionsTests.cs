@@ -1,6 +1,7 @@
 using ClaimsModule.API.Pipeline;
 using ClaimsModule.Application.Abstractions;
 using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace ClaimsModule.API.Tests.Pipeline;
@@ -14,7 +15,7 @@ public sealed class ApiPipelineServiceExtensionsTests
     {
         var services = new ServiceCollection();
 
-        services.AddApiPipeline();
+        services.AddApiPipeline(new ConfigurationBuilder().Build());
 
         services.Should().Contain(descriptor => descriptor.ServiceType == serviceType);
     }

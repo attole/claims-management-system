@@ -8,15 +8,17 @@ using ClaimsModule.API.Pipeline.Idempotency;
 using ClaimsModule.API.Pipeline.Identity;
 using ClaimsModule.API.Pipeline.Jwt;
 using ClaimsModule.API.Pipeline.Swagger;
+using ClaimsModule.API.Pipeline.Telemetry;
 using ClaimsModule.Infrastructure;
 
 namespace ClaimsModule.API.Pipeline;
 
 public static class ApiPipelineServiceExtensions
 {
-    public static IServiceCollection AddApiPipeline(this IServiceCollection services)
+    public static IServiceCollection AddApiPipeline(this IServiceCollection services, IConfiguration configuration)
     {
         services
+            .AddTelemetry(configuration)
             .AddCorrelation()
             .AddJwt()
             .AddDevAuth()
