@@ -1,40 +1,51 @@
 <#
 .SYNOPSIS
-    Fills the deployed demo with claims, parties, reserves and documents for testing.
+    Fills the deployed demo with realistic claims for testing lists, filters, paging and the reserve workflow.
 
 .DESCRIPTION
-    Run it yourself in Windows PowerShell after `az login`. It does not touch the database
-    or a migration: it signs in as the three demo users and calls the same API endpoints the
-    frontend uses, so every claim is valid by construction (domain rules, audit entries,
-    stored issues, balances and the claim numbers all come out as the application makes them).
+    Run it yourself in Windows PowerShell after `az login`. It does not touch the database or a migration:
+    it signs in as the three demo users and calls the same API endpoints the frontend uses, so every claim is
+    valid by construction (domain rules, audit entries, stored issues, balances and claim numbers).
 
-    What it creates (a mix by position in the run, so lists, filters and paging have data):
-      - Draft claims (some with an initial reserve)
-      - Open claims with reserves approved by a supervisor or a manager, some with a second
-        component, an adjustment or a reversal
-      - Under investigation, pending payment, closed and withdrawn claims
-      - Open claims whose reserve is left waiting for approval, or was rejected
-      - A PDF document on some claims (this also exercises the Azure Blob adapter)
+    What it creates (random but repeatable: the same -Seed gives the same data):
+      - Claims created in loss-date order, so the claim numbers rise with the loss dates (the list is sorted by
+        number). Loss dates spread over the last -WindowDays days, each inside the period of a policy.
+      - A normal split of statuses: roughly 16% draft, 22% open, 15% under investigation, 11% pending payment,
+        20% closed, 10% withdrawn and 6% reopened, leaning by age (old claims towards closed or withdrawn,
+        recent ones towards draft or open).
+      - Handlers split between the three demo users, policies, causes of loss, parties, risk objects and loss
+        amounts chosen independently.
+      - Zero to three reserve components per claim, each with a history of additions, adjustments and
+        reversals in mixed states: approved, waiting for approval and rejected.
+      - PDF documents and notes on some claims (the documents also exercise the Azure Blob adapter).
 
-    Every step is attempted on its own: a refusal is counted and shown, and the run goes on.
-    It stops before doing anything when claims already exist, unless -Force is given.
+    Every step is attempted on its own: a refusal is counted and shown, and the run goes on. It stops before
+    doing anything when claims already exist, unless -Force is given.
 
 .PARAMETER Count
-    How many claims to create (default 80; the list pages hold 25 by default).
+    How many claims to create (default 100; the lists page by 25).
 
 .PARAMETER ResourceGroup
     The resource group of the demo (default rg-claims-demo).
+
+.PARAMETER Seed
+    The random seed (default 2026). The same seed gives the same claims.
+
+.PARAMETER WindowDays
+    How far back the loss dates reach (default 240 days).
 
 .PARAMETER Force
     Create the claims even when claims already exist.
 
 .EXAMPLE
-    .\infra\seed-demo-data.ps1 -Count 120
+    .\infra\seed-demo-data.ps1 -Count 150
 #>
 [CmdletBinding()]
 param(
-    [int]$Count = 80,
+    [int]$Count = 100,
     [string]$ResourceGroup = 'rg-claims-demo',
+    [int]$Seed = 2026,
+    [int]$WindowDays = 240,
     [switch]$Force
 )
 
@@ -42,6 +53,9 @@ $ErrorActionPreference = 'Stop'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 $script:Failures = New-Object System.Collections.ArrayList
+$script:Random = New-Object System.Random($Seed)
+
+# --- Helpers -------------------------------------------------------------------------------------------------
 
 function Get-AzureValue([string]$What, [string[]]$Arguments) {
     $value = & az @Arguments
@@ -127,6 +141,43 @@ function Format-Utc([datetime]$Value) {
     return $Value.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
 }
 
+function Get-Int([int]$Min, [int]$Max) {
+    return $script:Random.Next($Min, $Max + 1)
+}
+
+function Get-Chance([double]$Probability) {
+    return $script:Random.NextDouble() -lt $Probability
+}
+
+function Get-OneOf($List) {
+    $items = @($List)
+
+    return $items[$script:Random.Next($items.Count)]
+}
+
+# Weights are a name -> number table; the keys are sorted so the same seed always gives the same pick.
+function Get-Weighted([hashtable]$Weights) {
+    $keys = @($Weights.Keys | Sort-Object)
+    $total = 0
+    foreach ($key in $keys) { $total += $Weights[$key] }
+    $point = $script:Random.NextDouble() * $total
+    foreach ($key in $keys) {
+        $point -= $Weights[$key]
+        if ($point -lt 0) { return $key }
+    }
+
+    return $keys[-1]
+}
+
+# An amount between the limits where small values are much more common than large ones, rounded to 50.
+function Get-Amount([double]$Min, [double]$Max) {
+    $logMin = [math]::Log($Min)
+    $logMax = [math]::Log($Max)
+    $value = [math]::Exp($logMin + $script:Random.NextDouble() * ($logMax - $logMin))
+
+    return [decimal]([math]::Round($value / 50) * 50)
+}
+
 # --- Lookups -------------------------------------------------------------------------------------------------
 
 $appName = Get-AzureValue 'The web app name' @('webapp', 'list', '--resource-group', $ResourceGroup, '--query', '[0].name', '-o', 'tsv')
@@ -149,187 +200,351 @@ foreach ($role in 'Handler', 'Supervisor', 'Manager') {
 }
 
 Write-Host "API: $script:ApiUrl"
-$handler = Get-Token $userIdByRole['Handler']
-$supervisor = Get-Token $userIdByRole['Supervisor']
-$manager = Get-Token $userIdByRole['Manager']
+$tokens = @{
+    Handler    = Get-Token $userIdByRole['Handler']
+    Supervisor = Get-Token $userIdByRole['Supervisor']
+    Manager    = Get-Token $userIdByRole['Manager']
+}
 
-$existing = Invoke-Api 'GET' '/api/claims?pageSize=1' $handler $null
+$existing = Invoke-Api 'GET' '/api/claims?pageSize=1' $tokens.Handler $null
 if (-not $existing.Ok) { throw "The claim list could not be read: $($existing.Status) $($existing.Error)" }
 if ($existing.Data.totalCount -gt 0 -and -not $Force) {
     "The environment already holds $($existing.Data.totalCount) claims. Run again with -Force to add $Count more."
     return
 }
 
-$policies = (Invoke-Api 'GET' '/api/policies/search?pageSize=100' $handler $null).Data.items
-$causes = @((Invoke-Api 'GET' '/api/reference/cause-of-loss-codes' $handler $null).Data | ForEach-Object { $_.code })
-if (@($policies).Count -eq 0 -or $causes.Count -eq 0) { throw 'The policies or the cause codes could not be read.' }
+$policies = @((Invoke-Api 'GET' '/api/policies/search?pageSize=100' $tokens.Handler $null).Data.items)
+$causeCodes = @((Invoke-Api 'GET' '/api/reference/cause-of-loss-codes' $tokens.Handler $null).Data | ForEach-Object { $_.code })
+if ($policies.Count -eq 0 -or $causeCodes.Count -eq 0) { throw 'The policies or the cause codes could not be read.' }
 
 # --- Data pools ----------------------------------------------------------------------------------------------
 
-$firstNames = 'Ada', 'Boris', 'Clara', 'Dmitri', 'Elena', 'Felix', 'Greta', 'Hugo', 'Irina', 'Jonas', 'Karina', 'Leon'
-$lastNames = 'Stone', 'Novak', 'Keller', 'Moreau', 'Petrov', 'Silva', 'Lindqvist', 'Rossi', 'Haas', 'Costa'
-$companies = 'Northwind Logistics', 'Bluebird Foods', 'Harbor Print Works', 'Summit Builders', 'Greenfield Farms'
-$locations = 'Warehouse 4', 'Main street 12', 'Kitchen', 'Parking lot B', 'Ring road exit 8', 'Basement archive', 'Loading dock'
-$assets = @(
-    @{ Type = 'Vehicle'; Text = 'Delivery van' },
-    @{ Type = 'Property'; Text = 'Office building' },
-    @{ Type = 'Person'; Text = 'Driver' },
-    @{ Type = 'Equipment'; Text = 'Industrial oven' },
-    @{ Type = 'Other'; Text = 'Stored goods' }
-)
-$descriptions = @(
-    'Water damage after a pipe burst',
-    'Collision at a junction in heavy rain',
-    'Break-in overnight, stock removed',
-    'Fire started in the electrical cabinet',
-    'Storm damage to the roof and windows',
-    'Equipment stopped working after a power surge',
-    'Visitor slipped on a wet floor',
-    'Flooding after heavy rain in the basement'
-)
-$amounts = 1500, 2500, 4800, 7200, 9000, 12500, 18000, 32000, 56000, 88000, 120000, 240000
+$firstNames = 'Ada', 'Boris', 'Clara', 'Dmitri', 'Elena', 'Felix', 'Greta', 'Hugo', 'Irina', 'Jonas', 'Karina', 'Leon', 'Mira', 'Nikolai', 'Olga', 'Pavel', 'Rita', 'Stefan', 'Tamara', 'Viktor'
+$lastNames = 'Stone', 'Novak', 'Keller', 'Moreau', 'Petrov', 'Silva', 'Lindqvist', 'Rossi', 'Haas', 'Costa', 'Weber', 'Nowak', 'Duarte', 'Fischer', 'Larsen', 'Marek', 'Orlov', 'Quinn', 'Tanaka', 'Voss'
+$companies = 'Northwind Logistics', 'Bluebird Foods', 'Harbor Print Works', 'Summit Builders', 'Greenfield Farms', 'Atlas Freight', 'Cedar Dental', 'Delta Plastics', 'Evergreen Hotels', 'Falcon Couriers'
+$locations = 'Warehouse 4', 'Main street 12', 'Kitchen', 'Parking lot B', 'Ring road exit 8', 'Basement archive', 'Loading dock', 'Office floor 3', 'Depot north', 'Customer site'
+$notes = 'Called the claimant, documents promised this week.', 'Expert visit planned for next Tuesday.', 'Waiting for the repair estimate.', 'Police report requested.', 'Photos received, damage confirmed.', 'Liability under review with the insured.'
 
-$today = (Get-Date).ToUniversalTime().Date
+# Description pools and asset types by cause of loss; an unknown code falls back to the "other" entry.
+$causeInfo = @{
+    'COL-FIRE'      = @{ Assets = 'Property', 'Equipment'; Text = 'Fire started in the electrical cabinet', 'Kitchen fire spread to the ceiling', 'Overheated machine caught fire' }
+    'COL-FLOOD'     = @{ Assets = 'Property'; Text = 'Flooding after heavy rain in the basement', 'Burst pipe flooded two floors', 'Drain blocked and water entered the ground floor' }
+    'COL-THEFT'     = @{ Assets = 'Property', 'Equipment', 'Vehicle'; Text = 'Break-in overnight, stock removed', 'Tools stolen from the van', 'Laptops taken from the office' }
+    'COL-VEH-COL'   = @{ Assets = 'Vehicle'; Text = 'Collision at a junction in heavy rain', 'Rear-end collision on the ring road', 'Reversing accident in the depot' }
+    'COL-VEH-COMP'  = @{ Assets = 'Vehicle'; Text = 'Windscreen cracked by a stone', 'Hail damage to the bodywork', 'Parked vehicle hit by a falling branch' }
+    'COL-LIAB'      = @{ Assets = 'Other', 'Person'; Text = 'Visitor slipped on a wet floor', 'Customer property damaged during delivery', 'Contractor injured on the premises' }
+    'COL-EQUIP'     = @{ Assets = 'Equipment'; Text = 'Equipment stopped working after a power surge', 'Compressor failed during operation', 'Control unit damaged by overheating' }
+    'COL-WIND'      = @{ Assets = 'Property'; Text = 'Storm damage to the roof and windows', 'Fence and shed destroyed by wind', 'Roof tiles lost in a gale' }
+    'COL-INJURY'    = @{ Assets = 'Person'; Text = 'Employee injured while loading a pallet', 'Fall from a ladder in the warehouse', 'Hand injury at a cutting machine' }
+    'COL-OTHER'     = @{ Assets = 'Other', 'Property'; Text = 'Damage of unknown origin found on arrival', 'Stored goods damaged in transit', 'Contamination of a stock room' }
+}
+$assetText = @{
+    Vehicle   = 'Delivery van', 'Company car', 'Forklift', 'Pickup truck'
+    Property  = 'Office building', 'Warehouse', 'Shop unit', 'Storage hall'
+    Person    = 'Driver', 'Warehouse operator', 'Visitor'
+    Equipment = 'Industrial oven', 'Packing line', 'Compressor', 'Server rack'
+    Other     = 'Stored goods', 'Customer shipment', 'Signage'
+}
+$reserveRanges = @{
+    Indemnity              = @(2000, 180000)
+    Expense                = @(300, 15000)
+    Alae                   = @(200, 9000)
+    SubrogationRecoverable = @(500, 30000)
+}
+$reasons = 'Expert report received', 'Repair estimate updated', 'Legal opinion obtained', 'Settlement discussed', 'Invoice received', 'Estimate corrected after inspection'
+
 $pdfPath = Join-Path $env:TEMP 'demo-claim-document.pdf'
 [System.IO.File]::WriteAllText($pdfPath, "%PDF-1.4`n1 0 obj<</Type/Catalog>>endobj`ntrailer<</Root 1 0 R>>`n%%EOF`n")
 
-function New-ClaimBody([int]$Index, $Policy, [bool]$WithReserve) {
-    # The loss date lies inside the policy period and in the past, spread over the last year where possible.
-    $latest = $today.AddDays(-2)
-    $end = [datetime]$Policy.expirationDate
-    if ($end -gt $latest) { $end = $latest }
-    $from = [datetime]$Policy.effectiveDate
-    if ($from -lt $latest.AddDays(-400)) { $from = $latest.AddDays(-400) }
-    if ($from -gt $end) { $from = [datetime]$Policy.effectiveDate }
-    $span = [int]($end - $from).TotalDays
-    $lossDate = $from.AddDays(($Index * 37) % ($span + 1))
-    $reportDate = $lossDate.AddDays(2)
-    if ($reportDate -gt (Get-Date).ToUniversalTime().AddHours(-1)) { $reportDate = (Get-Date).ToUniversalTime().AddHours(-1) }
+$now = (Get-Date).ToUniversalTime()
+$today = $now.Date
 
-    $first = $firstNames[$Index % $firstNames.Count]
-    $last = $lastNames[$Index % $lastNames.Count]
-    $amount = $amounts[$Index % $amounts.Count]
-    $parties = @(@{ Role = 'Claimant'; Type = 'Person'; FirstName = $first; LastName = $last; Email = "$($first.ToLower()).$($last.ToLower())@example.com"; Phone = "+4850$('{0:D7}' -f ($Index * 7919 % 10000000))" })
-    if ($Index % 3 -eq 0) { $parties += @{ Role = 'Insured'; Type = 'Company'; CompanyName = $companies[$Index % $companies.Count] } }
-    if ($Index % 4 -eq 0) { $parties += @{ Role = 'ThirdParty'; Type = 'Person'; FirstName = $firstNames[($Index + 5) % $firstNames.Count]; LastName = $lastNames[($Index + 3) % $lastNames.Count] } }
-    if ($Index % 7 -eq 0) { $parties += @{ Role = 'Witness'; Type = 'Person'; FirstName = 'Alex'; LastName = $lastNames[($Index + 1) % $lastNames.Count] } }
-    if ($Index % 11 -eq 0) { $parties += @{ Role = 'Attorney'; Type = 'Company'; CompanyName = 'Lex and Partners' } }
+# --- Building blocks -----------------------------------------------------------------------------------------
 
-    $asset = $assets[$Index % $assets.Count]
-    $reserves = @()
-    if ($WithReserve) {
-        $reserves = @(@{ TransactionType = 'Add'; Amount = $amount; ChangeReason = 'Initial reserve'; ComponentType = 'Indemnity' })
+function New-Parties {
+    $parties = @()
+    if (Get-Chance 0.2) {
+        $parties += @{ Role = 'Claimant'; Type = 'Company'; CompanyName = (Get-OneOf $companies); Email = 'office@example.com' }
+    }
+    else {
+        $first = Get-OneOf $firstNames
+        $last = Get-OneOf $lastNames
+        $phone = '+4850' + ('{0:D7}' -f (Get-Int 1000000 9999999))
+        $parties += @{ Role = 'Claimant'; Type = 'Person'; FirstName = $first; LastName = $last; Email = "$($first.ToLower()).$($last.ToLower())@example.com"; Phone = $phone }
     }
 
-    return @{
-        PolicyId    = $Policy.id
+    $extra = [int](Get-Weighted @{ '0' = 45; '1' = 30; '2' = 18; '3' = 7 })
+    for ($index = 0; $index -lt $extra; $index++) {
+        $role = Get-OneOf @('Insured', 'ThirdParty', 'Witness', 'Attorney')
+        if ($role -eq 'Attorney' -or (Get-Chance 0.25)) {
+            $parties += @{ Role = $role; Type = 'Company'; CompanyName = (Get-OneOf $companies) }
+        }
+        else {
+            $parties += @{ Role = $role; Type = 'Person'; FirstName = (Get-OneOf $firstNames); LastName = (Get-OneOf $lastNames) }
+        }
+    }
+
+    return $parties
+}
+
+function New-RiskObjects([string]$Cause) {
+    $info = if ($causeInfo.ContainsKey($Cause)) { $causeInfo[$Cause] } else { $causeInfo['COL-OTHER'] }
+    $objects = @()
+    $count = [int](Get-Weighted @{ '1' = 62; '2' = 28; '3' = 10 })
+    for ($index = 0; $index -lt $count; $index++) {
+        $type = if ($index -eq 0) { Get-OneOf $info.Assets } else { Get-OneOf @('Vehicle', 'Property', 'Person', 'Equipment', 'Other') }
+        $objects += @{
+            AssetType         = $type
+            AssetDescription  = (Get-OneOf $assetText[$type])
+            IsPrimary         = ($index -eq 0)
+            DamageDescription = 'See the loss description'
+        }
+    }
+
+    return $objects
+}
+
+# The coverage of a policy is checked on the loss date; one claim in thirty gets a policy that does not cover it,
+# which leaves a draft with a policy-period warning.
+function Select-Policy([datetime]$LossDate, [bool]$IsOutsidePeriod) {
+    $covering = @($policies | Where-Object { [datetime]$_.effectiveDate -le $LossDate.Date -and [datetime]$_.expirationDate -ge $LossDate.Date })
+    $others = @($policies | Where-Object { $covering -notcontains $_ })
+    if ($IsOutsidePeriod -and $others.Count -gt 0) { return Get-OneOf $others }
+    if ($covering.Count -gt 0) { return Get-OneOf $covering }
+
+    return Get-OneOf $policies
+}
+
+function Get-StatusFor([int]$AgeDays) {
+    if ($AgeDays -gt 150) { return Get-Weighted @{ Draft = 10; Open = 14; UnderInvestigation = 12; PendingPayment = 8; Closed = 34; Withdrawn = 14; Reopened = 8 } }
+    if ($AgeDays -gt 60) { return Get-Weighted @{ Draft = 15; Open = 24; UnderInvestigation = 18; PendingPayment = 14; Closed = 16; Withdrawn = 8; Reopened = 5 } }
+    if ($AgeDays -gt 14) { return Get-Weighted @{ Draft = 22; Open = 30; UnderInvestigation = 18; PendingPayment = 12; Closed = 8; Withdrawn = 6; Reopened = 4 } }
+
+    return Get-Weighted @{ Draft = 38; Open = 38; UnderInvestigation = 12; PendingPayment = 6; Closed = 3; Withdrawn = 3 }
+}
+
+# Who may approve a row: nobody approves their own, supervisors up to 100,000 and managers above.
+function Get-Approver([string]$SubmitterRole, [decimal]$Amount) {
+    if ($SubmitterRole -eq 'Manager') {
+        if ([math]::Abs($Amount) -gt 100000) { return $null }
+
+        return 'Supervisor'
+    }
+    if ($SubmitterRole -eq 'Supervisor') { return 'Manager' }
+    if ([math]::Abs($Amount) -gt 100000) { return 'Manager' }
+
+    return 'Supervisor'
+}
+
+# Decides what happens to a submitted row and returns the approved amount it adds to the balance.
+function Resolve-Row($Claim, $Row, [bool]$MustApprove) {
+    $amount = [decimal]$Row.amount
+    if ($Row.approvalStatus -in @('AutoApproved', 'Approved')) { return $amount }
+
+    $approver = Get-Approver $Claim.SubmitterRole $amount
+    $fate = if ($MustApprove) { 'Approve' }
+    elseif ($Claim.IsSettled) { Get-Weighted @{ Approve = 85; Reject = 15 } }
+    else { Get-Weighted @{ Approve = 76; Reject = 10; Wait = 14 } }
+    if ($null -eq $approver -or $fate -eq 'Wait') { return 0 }
+
+    $path = "/api/claims/$($Claim.Id)/reserves/$($Row.id)"
+    if ($fate -eq 'Approve') {
+        $approved = Confirm-Step "$($Claim.Label) approve $amount" (Invoke-Api 'POST' "$path/approve" $tokens[$approver] $null)
+
+        return $(if ($approved) { $amount } else { 0 })
+    }
+
+    [void](Confirm-Step "$($Claim.Label) reject $amount" (Invoke-Api 'POST' "$path/reject" $tokens[$approver] @{ rejectionReason = 'Not supported by the file' }))
+
+    return 0
+}
+
+function Add-Reserves($Claim) {
+    $count = [int](Get-Weighted @{ '0' = 10; '1' = 46; '2' = 30; '3' = 14 })
+    if ($Claim.MustHaveApproved -and $count -eq 0) { $count = 1 }
+    $types = @('Indemnity', 'Expense', 'Alae', 'SubrogationRecoverable')
+    $cap = if ($Claim.SubmitterRole -eq 'Manager') { 60000 } else { 1000000 }
+    $hasApproved = $false
+
+    for ($index = 0; $index -lt $count; $index++) {
+        $type = if ($index -eq 0 -and (Get-Chance 0.85)) { 'Indemnity' } else { $types[($index + (Get-Int 0 3)) % $types.Count] }
+        $range = $reserveRanges[$type]
+        $amount = [math]::Min((Get-Amount $range[0] $range[1]), $cap)
+        $body = @{ TransactionType = 'Add'; Amount = $amount; ChangeReason = (Get-OneOf $reasons); ComponentType = $type }
+        $added = Invoke-Api 'POST' "/api/claims/$($Claim.Id)/reserves" $Claim.SubmitterToken $body
+        if (-not (Confirm-Step "$($Claim.Label) add $type $amount" $added)) { continue }
+
+        $row = $added.Data.data
+        $balance = Resolve-Row $Claim $row ($Claim.MustHaveApproved -and -not $hasApproved)
+        if ($balance -gt 0) { $hasApproved = $true }
+
+        $followUps = [int](Get-Weighted @{ '0' = 34; '1' = 34; '2' = 20; '3' = 12 })
+        for ($step = 0; $step -lt $followUps -and $balance -gt 300; $step++) {
+            $kind = Get-Weighted @{ Raise = 50; Lower = 28; Reverse = 22 }
+            if ($kind -eq 'Raise') { $change = [math]::Round($balance * (0.1 + 0.3 * $script:Random.NextDouble()) / 50) * 50; $transaction = 'Adjust' }
+            elseif ($kind -eq 'Lower') { $change = -[math]::Round($balance * (0.1 + 0.4 * $script:Random.NextDouble()) / 50) * 50; $transaction = 'Adjust' }
+            else { $change = -[math]::Round($balance * (0.2 + 0.5 * $script:Random.NextDouble()) / 50) * 50; $transaction = 'Reverse' }
+            if ([math]::Abs($change) -lt 50) { continue }
+            if ($change -gt 0 -and $change -gt ($cap - $balance)) { continue }
+
+            $followBody = @{ TransactionType = $transaction; Amount = [decimal]$change; ChangeReason = (Get-OneOf $reasons); ComponentId = $row.reserveComponentId }
+            $follow = Invoke-Api 'POST' "/api/claims/$($Claim.Id)/reserves" $Claim.SubmitterToken $followBody
+            if (-not (Confirm-Step "$($Claim.Label) $transaction $change" $follow)) { continue }
+            $balance += Resolve-Row $Claim $follow.Data.data $false
+        }
+    }
+}
+
+function Send-Documents($Claim) {
+    $total = [int](Get-Weighted @{ '1' = 70; '2' = 22; '3' = 8 })
+    $types = 'Police report', 'Photos', 'Repair estimate', 'Invoice', 'Expert report'
+    for ($index = 0; $index -lt $total; $index++) {
+        $url = "$script:ApiUrl/api/claims/$($Claim.Id)/documents"
+        $code = & curl.exe -s -o NUL -w '%{http_code}' --max-time 120 -X POST $url -H "Authorization: Bearer $($Claim.SubmitterToken)" `
+            -F "file=@$pdfPath;type=application/pdf" -F "documentType=$(Get-OneOf $types)" -F 'notes=Seeded demo document'
+        if ($code -ne '201') { [void]$script:Failures.Add("$($Claim.Label) upload -> $code") }
+    }
+}
+
+# Closing and withdrawing are refused while an approved row is still being posted, so each is retried after a pause.
+function Move-Claim($Claim, [hashtable]$Body, [string]$Token) {
+    $result = $null
+    $attempts = if ($Body.TargetStatus -in @('Closed', 'Withdrawn')) { 3 } else { 1 }
+    for ($attempt = 1; $attempt -le $attempts; $attempt++) {
+        $result = Invoke-Api 'PUT' "/api/claims/$($Claim.Id)/status" $Token $Body
+        if ($result.Ok) { return $true }
+        if ($attempt -lt $attempts) { Start-Sleep -Seconds 15 }
+    }
+
+    return (Confirm-Step "$($Claim.Label) move to $($Body.TargetStatus)" $result)
+}
+
+# --- Phase 1: create the claims in loss-date order, open them and set up the reserves ------------------------
+
+$offsets = @(1..$Count | ForEach-Object { Get-Int 2 $WindowDays } | Sort-Object -Descending)
+$roles = @{ Handler = 'Handler'; Supervisor = 'Supervisor'; Manager = 'Manager' }
+$claims = New-Object System.Collections.ArrayList
+
+for ($index = 0; $index -lt $Count; $index++) {
+    $daysAgo = $offsets[$index]
+    $lossDate = $today.AddDays(-$daysAgo).AddHours((Get-Int 6 20)).AddMinutes((Get-Int 0 59))
+    $reportDate = $lossDate.AddDays((Get-Int 0 10))
+    if ($reportDate -gt $now.AddHours(-1)) { $reportDate = $now.AddHours(-1) }
+
+    $isOutside = Get-Chance 0.03
+    $target = if ($isOutside) { 'Draft' } else { Get-StatusFor $daysAgo }
+    $policy = Select-Policy $lossDate $isOutside
+    $cause = Get-OneOf $causeCodes
+    $info = if ($causeInfo.ContainsKey($cause)) { $causeInfo[$cause] } else { $causeInfo['COL-OTHER'] }
+    $ownerRole = Get-Weighted @{ Handler = 52; Supervisor = 26; Manager = 22 }
+    $label = "[$($index + 1)/$Count $target]"
+
+    $body = @{
+        PolicyId    = $policy.id
         ReportDate  = (Format-Utc $reportDate)
         Loss        = @{
             LossDate            = (Format-Utc $lossDate)
-            Description         = $descriptions[$Index % $descriptions.Count]
-            CauseOfLossCode     = $causes[$Index % $causes.Count]
-            Location            = $locations[$Index % $locations.Count]
-            EstimatedLossAmount = [math]::Round($amount * 1.2)
+            Description         = (Get-OneOf $info.Text)
+            CauseOfLossCode     = $cause
+            Location            = (Get-OneOf $locations)
+            EstimatedLossAmount = (Get-Amount 800 220000)
         }
-        Parties     = $parties
-        RiskObjects = @(@{ AssetType = $asset.Type; AssetDescription = $asset.Text; IsPrimary = $true; DamageDescription = 'See the loss description' })
-        Reserves    = $reserves
+        Parties     = (New-Parties)
+        RiskObjects = (New-RiskObjects $cause)
+        Reserves    = @()
     }
-}
-
-# Supervisors approve up to 100,000 and managers above; a handler cannot approve their own submission.
-function Approve-Pending([string]$ClaimId, [string]$Label) {
-    $reserves = Invoke-Api 'GET' "/api/claims/$ClaimId/reserves" $handler $null
-    if (-not (Confirm-Step "$Label read reserves" $reserves)) { return }
-
-    foreach ($row in @($reserves.Data.history | Where-Object { $_.approvalStatus -eq 'PendingApproval' })) {
-        $approver = if ([math]::Abs([decimal]$row.amount) -gt 100000) { $manager } else { $supervisor }
-        [void](Confirm-Step "$Label approve $($row.amount)" (Invoke-Api 'POST' "/api/claims/$ClaimId/reserves/$($row.id)/approve" $approver $null))
-    }
-}
-
-function Submit-Reserve([string]$ClaimId, [string]$Label, $Body) {
-    return Confirm-Step "$Label reserve $($Body.Amount)" (Invoke-Api 'POST' "/api/claims/$ClaimId/reserves" $handler $Body)
-}
-
-function Send-Document([string]$ClaimId, [string]$Label) {
-    $url = "$script:ApiUrl/api/claims/$ClaimId/documents"
-    $code = & curl.exe -s -o NUL -w '%{http_code}' --max-time 120 -X POST $url -H "Authorization: Bearer $handler" `
-        -F "file=@$pdfPath;type=application/pdf" -F 'documentType=Police report' -F 'notes=Seeded demo document'
-    if ($code -ne '201') { [void]$script:Failures.Add("$Label upload -> $code") }
-}
-
-# --- The run -------------------------------------------------------------------------------------------------
-
-$kinds = 'Draft', 'DraftWithReserve', 'Open', 'Open', 'OpenWithExtras', 'UnderInvestigation', 'PendingPayment', 'Closed', 'Withdrawn', 'OpenWaiting'
-$created = @{}
-$policyList = @($policies)
-
-for ($index = 1; $index -le $Count; $index++) {
-    $kind = $kinds[$index % $kinds.Count]
-    $policy = $policyList[$index % $policyList.Count]
-    $isDraft = $kind -like 'Draft*'
-    $hasReserve = $kind -ne 'Draft' -and $kind -ne 'Withdrawn'
-    $label = "[$index/$Count $kind]"
-
-    $response = Invoke-Api 'POST' '/api/claims' $handler (New-ClaimBody $index $policy $hasReserve)
-    if (-not (Confirm-Step "$label create" $response)) { continue }
-    $claimId = $response.Data.data.id
-    Write-Host "$label $($response.Data.data.claimNumber)"
-
-    if ($isDraft) { $created[$kind] = 1 + [int]$created[$kind]; continue }
-
-    if ($index % 6 -eq 0) { Send-Document $claimId $label }
-
-    if (-not (Confirm-Step "$label open" (Invoke-Api 'PUT' "/api/claims/$claimId/status" $handler @{ TargetStatus = 'Open' }))) { continue }
-    if ($hasReserve) { Approve-Pending $claimId $label }
-
-    if ($kind -eq 'OpenWithExtras') {
-        [void](Submit-Reserve $claimId $label @{ TransactionType = 'Add'; Amount = 2000; ChangeReason = 'Expert fees'; ComponentType = 'Expense' })
-        $components = Invoke-Api 'GET' "/api/claims/$claimId/reserves" $handler $null
-        $indemnity = @($components.Data.components | Where-Object { $_.componentType -eq 'Indemnity' })[0]
-        if ($null -ne $indemnity) {
-            [void](Submit-Reserve $claimId $label @{ TransactionType = 'Adjust'; Amount = 3000; ChangeReason = 'Updated estimate'; ComponentId = $indemnity.id })
-            [void](Submit-Reserve $claimId $label @{ TransactionType = 'Reverse'; Amount = -500; ChangeReason = 'Duplicate part'; ComponentId = $indemnity.id })
-        }
-        Approve-Pending $claimId $label
+    if ($target -eq 'Draft' -and (Get-Chance 0.4)) {
+        $body.Reserves = @(@{ TransactionType = 'Add'; Amount = (Get-Amount 500 20000); ChangeReason = 'Initial reserve'; ComponentType = 'Indemnity' })
     }
 
-    if ($kind -eq 'OpenWaiting') {
-        # An approved reserve is already there; this one is left waiting, and a second one is rejected.
-        [void](Submit-Reserve $claimId $label @{ TransactionType = 'Add'; Amount = 15000; ChangeReason = 'Waiting for approval'; ComponentType = 'Alae' })
-        if (Submit-Reserve $claimId $label @{ TransactionType = 'Add'; Amount = 20000; ChangeReason = 'Too high'; ComponentType = 'SubrogationRecoverable' }) {
-            $reserves = Invoke-Api 'GET' "/api/claims/$claimId/reserves" $handler $null
-            $row = @($reserves.Data.history | Where-Object { $_.approvalStatus -eq 'PendingApproval' -and $_.amount -eq 20000 })[0]
-            if ($null -ne $row) {
-                [void](Confirm-Step "$label reject" (Invoke-Api 'POST' "/api/claims/$claimId/reserves/$($row.id)/reject" $supervisor @{ rejectionReason = 'Not supported by the file' }))
-            }
-        }
+    $created = Invoke-Api 'POST' '/api/claims' $tokens.Handler $body
+    if (-not (Confirm-Step "$label create" $created)) { continue }
+
+    $claim = [pscustomobject]@{
+        Id               = $created.Data.data.id
+        Number           = $created.Data.data.claimNumber
+        Label            = $label
+        Target           = $target
+        OwnerRole        = $ownerRole
+        SubmitterRole    = $ownerRole
+        SubmitterToken   = $tokens[$ownerRole]
+        IsSettled        = ($target -in @('Closed', 'Withdrawn', 'Reopened'))
+        MustHaveApproved = ($target -in @('PendingPayment', 'Closed', 'Reopened'))
+    }
+    Write-Host "$label $($claim.Number) $($lossDate.ToString('yyyy-MM-dd')) handled by $ownerRole"
+
+    if ($ownerRole -ne 'Handler') {
+        [void](Confirm-Step "$label assign handler" (Invoke-Api 'PUT' "/api/claims/$($claim.Id)/handler" $tokens.Handler @{ handlerId = $userIdByRole[$ownerRole] }))
     }
 
-    switch ($kind) {
-        'UnderInvestigation' { $move = @{ TargetStatus = 'UnderInvestigation'; Note = 'Expert opinion requested' } }
-        'PendingPayment' { $move = @{ TargetStatus = 'PendingPayment'; IsLiabilityConfirmed = $true; Note = 'Liability confirmed' } }
-        'Closed' { $move = @{ TargetStatus = 'Closed'; ReasonCode = 'SETTLED'; ReasonText = 'Settled with the claimant'; Note = 'Closed after settlement' } }
-        'Withdrawn' { $move = @{ TargetStatus = 'Withdrawn'; ReasonCode = 'CLAIMANT_REQUEST'; ReasonText = 'The claimant withdrew the claim'; Note = 'No reserve was set' } }
-        default { $move = $null }
-    }
-    if ($null -ne $move) {
-        [void](Confirm-Step "$label move to $($move.TargetStatus)" (Invoke-Api 'PUT' "/api/claims/$claimId/status" $handler $move))
+    if (Get-Chance 0.4) {
+        [void](Confirm-Step "$label notes" (Invoke-Api 'PUT' "/api/claims/$($claim.Id)/notes" $claim.SubmitterToken @{ notes = (Get-OneOf $notes) }))
     }
 
-    $created[$kind] = 1 + [int]$created[$kind]
+    if ($target -ne 'Draft') {
+        if (-not (Confirm-Step "$label open" (Invoke-Api 'PUT' "/api/claims/$($claim.Id)/status" $claim.SubmitterToken @{ TargetStatus = 'Open' }))) { continue }
+        Add-Reserves $claim
+        if (Get-Chance 0.35) { Send-Documents $claim }
+    }
+
+    [void]$claims.Add($claim)
 }
 
 Remove-Item $pdfPath -ErrorAction SilentlyContinue
+
+# --- Phase 2: the later status moves, after the background posting of the approved rows ---------------------
+
+$moves = @($claims | Where-Object { $_.Target -notin @('Draft', 'Open') })
+if ($moves.Count -gt 0) {
+    Write-Host "Waiting 30 seconds for the GL posting jobs before the status moves (closing needs every approved row posted)."
+    Start-Sleep -Seconds 30
+}
+
+foreach ($claim in $moves) {
+    $token = $claim.SubmitterToken
+    switch ($claim.Target) {
+        'UnderInvestigation' {
+            [void](Move-Claim $claim @{ TargetStatus = 'UnderInvestigation'; Note = 'Expert opinion requested' } $token)
+        }
+        'PendingPayment' {
+            [void](Move-Claim $claim @{ TargetStatus = 'PendingPayment'; IsLiabilityConfirmed = $true; Note = 'Liability confirmed' } $token)
+        }
+        'Closed' {
+            if (Get-Chance 0.4) {
+                [void](Move-Claim $claim @{ TargetStatus = 'PendingPayment'; IsLiabilityConfirmed = $true; Note = 'Liability confirmed' } $token)
+            }
+            [void](Move-Claim $claim @{ TargetStatus = 'Closed'; ReasonCode = 'SETTLED'; ReasonText = 'Settled with the claimant'; Note = 'Closed after settlement' } $token)
+        }
+        'Withdrawn' {
+            if (Get-Chance 0.3) {
+                [void](Move-Claim $claim @{ TargetStatus = 'UnderInvestigation'; Note = 'Checking the policy terms' } $token)
+            }
+            [void](Move-Claim $claim @{ TargetStatus = 'Withdrawn'; ReasonCode = 'CLAIMANT_REQUEST'; ReasonText = 'The claimant withdrew the claim'; Note = 'Withdrawn at the claimant request' } $token)
+        }
+        'Reopened' {
+            if (Move-Claim $claim @{ TargetStatus = 'Closed'; ReasonCode = 'SETTLED'; ReasonText = 'Settled with the claimant'; Note = 'Closed after settlement' } $token) {
+                $reopen = @{ TargetStatus = 'Reopened'; ReasonCode = 'NEW_EVIDENCE'; ReasonText = 'New documents were received'; Note = 'Reopened for new evidence' }
+                if ((Move-Claim $claim $reopen $tokens.Manager) -and (Get-Chance 0.5)) {
+                    [void](Move-Claim $claim @{ TargetStatus = 'Open'; Note = 'Back in handling' } $token)
+                }
+            }
+        }
+    }
+}
 
 # --- Summary -------------------------------------------------------------------------------------------------
 
 ''
 'Claims by status now:'
 foreach ($status in 'Draft', 'Open', 'UnderInvestigation', 'PendingPayment', 'Closed', 'Reopened', 'Withdrawn') {
-    $page = Invoke-Api 'GET' "/api/claims?status=$status&pageSize=1" $handler $null
+    $page = Invoke-Api 'GET' "/api/claims?status=$status&pageSize=1" $tokens.Handler $null
     "  {0,-20} {1}" -f $status, $page.Data.totalCount
+}
+
+''
+'Claims by handler:'
+foreach ($role in 'Handler', 'Supervisor', 'Manager') {
+    "  {0,-20} {1}" -f $role, @($claims | Where-Object { $_.OwnerRole -eq $role }).Count
 }
 
 ''
